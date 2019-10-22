@@ -1,0 +1,21 @@
+#include "/Engine/Public/Platform.ush"
+
+void MainVS(in uint VertexId : SV_VertexID, out float4 OutPosition : SV_POSITION)
+{
+	// Compute the bottom left originated UV coordinate of the triangle's vertex.
+	float2 VertexUV = float2(0x1 & ((VertexId + 1) / 3), VertexId & 0x1);
+    OutPosition = float4(VertexUV * 2.0 - 1.0, 0.0, 1.0);
+}
+
+void MainPS(in float4 SvPosition : SV_POSITION, out float4 OutColor : SV_Target0)
+{
+    OutColor = float4(1.0f, 0.0f, 0.0f, 1.0f);
+}
+
+RWTexture2D<float4> OutTexture;
+
+[numthreads(8, 8, 1)]
+void MainCS(uint2 DispatchThreadId : SV_DispatchThreadID)
+{
+    OutTexture[DispatchThreadId] = float4(0.0, 1.0, 0.0, 1.0);
+}
