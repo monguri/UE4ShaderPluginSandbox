@@ -144,8 +144,9 @@
 Engine/Binaries/DotNET/UnrealBuildTool.xml
 Engine/Binaries/DotNET/AutomationScripts/BuildGraph.Automation.xml
 
-# Ignore content folders
-Content/
+# uasset and umap
+!*.umap
+!*.uasset
 
 # Ignore DDC
 /Engine/DerivedDataCache/**
