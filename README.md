@@ -1,6 +1,7 @@
 # UE4ShaderPluginSandbox
 
-It has tested only on UE4.23.
+It has been tested only on UE4.22 and 4.23, Win64 DX11 and DX12.
+On 4.22, it is necessary to copy CanvasRenderTarget2D.cpp of UE4.23 to UE4.22 and build UE4.22.
 
 English
 
