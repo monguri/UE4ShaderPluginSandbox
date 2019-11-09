@@ -128,9 +128,11 @@ private:
 	/** The vertex data storage type */
 	FStaticMeshVertexDataInterface* TangentsData;
 	FShaderResourceViewRHIRef TangentsSRV;
+	FUnorderedAccessViewRHIRef TangentsUAV;
 
 	FStaticMeshVertexDataInterface* TexcoordData;
 	FShaderResourceViewRHIRef TextureCoordinatesSRV;
+	FUnorderedAccessViewRHIRef TextureCoordinatesUAV;
 
 	/** The cached vertex data pointer. */
 	uint8* TangentsDataPtr;
@@ -223,6 +225,7 @@ public:
 
 private:
 	FShaderResourceViewRHIRef PositionComponentSRV;
+	FUnorderedAccessViewRHIRef PositionComponentUAV;
 
 	/** The vertex data storage type */
 	class FComputablePositionVertexData* VertexData;
@@ -298,6 +301,7 @@ private:
 	class FComputableColorVertexData* VertexData;
 
 	FShaderResourceViewRHIRef ColorComponentsSRV;
+	FUnorderedAccessViewRHIRef ColorComponentsUAV;
 
 	/** The cached vertex data pointer. */
 	uint8* Data;

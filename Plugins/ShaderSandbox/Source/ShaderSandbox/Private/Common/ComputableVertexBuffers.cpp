@@ -84,7 +84,7 @@ FVertexBufferRHIRef FComputableMeshVertexBuffer::CreateTangentsRHIBuffer_RenderT
 		const uint32 SizeInBytes = ResourceArray ? ResourceArray->GetResourceDataSize() : 0;
 		FRHIResourceCreateInfo CreateInfo(ResourceArray);
 		CreateInfo.bWithoutNativeResource = !TangentsData;
-		return RHICreateVertexBuffer(SizeInBytes, BUF_Static | BUF_ShaderResource, CreateInfo);
+		return RHICreateVertexBuffer(SizeInBytes, BUF_Static | BUF_ShaderResource | BUF_UnorderedAccess, CreateInfo);
 	}
 	return nullptr;
 }
@@ -97,7 +97,7 @@ FVertexBufferRHIRef FComputableMeshVertexBuffer::CreateTexCoordRHIBuffer_RenderT
 		const uint32 SizeInBytes = ResourceArray ? ResourceArray->GetResourceDataSize() : 0;
 		FRHIResourceCreateInfo CreateInfo(ResourceArray);
 		CreateInfo.bWithoutNativeResource = !TexcoordData;
-		return RHICreateVertexBuffer(SizeInBytes, BUF_Static | BUF_ShaderResource, CreateInfo);
+		return RHICreateVertexBuffer(SizeInBytes, BUF_Static | BUF_ShaderResource | BUF_UnorderedAccess, CreateInfo);
 	}
 	return nullptr;
 }
@@ -106,18 +106,24 @@ void FComputableMeshVertexBuffer::InitRHI()
 {
 	TangentsVertexBuffer.VertexBufferRHI = CreateTangentsRHIBuffer_RenderThread();
 	TexCoordVertexBuffer.VertexBufferRHI = CreateTexCoordRHIBuffer_RenderThread();
-	if (TangentsVertexBuffer.VertexBufferRHI && (RHISupportsManualVertexFetch(GMaxRHIShaderPlatform) || IsGPUSkinCacheAvailable(GMaxRHIShaderPlatform)))
+	if (TangentsVertexBuffer.VertexBufferRHI)
 	{
 		TangentsSRV = RHICreateShaderResourceView(
 			TangentsData ? TangentsVertexBuffer.VertexBufferRHI : nullptr,
 			GetUseHighPrecisionTangentBasis() ? 8 : 4,
 			GetUseHighPrecisionTangentBasis() ? PF_R16G16B16A16_SNORM : PF_R8G8B8A8_SNORM);
+		TangentsUAV = RHICreateUnorderedAccessView(
+			TangentsData ? TangentsVertexBuffer.VertexBufferRHI : nullptr,
+			GetUseHighPrecisionTangentBasis() ? PF_R16G16B16A16_SNORM : PF_R8G8B8A8_SNORM);
 	}
-	if (TexCoordVertexBuffer.VertexBufferRHI && RHISupportsManualVertexFetch(GMaxRHIShaderPlatform))
+	if (TexCoordVertexBuffer.VertexBufferRHI)
 	{
 		TextureCoordinatesSRV = RHICreateShaderResourceView(
 			TexcoordData ? TexCoordVertexBuffer.VertexBufferRHI : nullptr,
 			GetUseFullPrecisionUVs() ? 8 : 4,
+			GetUseFullPrecisionUVs() ? PF_G32R32F : PF_G16R16F);
+		TextureCoordinatesUAV = RHICreateUnorderedAccessView(
+			TexcoordData ? TexCoordVertexBuffer.VertexBufferRHI : nullptr,
 			GetUseFullPrecisionUVs() ? PF_G32R32F : PF_G16R16F);
 	}
 }
@@ -125,7 +131,9 @@ void FComputableMeshVertexBuffer::InitRHI()
 void FComputableMeshVertexBuffer::ReleaseRHI()
 {
 	TangentsSRV.SafeRelease();
+	TangentsUAV.SafeRelease();
 	TextureCoordinatesSRV.SafeRelease();
+	TextureCoordinatesUAV.SafeRelease();
 	TangentsVertexBuffer.ReleaseRHI();
 	TexCoordVertexBuffer.ReleaseRHI();
 }
@@ -181,6 +189,7 @@ void FComputableMeshVertexBuffer::BindTangentVertexBuffer(const FVertexFactory* 
 {
 	{
 		Data.TangentsSRV = TangentsSRV;
+		// TODO:ここに相当するUAVの処理は必要ない？
 	}
 
 	{
@@ -232,6 +241,7 @@ void FComputableMeshVertexBuffer::BindPackedTexCoordVertexBuffer(const FVertexFa
 
 	{
 		Data.TextureCoordinatesSRV = TextureCoordinatesSRV;
+		// TODO:ここに相当するUAVの処理は必要ない？
 	}
 
 	{
@@ -289,6 +299,7 @@ void FComputableMeshVertexBuffer::BindLightMapVertexBuffer(const FVertexFactory*
 
 	{
 		Data.TextureCoordinatesSRV = TextureCoordinatesSRV;
+		// TODO:ここに相当するUAVの処理は必要ない？
 	}
 
 	{
@@ -374,7 +385,7 @@ FVertexBufferRHIRef FComputablePositionVertexBuffer::CreateRHIBuffer_RenderThrea
 		const uint32 SizeInBytes = ResourceArray ? ResourceArray->GetResourceDataSize() : 0;
 		FRHIResourceCreateInfo CreateInfo(ResourceArray);
 		CreateInfo.bWithoutNativeResource = !VertexData;
-		return RHICreateVertexBuffer(SizeInBytes, BUF_Static | BUF_ShaderResource, CreateInfo);
+		return RHICreateVertexBuffer(SizeInBytes, BUF_Static | BUF_ShaderResource | BUF_UnorderedAccess, CreateInfo);
 	}
 	return nullptr;
 }
@@ -386,23 +397,15 @@ void FComputablePositionVertexBuffer::InitRHI()
 	// Also check to see whether cpu access has been activated on the vertex data
 	if (VertexBufferRHI)
 	{
-		// we have decide to create the SRV based on GMaxRHIShaderPlatform because this is created once and shared between feature levels for editor preview.
-		bool bSRV = RHISupportsManualVertexFetch(GMaxRHIShaderPlatform) || IsGPUSkinCacheAvailable(GMaxRHIShaderPlatform);
-
-		// When bAllowCPUAccess is true, the meshes is likely going to be used for Niagara to spawn particles on mesh surface.
-		// And it can be the case for CPU *and* GPU access: no differenciation today. That is why we create a SRV in this case.
-		// This also avoid setting lots of states on all the members of all the different buffers used by meshes. Follow up: https://jira.it.epicgames.net/browse/UE-69376.
-		bSRV |= VertexData->GetAllowCPUAccess();
-		if(bSRV)
-		{
-			PositionComponentSRV = RHICreateShaderResourceView(VertexBufferRHI, 4, PF_R32_FLOAT);
-		}
+		PositionComponentSRV = RHICreateShaderResourceView(VertexBufferRHI, 4, PF_R32_FLOAT);
+		PositionComponentUAV = RHICreateUnorderedAccessView(VertexBufferRHI, PF_R32_FLOAT);
 	}
 }
 
 void FComputablePositionVertexBuffer::ReleaseRHI()
 {
 	PositionComponentSRV.SafeRelease();
+	PositionComponentUAV.SafeRelease();
 	FVertexBuffer::ReleaseRHI();
 }
 
@@ -425,6 +428,7 @@ void FComputablePositionVertexBuffer::BindPositionVertexBuffer(const class FVert
 		VET_Float3
 	);
 	StaticMeshData.PositionComponentSRV = PositionComponentSRV;
+	// TODO:ここに相当するUAVの処理は必要ない？
 }
 
 /** The implementation of the static mesh color-only vertex data storage type. */
@@ -482,7 +486,7 @@ FVertexBufferRHIRef FComputableColorVertexBuffer::CreateRHIBuffer_RenderThread()
 		const uint32 SizeInBytes = ResourceArray ? ResourceArray->GetResourceDataSize() : 0;
 		FRHIResourceCreateInfo CreateInfo(ResourceArray);
 		CreateInfo.bWithoutNativeResource = !VertexData;
-		return RHICreateVertexBuffer(SizeInBytes, BUF_Static | BUF_ShaderResource, CreateInfo);
+		return RHICreateVertexBuffer(SizeInBytes, BUF_Static | BUF_ShaderResource | BUF_UnorderedAccess, CreateInfo);
 	}
 	return nullptr;
 }
@@ -493,12 +497,14 @@ void FComputableColorVertexBuffer::InitRHI()
 	if (VertexBufferRHI)
 	{
 		ColorComponentsSRV = RHICreateShaderResourceView(VertexData ? VertexBufferRHI : nullptr, 4, PF_R8G8B8A8);
+		ColorComponentsUAV = RHICreateUnorderedAccessView(VertexData ? VertexBufferRHI : nullptr, PF_R8G8B8A8);
 	}
 }
 
 void FComputableColorVertexBuffer::ReleaseRHI()
 {
 	ColorComponentsSRV.SafeRelease();
+	ColorComponentsUAV.SafeRelease();
 	FVertexBuffer::ReleaseRHI();
 }
 
@@ -521,6 +527,7 @@ void FComputableColorVertexBuffer::BindColorVertexBuffer(const FVertexFactory* V
 	}
 
 	StaticMeshData.ColorComponentsSRV = ColorComponentsSRV;
+	// TODO:ここに相当するUAVの処理は必要ない？
 	StaticMeshData.ColorIndexMask = ~0u;
 
 	{	
@@ -537,6 +544,7 @@ void FComputableColorVertexBuffer::BindColorVertexBuffer(const FVertexFactory* V
 void FComputableColorVertexBuffer::BindDefaultColorVertexBuffer(const FVertexFactory* VertexFactory, FStaticMeshDataType& StaticMeshData, NullBindStride BindStride)
 {
 	StaticMeshData.ColorComponentsSRV = GNullColorVertexBuffer.VertexBufferSRV;
+	// TODO:ここに相当するUAVの処理は必要ない？
 	StaticMeshData.ColorIndexMask = 0;
 
 	{
