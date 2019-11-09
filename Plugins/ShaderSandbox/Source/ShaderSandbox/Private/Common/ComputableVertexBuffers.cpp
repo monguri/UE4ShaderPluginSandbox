@@ -77,8 +77,7 @@ void FComputableMeshVertexBuffer::ConvertHalfTexcoordsToFloat(const uint8* InDat
 	OriginalTexcoordData = nullptr;
 }
 
-template <bool bRenderThread>
-FVertexBufferRHIRef FComputableMeshVertexBuffer::CreateTangentsRHIBuffer_Internal()
+FVertexBufferRHIRef FComputableMeshVertexBuffer::CreateTangentsRHIBuffer_RenderThread()
 {
 	if (GetNumVertices())
 	{
@@ -86,25 +85,12 @@ FVertexBufferRHIRef FComputableMeshVertexBuffer::CreateTangentsRHIBuffer_Interna
 		const uint32 SizeInBytes = ResourceArray ? ResourceArray->GetResourceDataSize() : 0;
 		FRHIResourceCreateInfo CreateInfo(ResourceArray);
 		CreateInfo.bWithoutNativeResource = !TangentsData;
-		if (bRenderThread)
-		{
-			return RHICreateVertexBuffer(SizeInBytes, BUF_Static | BUF_ShaderResource, CreateInfo);
-		}
-		else
-		{
-			return RHIAsyncCreateVertexBuffer(SizeInBytes, BUF_Static | BUF_ShaderResource, CreateInfo);
-		}
+		return RHICreateVertexBuffer(SizeInBytes, BUF_Static | BUF_ShaderResource, CreateInfo);
 	}
 	return nullptr;
 }
 
-FVertexBufferRHIRef FComputableMeshVertexBuffer::CreateTangentsRHIBuffer_RenderThread()
-{
-	return CreateTangentsRHIBuffer_Internal<true>();
-}
-
-template <bool bRenderThread>
-FVertexBufferRHIRef FComputableMeshVertexBuffer::CreateTexCoordRHIBuffer_Internal()
+FVertexBufferRHIRef FComputableMeshVertexBuffer::CreateTexCoordRHIBuffer_RenderThread()
 {
 	if (GetNumTexCoords())
 	{
@@ -112,21 +98,9 @@ FVertexBufferRHIRef FComputableMeshVertexBuffer::CreateTexCoordRHIBuffer_Interna
 		const uint32 SizeInBytes = ResourceArray ? ResourceArray->GetResourceDataSize() : 0;
 		FRHIResourceCreateInfo CreateInfo(ResourceArray);
 		CreateInfo.bWithoutNativeResource = !TexcoordData;
-		if (bRenderThread)
-		{
-			return RHICreateVertexBuffer(SizeInBytes, BUF_Static | BUF_ShaderResource, CreateInfo);
-		}
-		else
-		{
-			return RHIAsyncCreateVertexBuffer(SizeInBytes, BUF_Static | BUF_ShaderResource, CreateInfo);
-		}
+		return RHICreateVertexBuffer(SizeInBytes, BUF_Static | BUF_ShaderResource, CreateInfo);
 	}
 	return nullptr;
-}
-
-FVertexBufferRHIRef FComputableMeshVertexBuffer::CreateTexCoordRHIBuffer_RenderThread()
-{
-	return CreateTexCoordRHIBuffer_Internal<true>();
 }
 
 void FComputableMeshVertexBuffer::InitRHI()
@@ -394,8 +368,7 @@ void FComputablePositionVertexBuffer::Init(uint32 InNumVertices, bool bInNeedsCP
 	Data = NumVertices ? VertexData->GetDataPointer() : nullptr;
 }
 
-template <bool bRenderThread>
-FVertexBufferRHIRef FComputablePositionVertexBuffer::CreateRHIBuffer_Internal()
+FVertexBufferRHIRef FComputablePositionVertexBuffer::CreateRHIBuffer_RenderThread()
 {
 	if (NumVertices)
 	{
@@ -403,21 +376,9 @@ FVertexBufferRHIRef FComputablePositionVertexBuffer::CreateRHIBuffer_Internal()
 		const uint32 SizeInBytes = ResourceArray ? ResourceArray->GetResourceDataSize() : 0;
 		FRHIResourceCreateInfo CreateInfo(ResourceArray);
 		CreateInfo.bWithoutNativeResource = !VertexData;
-		if (bRenderThread)
-		{
-			return RHICreateVertexBuffer(SizeInBytes, BUF_Static | BUF_ShaderResource, CreateInfo);
-		}
-		else
-		{
-			return RHIAsyncCreateVertexBuffer(SizeInBytes, BUF_Static | BUF_ShaderResource, CreateInfo);
-		}
+		return RHICreateVertexBuffer(SizeInBytes, BUF_Static | BUF_ShaderResource, CreateInfo);
 	}
 	return nullptr;
-}
-
-FVertexBufferRHIRef FComputablePositionVertexBuffer::CreateRHIBuffer_RenderThread()
-{
-	return CreateRHIBuffer_Internal<true>();
 }
 
 void FComputablePositionVertexBuffer::InitRHI()
@@ -516,8 +477,7 @@ void FComputableColorVertexBuffer::Init(uint32 InNumVertices, bool bNeedsCPUAcce
 	Data = InNumVertices ? VertexData->GetDataPointer() : nullptr;
 }
 
-template <bool bRenderThread>
-FVertexBufferRHIRef FComputableColorVertexBuffer::CreateRHIBuffer_Internal()
+FVertexBufferRHIRef FComputableColorVertexBuffer::CreateRHIBuffer_RenderThread()
 {
 	if (NumVertices)
 	{
@@ -525,21 +485,9 @@ FVertexBufferRHIRef FComputableColorVertexBuffer::CreateRHIBuffer_Internal()
 		const uint32 SizeInBytes = ResourceArray ? ResourceArray->GetResourceDataSize() : 0;
 		FRHIResourceCreateInfo CreateInfo(ResourceArray);
 		CreateInfo.bWithoutNativeResource = !VertexData;
-		if (bRenderThread)
-		{
-			return RHICreateVertexBuffer(SizeInBytes, BUF_Static | BUF_ShaderResource, CreateInfo);
-		}
-		else
-		{
-			return RHIAsyncCreateVertexBuffer(SizeInBytes, BUF_Static | BUF_ShaderResource, CreateInfo);
-		}
+		return RHICreateVertexBuffer(SizeInBytes, BUF_Static | BUF_ShaderResource, CreateInfo);
 	}
 	return nullptr;
-}
-
-FVertexBufferRHIRef FComputableColorVertexBuffer::CreateRHIBuffer_RenderThread()
-{
-	return CreateRHIBuffer_Internal<true>();
 }
 
 void FComputableColorVertexBuffer::InitRHI()

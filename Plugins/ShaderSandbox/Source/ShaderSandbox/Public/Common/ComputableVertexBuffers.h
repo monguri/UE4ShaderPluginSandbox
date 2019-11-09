@@ -164,12 +164,6 @@ private:
 	*/
 	void ConvertHalfTexcoordsToFloat(const uint8* InData);
 
-	template <bool bRenderThread>
-	FVertexBufferRHIRef CreateTangentsRHIBuffer_Internal();
-
-	template<bool bRenderThread>
-	FVertexBufferRHIRef CreateTexCoordRHIBuffer_Internal();
-
 	void InitTangentAndTexCoordStrides();
 };
 
@@ -248,9 +242,6 @@ private:
 
 	/** Allocates the vertex data storage type. */
 	void AllocateData(bool bInNeedsCPUAccess = true);
-
-	template <bool bRenderThread>
-	FVertexBufferRHIRef CreateRHIBuffer_Internal();
 };
 
 class FComputableColorVertexBuffer : public FVertexBuffer
@@ -325,9 +316,6 @@ private:
 
 	/** Allocates the vertex data storage type. */
 	void AllocateData(bool bNeedsCPUAccess = true);
-
-	template <bool bRenderThread>
-	FVertexBufferRHIRef CreateRHIBuffer_Internal();
 };
 
 struct FComputableVertexBuffers
