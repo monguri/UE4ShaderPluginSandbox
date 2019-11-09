@@ -13,6 +13,7 @@
 #include "EngineGlobals.h"
 #include "Engine/Engine.h"
 #include "Common/ComputableVertexBuffers.h"
+#include "SinWaveMeshDeformer.h"
 
 /** almost all is copy of FCustomMeshSceneProxy. */
 class FDeformMeshSceneProxy final : public FPrimitiveSceneProxy
@@ -174,6 +175,18 @@ public:
 
 	uint32 GetAllocatedSize( void ) const { return( FPrimitiveSceneProxy::GetAllocatedSize() ); }
 
+	void EnqueDeformMeshRenderCommand(UDeformMeshComponent* Component) const
+	{
+		uint32 NumVertex = Component->DeformMeshTris.Num() * 3;
+
+		ENQUEUE_RENDER_COMMAND(DeformMeshCommand)(
+			[this, NumVertex](FRHICommandListImmediate& RHICmdList)
+			{
+				SinWaveDeformMesh(RHICmdList, NumVertex, VertexBuffers.PositionVertexBuffer.GetUAV());
+			}
+		);
+	}
+
 private:
 
 	UMaterialInterface* Material;
@@ -265,5 +278,9 @@ void UDeformMeshComponent::SendRenderDynamicData_Concurrent()
 {
 	//SCOPE_CYCLE_COUNTER(STAT_DeformMeshCompUpdate);
 	Super::SendRenderDynamicData_Concurrent();
-	// TODO:Proxy‚ÉCS‚ð‘–‚ç‚³‚¹‚é
+
+	if (SceneProxy != nullptr)
+	{
+		((const FDeformMeshSceneProxy*)SceneProxy)->EnqueDeformMeshRenderCommand(this);
+	}
 }

@@ -223,6 +223,8 @@ public:
 
 	void BindPositionVertexBuffer(const class FVertexFactory* VertexFactory, struct FStaticMeshDataType& Data) const;
 
+	FRHIUnorderedAccessView* GetUAV() const { return PositionComponentUAV; }
+
 private:
 	FShaderResourceViewRHIRef PositionComponentSRV;
 	FUnorderedAccessViewRHIRef PositionComponentUAV;

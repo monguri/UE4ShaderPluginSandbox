@@ -1,0 +1,12 @@
+#include "/Engine/Public/Platform.ush"
+
+RWBuffer<uint4> OutPositionVertexBuffer;
+
+[numthreads(8, 1, 1)]
+void MainCS(uint2 DispatchThreadId : SV_DispatchThreadID)
+{
+    const uint VertexIndex = DispatchThreadId.x;
+
+    float4 OriginalPos = OutPositionVertexBuffer[VertexIndex];
+    OutPositionVertexBuffer[VertexIndex] = uint4(f32tof16(float3(OriginalPos.xy, OriginalPos.z + sin(VertexIndex))), OriginalPos.w);
+}
