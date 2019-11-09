@@ -15,7 +15,7 @@ public:
 	/** Delete existing resources */
 	void CleanUp();
 
-	void Init(uint32 InNumVertices, uint32 InNumTexCoords, bool bNeedsCPUAccess = true);
+	void Init(uint32 InNumVertices, uint32 InNumTexCoords);
 
 	FORCEINLINE_DEBUGGABLE void SetVertexTangents(uint32 VertexIndex, FVector X, FVector Y, FVector Z)
 	{
@@ -154,10 +154,8 @@ private:
 	/** If true then RGB10A2 is used to store tangent else RGBA8 */
 	bool bUseHighPrecisionTangentBasis;
 
-	bool NeedsCPUAccess = true;
-
 	/** Allocates the vertex data storage type. */
-	void AllocateData(bool bNeedsCPUAccess = true);
+	void AllocateData();
 
 	/** Convert half float data to full float if the HW requires it.
 	* @param InData - optional half float source data to convert into full float texture coordinate buffer. if null, convert existing half float texture coordinates to a new float buffer.
@@ -191,7 +189,7 @@ public:
 	/** Delete existing resources */
 	void CleanUp();
 
-	void Init(uint32 NumVertices, bool bInNeedsCPUAccess = true);
+	void Init(uint32 NumVertices);
 
 	virtual void InitRHI() override;
 	virtual void ReleaseRHI() override;
@@ -238,10 +236,8 @@ private:
 	/** The cached number of vertices. */
 	uint32 NumVertices;
 
-	bool bNeedsCPUAccess = true;
-
 	/** Allocates the vertex data storage type. */
-	void AllocateData(bool bInNeedsCPUAccess = true);
+	void AllocateData();
 };
 
 class FComputableColorVertexBuffer : public FVertexBuffer
@@ -262,7 +258,7 @@ public:
 	/** Delete existing resources */
 	void CleanUp();
 
-	void Init(uint32 InNumVertices, bool bNeedsCPUAccess = true);
+	void Init(uint32 InNumVertices);
 
 	FORCEINLINE FColor& VertexColor(uint32 VertexIndex)
 	{
@@ -312,10 +308,8 @@ private:
 	/** The cached number of vertices. */
 	uint32 NumVertices;
 
-	bool NeedsCPUAccess = true;
-
 	/** Allocates the vertex data storage type. */
-	void AllocateData(bool bNeedsCPUAccess = true);
+	void AllocateData();
 };
 
 struct FComputableVertexBuffers

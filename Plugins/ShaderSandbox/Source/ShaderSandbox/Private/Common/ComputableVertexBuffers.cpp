@@ -37,14 +37,13 @@ void FComputableMeshVertexBuffer::CleanUp()
 	}
 }
 
-void FComputableMeshVertexBuffer::Init(uint32 InNumVertices, uint32 InNumTexCoords, bool bNeedsCPUAccess)
+void FComputableMeshVertexBuffer::Init(uint32 InNumVertices, uint32 InNumTexCoords)
 {
 	NumTexCoords = InNumTexCoords;
 	NumVertices = InNumVertices;
-	NeedsCPUAccess = bNeedsCPUAccess;
 
 	// Allocate the vertex data storage type.
-	AllocateData(bNeedsCPUAccess);
+	AllocateData();
 
 	// Allocate the vertex data buffer.
 	TangentsData->ResizeBuffer(NumVertices);
@@ -145,7 +144,7 @@ void FComputableMeshVertexBuffer::ReleaseResource()
 	TexCoordVertexBuffer.ReleaseResource();
 }
 
-void FComputableMeshVertexBuffer::AllocateData(bool bNeedsCPUAccess /*= true*/)
+void FComputableMeshVertexBuffer::AllocateData()
 {
 	// Clear any old VertexData before allocating.
 	CleanUp();
@@ -155,26 +154,26 @@ void FComputableMeshVertexBuffer::AllocateData(bool bNeedsCPUAccess /*= true*/)
 	{
 		typedef TStaticMeshVertexTangentDatum<typename TStaticMeshVertexTangentTypeSelector<EStaticMeshVertexTangentBasisType::HighPrecision>::TangentTypeT> TangentType;
 		TangentsStride = sizeof(TangentType);
-		TangentsData = new TStaticMeshVertexData<TangentType>(bNeedsCPUAccess);
+		TangentsData = new TStaticMeshVertexData<TangentType>(true);
 	}
 	else
 	{
 		typedef TStaticMeshVertexTangentDatum<typename TStaticMeshVertexTangentTypeSelector<EStaticMeshVertexTangentBasisType::Default>::TangentTypeT> TangentType;
 		TangentsStride = sizeof(TangentType);
-		TangentsData = new TStaticMeshVertexData<TangentType>(bNeedsCPUAccess);
+		TangentsData = new TStaticMeshVertexData<TangentType>(true);
 	}
 
 	if (GetUseFullPrecisionUVs())
 	{
 		typedef TStaticMeshVertexUVsDatum<typename TStaticMeshVertexUVsTypeSelector<EStaticMeshVertexUVType::HighPrecision>::UVsTypeT> UVType;
 		TexcoordStride = sizeof(UVType);
-		TexcoordData = new TStaticMeshVertexData<UVType>(bNeedsCPUAccess);
+		TexcoordData = new TStaticMeshVertexData<UVType>(true);
 	}
 	else
 	{
 		typedef TStaticMeshVertexUVsDatum<typename TStaticMeshVertexUVsTypeSelector<EStaticMeshVertexUVType::Default>::UVsTypeT> UVType;
 		TexcoordStride = sizeof(UVType);
-		TexcoordData = new TStaticMeshVertexData<UVType>(bNeedsCPUAccess);
+		TexcoordData = new TStaticMeshVertexData<UVType>(true);
 	}
 }
 
@@ -327,7 +326,7 @@ class FComputablePositionVertexData :
 	public TStaticMeshVertexData<FComputablePositionVertex>
 {
 public:
-	FComputablePositionVertexData( bool InNeedsCPUAccess=false )
+	FComputablePositionVertexData(bool InNeedsCPUAccess=true )
 		: TStaticMeshVertexData<FComputablePositionVertex>( InNeedsCPUAccess )
 	{
 	}
@@ -355,13 +354,12 @@ void FComputablePositionVertexBuffer::CleanUp()
 	}
 }
 
-void FComputablePositionVertexBuffer::Init(uint32 InNumVertices, bool bInNeedsCPUAccess)
+void FComputablePositionVertexBuffer::Init(uint32 InNumVertices)
 {
 	NumVertices = InNumVertices;
-	bNeedsCPUAccess = bInNeedsCPUAccess;
 
 	// Allocate the vertex data storage type.
-	AllocateData(bInNeedsCPUAccess);
+	AllocateData();
 
 	// Allocate the vertex data buffer.
 	VertexData->ResizeBuffer(NumVertices);
@@ -408,12 +406,12 @@ void FComputablePositionVertexBuffer::ReleaseRHI()
 	FVertexBuffer::ReleaseRHI();
 }
 
-void FComputablePositionVertexBuffer::AllocateData( bool bInNeedsCPUAccess /*= true*/ )
+void FComputablePositionVertexBuffer::AllocateData()
 {
 	// Clear any old VertexData before allocating.
 	CleanUp();
 
-	VertexData = new FComputablePositionVertexData(bInNeedsCPUAccess);
+	VertexData = new FComputablePositionVertexData();
 	// Calculate the vertex stride.
 	Stride = VertexData->GetStride();
 }
@@ -434,7 +432,7 @@ class FComputableColorVertexData :
 	public TStaticMeshVertexData<FColor>
 {
 public:
-	FComputableColorVertexData( bool InNeedsCPUAccess=false )
+	FComputableColorVertexData( bool InNeedsCPUAccess=true )
 		: TStaticMeshVertexData<FColor>( InNeedsCPUAccess )
 	{
 	}
@@ -464,13 +462,12 @@ void FComputableColorVertexBuffer::CleanUp()
 	}
 }
 
-void FComputableColorVertexBuffer::Init(uint32 InNumVertices, bool bNeedsCPUAccess)
+void FComputableColorVertexBuffer::Init(uint32 InNumVertices)
 {
 	NumVertices = InNumVertices;
-	NeedsCPUAccess = bNeedsCPUAccess;
 
 	// Allocate the vertex data storage type.
-	AllocateData(bNeedsCPUAccess);
+	AllocateData();
 
 	// Allocate the vertex data buffer.
 	VertexData->ResizeBuffer(NumVertices);
@@ -505,12 +502,12 @@ void FComputableColorVertexBuffer::ReleaseRHI()
 	FVertexBuffer::ReleaseRHI();
 }
 
-void FComputableColorVertexBuffer::AllocateData( bool bNeedsCPUAccess /*= true*/ )
+void FComputableColorVertexBuffer::AllocateData( )
 {
 	// Clear any old VertexData before allocating.
 	CleanUp();
 
-	VertexData = new FComputableColorVertexData(bNeedsCPUAccess);
+	VertexData = new FComputableColorVertexData();
 	// Calculate the vertex stride.
 	Stride = VertexData->GetStride();
 }
