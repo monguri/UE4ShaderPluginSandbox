@@ -30,20 +30,20 @@ public:
 		, VertexFactory(GetScene().GetFeatureLevel(), "FDeformableGridMeshSceneProxy")
 		, MaterialRelevance(Component->GetMaterialRelevance(GetScene().GetFeatureLevel()))
 	{
-		const FColor VertexColor(255,255,255);
-
-		TArray<FDynamicMeshVertex> Vertices;
 #if 1
-		Vertices.AddUninitialized(Component->GetVertices().Num());
+		TArray<FDynamicMeshVertex> Vertices;
+		Vertices.Reset(Component->GetVertices().Num());
 		IndexBuffer.Indices = Component->GetIndices();
 
 		for (int32 VertIdx = 0; VertIdx < Component->GetVertices().Num(); VertIdx++)
 		{
-			Vertices[VertIdx].Position = Component->GetVertices()[VertIdx];
-			Vertices[VertIdx].Color = VertexColor;
-			Vertices[VertIdx].SetTangents(FVector(1.0f, 0.0f, 0.0f), FVector(0.0f, 1.0f, 0.0f), FVector(0.0f, 0.0f, 1.0f));
+			// TODO:ColorとTangentはとりあえずFDynamicMeshVertexのデフォルト値まかせにする
+			Vertices.Emplace(Component->GetVertices()[VertIdx]);
 		}
 #else
+		const FColor VertexColor(255,255,255);
+
+		TArray<FDynamicMeshVertex> Vertices;
 		const int32 NumTris = Component->DeformableGridMeshTris.Num();
 		Vertices.AddUninitialized(NumTris * 3);
 		IndexBuffer.Indices.AddUninitialized(NumTris * 3);
@@ -226,17 +226,36 @@ FPrimitiveSceneProxy* UDeformableGridMeshComponent::CreateSceneProxy()
 	return Proxy;
 }
 
-void UDeformableGridMeshComponent::SetMeshVerticesIndices(const TArray<FVector>& Vertices, const TArray<int32>& Indices)
+void UDeformableGridMeshComponent::InitSetting(int32 NumRow, int32 NumColumn, float GridWidth, float GridHeight)
 {
-	_Vertices = Vertices;
+	_NumRow = NumRow;
+	_NumColumn = NumColumn;
+	_Vertices.Reset((NumRow + 1) * (NumColumn + 1));
+	_Indices.Reset(NumRow * NumColumn * 2 * 3); // ひとつのグリッドには3つのTriangle、6つの頂点インデックス指定がある
 
-	_Indices.Reset();
-	_Indices.Reserve(Indices.Num());
-	for (int32 i = 0; i < Indices.Num(); i++)
+	for (int32 y = 0; y < NumRow + 1; y++)
 	{
-		_Indices[i] = Indices[i];
+		for (int32 x = 0; x < NumColumn + 1; x++)
+		{
+			_Vertices.Emplace(x * GridWidth, y * GridHeight, 0.0f);
+		}
 	}
 
+	for (int32 Row = 0; Row < NumRow; Row++)
+	{
+		for (int32 Column = 0; Column < NumColumn; Column++)
+		{
+			_Indices.Emplace(Row * (NumColumn + 1) + Column);
+			_Indices.Emplace((Row + 1) * (NumColumn + 1) + Column);
+			_Indices.Emplace((Row + 1) * (NumColumn + 1) + Column + 1);
+
+			_Indices.Emplace(Row * (NumColumn + 1) + Column);
+			_Indices.Emplace((Row + 1) * (NumColumn + 1) + Column + 1);
+			_Indices.Emplace(Row * (NumColumn + 1) + Column + 1);
+		}
+	}
+
+	MarkRenderStateDirty();
 	UpdateBounds();
 }
 
