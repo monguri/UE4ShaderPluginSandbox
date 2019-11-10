@@ -33,6 +33,17 @@ public:
 		const FColor VertexColor(255,255,255);
 
 		TArray<FDynamicMeshVertex> Vertices;
+#if 1
+		Vertices.AddUninitialized(Component->GetVertices().Num());
+		IndexBuffer.Indices = Component->GetIndices();
+
+		for (int32 VertIdx = 0; VertIdx < Component->GetVertices().Num(); VertIdx++)
+		{
+			Vertices[VertIdx].Position = Component->GetVertices()[VertIdx];
+			Vertices[VertIdx].Color = VertexColor;
+			Vertices[VertIdx].SetTangents(FVector(1.0f, 0.0f, 0.0f), FVector(0.0f, 1.0f, 0.0f), FVector(0.0f, 0.0f, 1.0f));
+		}
+#else
 		const int32 NumTris = Component->DeformMeshTris.Num();
 		Vertices.AddUninitialized(NumTris * 3);
 		IndexBuffer.Indices.AddUninitialized(NumTris * 3);
@@ -65,6 +76,7 @@ public:
 			Vertices[TriIdx * 3 + 2] = Vert;
 			IndexBuffer.Indices[TriIdx * 3 + 2] = TriIdx * 3 + 2;
 		}
+#endif
 
 		VertexBuffers.InitFromDynamicVertex(&VertexFactory, Vertices);
 
@@ -177,7 +189,7 @@ public:
 
 	void EnqueDeformMeshRenderCommand(UDeformMeshComponent* Component) const
 	{
-		uint32 NumVertex = Component->DeformMeshTris.Num() * 3;
+		uint32 NumVertex = Component->GetVertices().Num();
 
 		ENQUEUE_RENDER_COMMAND(DeformMeshCommand)(
 			[this, NumVertex](FRHICommandListImmediate& RHICmdList)
@@ -207,42 +219,26 @@ UDeformMeshComponent::UDeformMeshComponent()
 FPrimitiveSceneProxy* UDeformMeshComponent::CreateSceneProxy()
 {
 	FPrimitiveSceneProxy* Proxy = NULL;
-	if(DeformMeshTris.Num() > 0)
+	if(_Vertices.Num() > 0 && _Indices.Num() > 0)
 	{
 		Proxy = new FDeformMeshSceneProxy(this);
 	}
 	return Proxy;
 }
 
-bool UDeformMeshComponent::SetDeformMeshTriangles(const TArray<FDeformMeshTriangle>& Triangles)
+void UDeformMeshComponent::SetMeshVerticesIndices(const TArray<FVector>& Vertices, const TArray<int32>& Indices)
 {
-	DeformMeshTris = Triangles;
+	_Vertices = Vertices;
 
-	// Need to recreate scene proxy to send it over
-	MarkRenderStateDirty();
-	UpdateBounds();
+	_Indices.Reset();
+	_Indices.Reserve(Indices.Num());
+	for (int32 i = 0; i < Indices.Num(); i++)
+	{
+		_Indices[i] = Indices[i];
+	}
 
-	return true;
-}
-
-void UDeformMeshComponent::AddDeformMeshTriangles(const TArray<FDeformMeshTriangle>& Triangles)
-{
-	DeformMeshTris.Append(Triangles);
-
-	// Need to recreate scene proxy to send it over
-	MarkRenderStateDirty();
 	UpdateBounds();
 }
-
-void  UDeformMeshComponent::ClearDeformMeshTriangles()
-{
-	DeformMeshTris.Reset();
-
-	// Need to recreate scene proxy to send it over
-	MarkRenderStateDirty();
-	UpdateBounds();
-}
-
 
 int32 UDeformMeshComponent::GetNumMaterials() const
 {
@@ -254,11 +250,9 @@ FBoxSphereBounds UDeformMeshComponent::CalcBounds(const FTransform& LocalToWorld
 	FBox BoundingBox(ForceInit);
 
 	// Bounds are tighter if the box is generated from pre-transformed vertices.
-	for (int32 Index = 0; Index < DeformMeshTris.Num(); ++Index)
+	for (const FVector& Vertex : _Vertices)
 	{
-		BoundingBox += LocalToWorld.TransformPosition(DeformMeshTris[Index].Vertex0);
-		BoundingBox += LocalToWorld.TransformPosition(DeformMeshTris[Index].Vertex1);
-		BoundingBox += LocalToWorld.TransformPosition(DeformMeshTris[Index].Vertex2);
+		BoundingBox += LocalToWorld.TransformPosition(Vertex);
 	}
 
 	FBoxSphereBounds NewBounds;
@@ -281,6 +275,7 @@ void UDeformMeshComponent::SendRenderDynamicData_Concurrent()
 
 	if (SceneProxy != nullptr)
 	{
-		((const FDeformMeshSceneProxy*)SceneProxy)->EnqueDeformMeshRenderCommand(this);
+		// TODO:ˆêŽž“I‚ÉCS•ÏŒ`‚ðŽ~‚ß‚é
+		//((const FDeformMeshSceneProxy*)SceneProxy)->EnqueDeformMeshRenderCommand(this);
 	}
 }

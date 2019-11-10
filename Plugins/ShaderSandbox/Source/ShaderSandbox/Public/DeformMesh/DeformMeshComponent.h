@@ -6,21 +6,6 @@
 #include "DeformMeshComponent.generated.h"
 
 
-USTRUCT(BlueprintType)
-struct FDeformMeshTriangle
-{
-	GENERATED_BODY()
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category=Triangle)
-	FVector Vertex0;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category=Triangle)
-	FVector Vertex1;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category=Triangle)
-	FVector Vertex2;
-};
-
 // almost all is copy of UCustomMeshComponent
 UCLASS(hidecategories=(Object,LOD, Physics, Collision), editinlinenew, meta=(BlueprintSpawnableComponent), ClassGroup=Rendering)
 class SHADERSANDBOX_API UDeformMeshComponent : public UMeshComponent
@@ -30,15 +15,11 @@ class SHADERSANDBOX_API UDeformMeshComponent : public UMeshComponent
 public:
 	/** Set the geometry to use on this triangle mesh */
 	UFUNCTION(BlueprintCallable, Category="Components|DeformMesh")
-	bool SetDeformMeshTriangles(const TArray<FDeformMeshTriangle>& Triangles);
+	void SetMeshVerticesIndices(const TArray<FVector>& Vertices, const TArray<int32>& Indices); // BPä÷êîÇæÇ∆TArray<uint32>Ç…ÇÕëŒâûÇµÇƒÇ¢Ç»Ç¢ÇÃÇ≈Ç‚ÇﬁÇ»Ç≠int32Çégóp
 
-	/** Add to the geometry to use on this triangle mesh.  This may cause an allocation.  Use SetDeformMeshTriangles() instead when possible to reduce allocations. */
-	UFUNCTION(BlueprintCallable, Category = "Components|DeformMesh")
-	void AddDeformMeshTriangles(const TArray<FDeformMeshTriangle>& Triangles);
+	const TArray<FVector>& GetVertices() const { return _Vertices; }
 
-	/** Removes all geometry from this triangle mesh.  Does not deallocate memory, allowing new geometry to reuse the existing allocation. */
-	UFUNCTION(BlueprintCallable, Category = "Components|DeformMesh")
-	void ClearDeformMeshTriangles();
+	const TArray<uint32>& GetIndices() const { return _Indices; }
 
 public:
 	UDeformMeshComponent();
@@ -60,6 +41,6 @@ protected:
 	virtual void SendRenderDynamicData_Concurrent() override;
 
 private:
-	TArray<FDeformMeshTriangle> DeformMeshTris;
-	friend class FDeformMeshSceneProxy;
+	TArray<FVector> _Vertices;
+	TArray<uint32> _Indices;
 };
