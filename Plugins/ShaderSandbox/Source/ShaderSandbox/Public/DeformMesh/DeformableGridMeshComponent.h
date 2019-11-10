@@ -3,18 +3,18 @@
 #include "CoreMinimal.h"
 #include "UObject/ObjectMacros.h"
 #include "Components/MeshComponent.h"
-#include "DeformMeshComponent.generated.h"
+#include "DeformableGridMeshComponent.generated.h"
 
 
 // almost all is copy of UCustomMeshComponent
 UCLASS(hidecategories=(Object,LOD, Physics, Collision), editinlinenew, meta=(BlueprintSpawnableComponent), ClassGroup=Rendering)
-class SHADERSANDBOX_API UDeformMeshComponent : public UMeshComponent
+class SHADERSANDBOX_API UDeformableGridMeshComponent : public UMeshComponent
 {
 	GENERATED_BODY()
 
 public:
 	/** Set the geometry to use on this triangle mesh */
-	UFUNCTION(BlueprintCallable, Category="Components|DeformMesh")
+	UFUNCTION(BlueprintCallable, Category="Components|DeformableGridMesh")
 	void SetMeshVerticesIndices(const TArray<FVector>& Vertices, const TArray<int32>& Indices); // BPä÷êîÇæÇ∆TArray<uint32>Ç…ÇÕëŒâûÇµÇƒÇ¢Ç»Ç¢ÇÃÇ≈Ç‚ÇﬁÇ»Ç≠int32Çégóp
 
 	const TArray<FVector>& GetVertices() const { return _Vertices; }
@@ -22,7 +22,7 @@ public:
 	const TArray<uint32>& GetIndices() const { return _Indices; }
 
 public:
-	UDeformMeshComponent();
+	UDeformableGridMeshComponent();
 
 	//~ Begin UPrimitiveComponent Interface.
 	virtual FPrimitiveSceneProxy* CreateSceneProxy() override;

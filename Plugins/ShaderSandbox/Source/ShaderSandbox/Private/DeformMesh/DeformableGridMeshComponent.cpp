@@ -1,4 +1,4 @@
-#include "DeformMesh/DeformMeshComponent.h"
+#include "DeformMesh/DeformableGridMeshComponent.h"
 #include "RenderingThread.h"
 #include "RenderResource.h"
 #include "PrimitiveViewRelevance.h"
@@ -13,10 +13,10 @@
 #include "EngineGlobals.h"
 #include "Engine/Engine.h"
 #include "Common/ComputableVertexBuffers.h"
-#include "SinWaveMeshDeformer.h"
+#include "SinWaveGridMeshDeformer.h"
 
 /** almost all is copy of FCustomMeshSceneProxy. */
-class FDeformMeshSceneProxy final : public FPrimitiveSceneProxy
+class FDeformableGridMeshSceneProxy final : public FPrimitiveSceneProxy
 {
 public:
 	SIZE_T GetTypeHash() const override
@@ -25,9 +25,9 @@ public:
 		return reinterpret_cast<size_t>(&UniquePointer);
 	}
 
-	FDeformMeshSceneProxy(UDeformMeshComponent* Component)
+	FDeformableGridMeshSceneProxy(UDeformableGridMeshComponent* Component)
 		: FPrimitiveSceneProxy(Component)
-		, VertexFactory(GetScene().GetFeatureLevel(), "FDeformMeshSceneProxy")
+		, VertexFactory(GetScene().GetFeatureLevel(), "FDeformableGridMeshSceneProxy")
 		, MaterialRelevance(Component->GetMaterialRelevance(GetScene().GetFeatureLevel()))
 	{
 		const FColor VertexColor(255,255,255);
@@ -44,13 +44,13 @@ public:
 			Vertices[VertIdx].SetTangents(FVector(1.0f, 0.0f, 0.0f), FVector(0.0f, 1.0f, 0.0f), FVector(0.0f, 0.0f, 1.0f));
 		}
 #else
-		const int32 NumTris = Component->DeformMeshTris.Num();
+		const int32 NumTris = Component->DeformableGridMeshTris.Num();
 		Vertices.AddUninitialized(NumTris * 3);
 		IndexBuffer.Indices.AddUninitialized(NumTris * 3);
 		// Add each triangle to the vertex/index buffer
 		for(int32 TriIdx = 0; TriIdx < NumTris; TriIdx++)
 		{
-			FDeformMeshTriangle& Tri = Component->DeformMeshTris[TriIdx];
+			FDeformableGridMeshTriangle& Tri = Component->DeformableGridMeshTris[TriIdx];
 
 			const FVector Edge01 = (Tri.Vertex1 - Tri.Vertex0);
 			const FVector Edge02 = (Tri.Vertex2 - Tri.Vertex0);
@@ -95,7 +95,7 @@ public:
 		}
 	}
 
-	virtual ~FDeformMeshSceneProxy()
+	virtual ~FDeformableGridMeshSceneProxy()
 	{
 		VertexBuffers.PositionVertexBuffer.ReleaseResource();
 		VertexBuffers.ComputableMeshVertexBuffer.ReleaseResource();
@@ -106,7 +106,7 @@ public:
 
 	virtual void GetDynamicMeshElements(const TArray<const FSceneView*>& Views, const FSceneViewFamily& ViewFamily, uint32 VisibilityMap, FMeshElementCollector& Collector) const override
 	{
-		QUICK_SCOPE_CYCLE_COUNTER( STAT_DeformMeshSceneProxy_GetDynamicMeshElements );
+		QUICK_SCOPE_CYCLE_COUNTER( STAT_DeformableGridMeshSceneProxy_GetDynamicMeshElements );
 
 		const bool bWireframe = AllowDebugViewmodes() && ViewFamily.EngineShowFlags.Wireframe;
 
@@ -187,14 +187,14 @@ public:
 
 	uint32 GetAllocatedSize( void ) const { return( FPrimitiveSceneProxy::GetAllocatedSize() ); }
 
-	void EnqueDeformMeshRenderCommand(UDeformMeshComponent* Component) const
+	void EnqueDeformableGridMeshRenderCommand(UDeformableGridMeshComponent* Component) const
 	{
 		uint32 NumVertex = Component->GetVertices().Num();
 
-		ENQUEUE_RENDER_COMMAND(DeformMeshCommand)(
+		ENQUEUE_RENDER_COMMAND(SinWaveDeformGridMeshCommand)(
 			[this, NumVertex](FRHICommandListImmediate& RHICmdList)
 			{
-				SinWaveDeformMesh(RHICmdList, NumVertex, VertexBuffers.PositionVertexBuffer.GetUAV());
+				SinWaveDeformGridMesh(RHICmdList, NumVertex, VertexBuffers.PositionVertexBuffer.GetUAV());
 			}
 		);
 	}
@@ -211,22 +211,22 @@ private:
 
 //////////////////////////////////////////////////////////////////////////
 
-UDeformMeshComponent::UDeformMeshComponent()
+UDeformableGridMeshComponent::UDeformableGridMeshComponent()
 {
 	PrimaryComponentTick.bCanEverTick = true;
 }
 
-FPrimitiveSceneProxy* UDeformMeshComponent::CreateSceneProxy()
+FPrimitiveSceneProxy* UDeformableGridMeshComponent::CreateSceneProxy()
 {
 	FPrimitiveSceneProxy* Proxy = NULL;
 	if(_Vertices.Num() > 0 && _Indices.Num() > 0)
 	{
-		Proxy = new FDeformMeshSceneProxy(this);
+		Proxy = new FDeformableGridMeshSceneProxy(this);
 	}
 	return Proxy;
 }
 
-void UDeformMeshComponent::SetMeshVerticesIndices(const TArray<FVector>& Vertices, const TArray<int32>& Indices)
+void UDeformableGridMeshComponent::SetMeshVerticesIndices(const TArray<FVector>& Vertices, const TArray<int32>& Indices)
 {
 	_Vertices = Vertices;
 
@@ -240,12 +240,12 @@ void UDeformMeshComponent::SetMeshVerticesIndices(const TArray<FVector>& Vertice
 	UpdateBounds();
 }
 
-int32 UDeformMeshComponent::GetNumMaterials() const
+int32 UDeformableGridMeshComponent::GetNumMaterials() const
 {
 	return 1;
 }
 
-FBoxSphereBounds UDeformMeshComponent::CalcBounds(const FTransform& LocalToWorld) const
+FBoxSphereBounds UDeformableGridMeshComponent::CalcBounds(const FTransform& LocalToWorld) const
 {
 	FBox BoundingBox(ForceInit);
 
@@ -263,19 +263,19 @@ FBoxSphereBounds UDeformMeshComponent::CalcBounds(const FTransform& LocalToWorld
 	return NewBounds;
 }
 
-void UDeformMeshComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
+void UDeformableGridMeshComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
 {
 	MarkRenderDynamicDataDirty();
 }
 
-void UDeformMeshComponent::SendRenderDynamicData_Concurrent()
+void UDeformableGridMeshComponent::SendRenderDynamicData_Concurrent()
 {
-	//SCOPE_CYCLE_COUNTER(STAT_DeformMeshCompUpdate);
+	//SCOPE_CYCLE_COUNTER(STAT_DeformableGridMeshCompUpdate);
 	Super::SendRenderDynamicData_Concurrent();
 
 	if (SceneProxy != nullptr)
 	{
 		// TODO:ˆêŽž“I‚ÉCS•ÏŒ`‚ðŽ~‚ß‚é
-		//((const FDeformMeshSceneProxy*)SceneProxy)->EnqueDeformMeshRenderCommand(this);
+		//((const FDeformableGridMeshSceneProxy*)SceneProxy)->EnqueDeformableGridMeshRenderCommand(this);
 	}
 }

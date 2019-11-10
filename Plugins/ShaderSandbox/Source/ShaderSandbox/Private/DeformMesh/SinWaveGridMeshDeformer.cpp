@@ -1,4 +1,4 @@
-#include "SinWaveMeshDeformer.h"
+#include "SinWaveGridMeshDeformer.h"
 #include "GlobalShader.h"
 #include "RHIResources.h"
 #include "RenderGraphBuilder.h"
@@ -20,9 +20,9 @@ public:
 	}
 };
 
-IMPLEMENT_GLOBAL_SHADER(FSinWaveDeformCS, "/Plugin/ShaderSandbox/Private/SinWaveDeformMesh.usf", "MainCS", SF_Compute);
+IMPLEMENT_GLOBAL_SHADER(FSinWaveDeformCS, "/Plugin/ShaderSandbox/Private/SinWaveDeformGridMesh.usf", "MainCS", SF_Compute);
 
-void SinWaveDeformMesh(FRHICommandListImmediate& RHICmdList, uint32 NumVertex, FRHIUnorderedAccessView* PositionVertexBufferUAV)
+void SinWaveDeformGridMesh(FRHICommandListImmediate& RHICmdList, uint32 NumVertex, FRHIUnorderedAccessView* PositionVertexBufferUAV)
 {
 	FRDGBuilder GraphBuilder(RHICmdList);
 	FSinWaveDeformCS::FParameters* Parameters = GraphBuilder.AllocParameters<FSinWaveDeformCS::FParameters>();
