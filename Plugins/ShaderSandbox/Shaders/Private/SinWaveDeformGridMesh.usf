@@ -1,12 +1,20 @@
 #include "/Engine/Public/Platform.ush"
 
-RWBuffer<uint4> OutPositionVertexBuffer;
+uint NumVertex;
+RWBuffer<float> OutPositionVertexBuffer;
 
-[numthreads(8, 1, 1)]
+[numthreads(32, 1, 1)]
 void MainCS(uint2 DispatchThreadId : SV_DispatchThreadID)
 {
     const uint VertexIndex = DispatchThreadId.x;
 
-    float4 OriginalPos = OutPositionVertexBuffer[VertexIndex];
-    OutPositionVertexBuffer[VertexIndex] = uint4(f32tof16(float3(OriginalPos.xy, OriginalPos.z + sin(VertexIndex))), OriginalPos.w);
+    if (VertexIndex < NumVertex)
+    {
+        const float X = OutPositionVertexBuffer[3 * VertexIndex];
+        const float Y = OutPositionVertexBuffer[3 * VertexIndex + 1];
+        const float Z = OutPositionVertexBuffer[3 * VertexIndex + 2];
+        OutPositionVertexBuffer[3 * VertexIndex] = X;
+        OutPositionVertexBuffer[3 * VertexIndex + 1] = Y;
+        OutPositionVertexBuffer[3 * VertexIndex + 2] = 30.0 + 20.0 * sin(VertexIndex * 0.1 * 3.14);
+    }
 }

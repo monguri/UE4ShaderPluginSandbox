@@ -294,7 +294,6 @@ void UDeformableGridMeshComponent::SendRenderDynamicData_Concurrent()
 
 	if (SceneProxy != nullptr)
 	{
-		// TODO:ˆêŽž“I‚ÉCS•ÏŒ`‚ðŽ~‚ß‚é
-		//((const FDeformableGridMeshSceneProxy*)SceneProxy)->EnqueDeformableGridMeshRenderCommand(this);
+		((const FDeformableGridMeshSceneProxy*)SceneProxy)->EnqueDeformableGridMeshRenderCommand(this);
 	}
 }
