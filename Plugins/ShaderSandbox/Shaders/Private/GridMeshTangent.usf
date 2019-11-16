@@ -6,17 +6,10 @@ uint NumVertex;
 RWBuffer<float> InPositionVertexBuffer;
 RWBuffer<float4> OutTangentVertexBuffer;
 
-#if 1
-float4 PackNormal( float3 N )
-{
-    return float4(N * 0.5 + 0.5, 1.0);
-}
-#else
 float4 PackNormal(float3 V)
 {
 	return float4(clamp(V,float(-1).xxx,float(1).xxx), 1.0f);
 }
-#endif
 
 [numthreads(32, 1, 1)]
 void MainCS(uint2 DispatchThreadId : SV_DispatchThreadID)
@@ -33,7 +26,11 @@ void MainCS(uint2 DispatchThreadId : SV_DispatchThreadID)
 	uint RowIndex = VertexIndex / (NumColumn + 1);
 	uint ColumnIndex = VertexIndex % (NumColumn + 1);
 
-    float3 CurrPos = InPositionVertexBuffer[VertexIndex];
+    float3 CurrVertexPos;
+    CurrVertexPos.x = InPositionVertexBuffer[3 * VertexIndex];
+    CurrVertexPos.y = InPositionVertexBuffer[3 * VertexIndex + 1];
+    CurrVertexPos.z = InPositionVertexBuffer[3 * VertexIndex + 2];
+
 	float3 ZAxis = float3(0.0, 0.0, 1.0);
 
     float NumAvgEdge = 0.0;
@@ -45,10 +42,14 @@ void MainCS(uint2 DispatchThreadId : SV_DispatchThreadID)
         NumAvgEdge += 1.0;
 
         uint RightVertexIndex = VertexIndex + 1;
-        float3 RightEdge = InPositionVertexBuffer[RightVertexIndex] - CurrPos;
+        float3 RightVertexPos;
+		RightVertexPos.x = InPositionVertexBuffer[3 * RightVertexIndex];
+		RightVertexPos.y = InPositionVertexBuffer[3 * RightVertexIndex + 1];
+		RightVertexPos.z = InPositionVertexBuffer[3 * RightVertexIndex + 2];
+
+        float3 RightEdge = RightVertexPos - CurrVertexPos;
 		// RightEdgeNormal should not bet zero vector at no zero tile width grid mesh. So it can be normalized.
         float3 RightEdgeNormal = normalize(ZAxis - dot(ZAxis, RightEdge) * RightEdge);
-        DebugEdgeNormal = normalize(RightEdge);
 
         SumOfEachEdgeNormal += RightEdgeNormal;
     }
@@ -58,7 +59,12 @@ void MainCS(uint2 DispatchThreadId : SV_DispatchThreadID)
         NumAvgEdge += 1.0;
 
         uint LowerVertexIndex = VertexIndex + NumRow + 1;
-        float3 LowerEdge = InPositionVertexBuffer[LowerVertexIndex] - CurrPos;
+        float3 LowerVertexPos;
+		LowerVertexPos.x = InPositionVertexBuffer[3 * LowerVertexIndex];
+		LowerVertexPos.y = InPositionVertexBuffer[3 * LowerVertexIndex + 1];
+		LowerVertexPos.z = InPositionVertexBuffer[3 * LowerVertexIndex + 2];
+
+        float3 LowerEdge = LowerVertexPos - CurrVertexPos;
 		// LowerEdgeNormal should not bet zero vector at no zero tile width grid mesh. So it can be normalized.
         float3 LowerEdgeNormal = normalize(ZAxis - dot(ZAxis, LowerEdge) * LowerEdge);
 
@@ -70,7 +76,12 @@ void MainCS(uint2 DispatchThreadId : SV_DispatchThreadID)
         NumAvgEdge += 1.0;
 
         uint LeftVertexIndex = VertexIndex - 1;
-        float3 LeftEdge = InPositionVertexBuffer[LeftVertexIndex] - CurrPos;
+        float3 LeftVertexPos;
+		LeftVertexPos.x = InPositionVertexBuffer[3 * LeftVertexIndex];
+		LeftVertexPos.y = InPositionVertexBuffer[3 * LeftVertexIndex + 1];
+		LeftVertexPos.z = InPositionVertexBuffer[3 * LeftVertexIndex + 2];
+
+        float3 LeftEdge = LeftVertexPos - CurrVertexPos;
 		// LeftEdgeNormal should not bet zero vector at no zero tile width grid mesh. So it can be normalized.
         float3 LeftEdgeNormal = normalize(ZAxis - dot(ZAxis, LeftEdge) * LeftEdge);
 
@@ -82,7 +93,12 @@ void MainCS(uint2 DispatchThreadId : SV_DispatchThreadID)
         NumAvgEdge += 1.0;
 
         uint UpperVertexIndex = VertexIndex - NumRow - 1;
-        float3 UpperEdge = InPositionVertexBuffer[UpperVertexIndex] - CurrPos;
+        float3 UpperVertexPos;
+		UpperVertexPos.x = InPositionVertexBuffer[3 * UpperVertexIndex];
+		UpperVertexPos.y = InPositionVertexBuffer[3 * UpperVertexIndex + 1];
+		UpperVertexPos.z = InPositionVertexBuffer[3 * UpperVertexIndex + 2];
+
+        float3 UpperEdge = UpperVertexPos - CurrVertexPos;
 		// UpperEdgeNormal should not bet zero vector at no zero tile width grid mesh. So it can be normalized.
         float3 UpperEdgeNormal = normalize(ZAxis - dot(ZAxis, UpperEdge) * UpperEdge);
 
@@ -99,6 +115,5 @@ void MainCS(uint2 DispatchThreadId : SV_DispatchThreadID)
 	OutTangentVertexBuffer[VertexIndex * 2] = PackNormal(TangentX);
     OutTangentVertexBuffer[VertexIndex * 2 + 1] = PackNormal(TangentZ);
     //OutTangentVertexBuffer[VertexIndex * 2 + 1] = PackNormal(DebugEdgeNormal);
-    //OutTangentVertexBuffer[VertexIndex * 2 + 1] = PackNormal(float3(0, 0, 1));
 	return;
 }
