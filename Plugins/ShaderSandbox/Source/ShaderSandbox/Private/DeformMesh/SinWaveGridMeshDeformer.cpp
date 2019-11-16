@@ -10,7 +10,14 @@ class FSinWaveDeformCS : public FGlobalShader
 	SHADER_USE_PARAMETER_STRUCT(FSinWaveDeformCS, FGlobalShader);
 
 	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
+		SHADER_PARAMETER(uint32, NumRow)
+		SHADER_PARAMETER(uint32, NumColumn)
 		SHADER_PARAMETER(uint32, NumVertex)
+		SHADER_PARAMETER(float, WaveNumberRow)
+		SHADER_PARAMETER(float, WaveNumberColumn)
+		SHADER_PARAMETER(float, Frequency)
+		SHADER_PARAMETER(float, Amplitude)
+		SHADER_PARAMETER(float, Time)
 		SHADER_PARAMETER_UAV(RWBuffer<float>, OutPositionVertexBuffer)
 	END_SHADER_PARAMETER_STRUCT()
 
@@ -45,7 +52,7 @@ public:
 
 IMPLEMENT_GLOBAL_SHADER(FGridMeshTangentCS, "/Plugin/ShaderSandbox/Private/GridMeshTangent.usf", "MainCS", SF_Compute);
 
-void SinWaveDeformGridMesh(FRHICommandListImmediate& RHICmdList, uint32 NumRow, uint32 NumColumn, uint32 NumVertex, FRHIUnorderedAccessView* PositionVertexBufferUAV, class FRHIUnorderedAccessView* TangentVertexBufferUAV)
+void SinWaveDeformGridMesh(FRHICommandListImmediate& RHICmdList, uint32 NumRow, uint32 NumColumn, uint32 NumVertex, float WaveNumberRow, float WaveNumberColumn, float Frequency, float Amplitude, float DeltaTime, FRHIUnorderedAccessView* PositionVertexBufferUAV, class FRHIUnorderedAccessView* TangentVertexBufferUAV)
 {
 	FRDGBuilder GraphBuilder(RHICmdList);
 
@@ -56,8 +63,24 @@ void SinWaveDeformGridMesh(FRHICommandListImmediate& RHICmdList, uint32 NumRow, 
 
 	TShaderMapRef<FSinWaveDeformCS> SinWaveDeformCS(ShaderMap);
 
+	static float AccumulatedTime = 0.0f;
+	AccumulatedTime += DeltaTime;
+
+	// reset by big number.
+	if (AccumulatedTime > 10000)
+	{
+		AccumulatedTime = 0.0f;
+	}
+
 	FSinWaveDeformCS::FParameters* SinWaveDeformParams = GraphBuilder.AllocParameters<FSinWaveDeformCS::FParameters>();
+	SinWaveDeformParams->NumRow = NumRow;
+	SinWaveDeformParams->NumColumn = NumColumn;
 	SinWaveDeformParams->NumVertex = NumVertex;
+	SinWaveDeformParams->WaveNumberRow = WaveNumberRow;
+	SinWaveDeformParams->WaveNumberColumn = WaveNumberColumn;
+	SinWaveDeformParams->Frequency = Frequency;
+	SinWaveDeformParams->Amplitude = Amplitude;
+	SinWaveDeformParams->Time = AccumulatedTime;
 	SinWaveDeformParams->OutPositionVertexBuffer = PositionVertexBufferUAV;
 
 	FComputeShaderUtils::AddPass(

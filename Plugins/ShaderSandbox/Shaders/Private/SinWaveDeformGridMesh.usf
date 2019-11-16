@@ -1,20 +1,36 @@
 #include "/Engine/Public/Platform.ush"
 
 uint NumVertex;
+uint NumRow;
+uint NumColumn;
+float WaveNumberRow;
+float WaveNumberColumn;
+float Frequency;
+float Amplitude;
+float Time;
+
 RWBuffer<float> OutPositionVertexBuffer;
 
 [numthreads(32, 1, 1)]
 void MainCS(uint2 DispatchThreadId : SV_DispatchThreadID)
 {
-    const uint VertexIndex = DispatchThreadId.x;
+	const uint VertexIndex = DispatchThreadId.x;
 
-    if (VertexIndex < NumVertex)
-    {
-        const float X = OutPositionVertexBuffer[3 * VertexIndex];
-        const float Y = OutPositionVertexBuffer[3 * VertexIndex + 1];
-        const float Z = OutPositionVertexBuffer[3 * VertexIndex + 2];
-        OutPositionVertexBuffer[3 * VertexIndex] = X;
-        OutPositionVertexBuffer[3 * VertexIndex + 1] = Y;
-        OutPositionVertexBuffer[3 * VertexIndex + 2] = 30.0 + 20.0 * sin(VertexIndex * 0.1 * 3.14);
-    }
+	if (VertexIndex < NumVertex)
+	{
+#if 0
+		const float X = OutPositionVertexBuffer[3 * VertexIndex];
+		const float Y = OutPositionVertexBuffer[3 * VertexIndex + 1];
+		const float Z = OutPositionVertexBuffer[3 * VertexIndex + 2];
+		OutPositionVertexBuffer[3 * VertexIndex] = X;
+		OutPositionVertexBuffer[3 * VertexIndex + 1] = Y;
+#endif
+
+		uint RowIndex = VertexIndex / (NumColumn + 1);
+		uint ColumnIndex = VertexIndex % (NumColumn + 1);
+        const float PI = 3.1415159;
+
+        OutPositionVertexBuffer[3 * VertexIndex + 2] = Amplitude * sin(2.0 * PI * (RowIndex * WaveNumberRow + ColumnIndex * WaveNumberColumn + Time * Frequency));
+		// TODO:30.0 is magic number. It is worldZ of the current grid mesh.
+	}
 }

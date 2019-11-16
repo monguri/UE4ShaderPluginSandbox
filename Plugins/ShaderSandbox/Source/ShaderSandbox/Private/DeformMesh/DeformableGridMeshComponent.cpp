@@ -189,14 +189,20 @@ public:
 
 	void EnqueDeformableGridMeshRenderCommand(UDeformableGridMeshComponent* Component) const
 	{
-		uint32 NumRow = Component->GetNumRow();
-		uint32 NumColumn = Component->GetNumColumn();
-		uint32 NumVertex = Component->GetVertices().Num();
-
 		ENQUEUE_RENDER_COMMAND(SinWaveDeformGridMeshCommand)(
-			[this, NumRow, NumColumn, NumVertex](FRHICommandListImmediate& RHICmdList)
+			[this, Component](FRHICommandListImmediate& RHICmdList)
 			{
-				SinWaveDeformGridMesh(RHICmdList, NumRow, NumColumn, NumVertex, VertexBuffers.PositionVertexBuffer.GetUAV(), VertexBuffers.ComputableMeshVertexBuffer.GetTangentsUAV());
+				SinWaveDeformGridMesh(RHICmdList,
+					Component->GetNumRow(),
+					Component->GetNumColumn(),
+					Component->GetVertices().Num(),
+					Component->GetWaveNumberRow(),
+					Component->GetWaveNumberColumn(),
+					Component->GetFrequency(),
+					Component->GetAmplitude(),
+					Component->GetDeltaTime(),
+					VertexBuffers.PositionVertexBuffer.GetUAV(),
+					VertexBuffers.ComputableMeshVertexBuffer.GetTangentsUAV());
 			}
 		);
 	}
@@ -228,12 +234,16 @@ FPrimitiveSceneProxy* UDeformableGridMeshComponent::CreateSceneProxy()
 	return Proxy;
 }
 
-void UDeformableGridMeshComponent::InitSetting(int32 NumRow, int32 NumColumn, float GridWidth, float GridHeight)
+void UDeformableGridMeshComponent::InitSetting(int32 NumRow, int32 NumColumn, float GridWidth, float GridHeight, float WaveNumberRow, float WaveNumberColumn, float Frequency, float Amplitude)
 {
 	_NumRow = NumRow;
 	_NumColumn = NumColumn;
 	_Vertices.Reset((NumRow + 1) * (NumColumn + 1));
 	_Indices.Reset(NumRow * NumColumn * 2 * 3); // ひとつのグリッドには3つのTriangle、6つの頂点インデックス指定がある
+	_WaveNumberRow = WaveNumberRow;
+	_WaveNumberColumn = WaveNumberColumn;
+	_Frequency = Frequency;
+	_Amplitude = Amplitude;
 
 	for (int32 y = 0; y < NumRow + 1; y++)
 	{
@@ -286,6 +296,7 @@ FBoxSphereBounds UDeformableGridMeshComponent::CalcBounds(const FTransform& Loca
 
 void UDeformableGridMeshComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
 {
+	_DeltaTime = DeltaTime;
 	MarkRenderDynamicDataDirty();
 }
 
