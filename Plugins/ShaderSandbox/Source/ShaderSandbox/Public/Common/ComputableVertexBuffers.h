@@ -21,22 +21,11 @@ public:
 	{
 		checkSlow(VertexIndex < GetNumVertices());
 
-		if (GetUseHighPrecisionTangentBasis())
-		{
-			typedef TStaticMeshVertexTangentDatum<typename TStaticMeshVertexTangentTypeSelector<EStaticMeshVertexTangentBasisType::HighPrecision>::TangentTypeT> TangentType;
-			TangentType* ElementData = reinterpret_cast<TangentType*>(TangentsDataPtr);
-			check((void*)((&ElementData[VertexIndex]) + 1) <= (void*)(TangentsDataPtr + TangentsData->GetResourceSize()));
-			check((void*)((&ElementData[VertexIndex]) + 0) >= (void*)(TangentsDataPtr));
-			ElementData[VertexIndex].SetTangents(X, Y, Z);
-		}
-		else
-		{
-			typedef TStaticMeshVertexTangentDatum<typename TStaticMeshVertexTangentTypeSelector<EStaticMeshVertexTangentBasisType::Default>::TangentTypeT> TangentType;
-			TangentType* ElementData = reinterpret_cast<TangentType*>(TangentsDataPtr);
-			check((void*)((&ElementData[VertexIndex]) + 1) <= (void*)(TangentsDataPtr + TangentsData->GetResourceSize()));
-			check((void*)((&ElementData[VertexIndex]) + 0) >= (void*)(TangentsDataPtr));
-			ElementData[VertexIndex].SetTangents(X, Y, Z);
-		}
+		typedef TStaticMeshVertexTangentDatum<typename TStaticMeshVertexTangentTypeSelector<EStaticMeshVertexTangentBasisType::Default>::TangentTypeT> TangentType;
+		TangentType* ElementData = reinterpret_cast<TangentType*>(TangentsDataPtr);
+		check((void*)((&ElementData[VertexIndex]) + 1) <= (void*)(TangentsDataPtr + TangentsData->GetResourceSize()));
+		check((void*)((&ElementData[VertexIndex]) + 0) >= (void*)(TangentsDataPtr));
+		ElementData[VertexIndex].SetTangents(X, Y, Z);
 	}
 
 	/**
@@ -91,11 +80,6 @@ public:
 	FORCEINLINE_DEBUGGABLE void SetUseFullPrecisionUVs(bool UseFull)
 	{
 		bUseFullPrecisionUVs = UseFull;
-	}
-
-	FORCEINLINE_DEBUGGABLE bool GetUseHighPrecisionTangentBasis() const
-	{
-		return bUseHighPrecisionTangentBasis;
 	}
 
 	/** Create an RHI vertex buffer with CPU data. CPU data may be discarded after creation (see TResourceArray::Discard) */
@@ -154,9 +138,6 @@ private:
 
 	/** Corresponds to UStaticMesh::UseFullPrecisionUVs. if true then 32 bit UVs are used */
 	bool bUseFullPrecisionUVs;
-
-	/** If true then RGB10A2 is used to store tangent else RGBA8 */
-	bool bUseHighPrecisionTangentBasis;
 
 	/** Allocates the vertex data storage type. */
 	void AllocateData();

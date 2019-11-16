@@ -13,8 +13,7 @@ FComputableMeshVertexBuffer::FComputableMeshVertexBuffer() :
 	TexcoordDataPtr(nullptr),
 	NumTexCoords(0),
 	NumVertices(0),
-	bUseFullPrecisionUVs(!GVertexElementTypeSupport.IsSupported(VET_Half2)),
-	bUseHighPrecisionTangentBasis(false)
+	bUseFullPrecisionUVs(!GVertexElementTypeSupport.IsSupported(VET_Half2))
 {}
 
 FComputableMeshVertexBuffer::~FComputableMeshVertexBuffer()
@@ -110,11 +109,11 @@ void FComputableMeshVertexBuffer::InitRHI()
 	{
 		TangentsSRV = RHICreateShaderResourceView(
 			TangentsData ? TangentsVertexBuffer.VertexBufferRHI : nullptr,
-			GetUseHighPrecisionTangentBasis() ? 8 : 4,
-			GetUseHighPrecisionTangentBasis() ? PF_R16G16B16A16_SNORM : PF_R8G8B8A8_SNORM);
+			4,
+			PF_R8G8B8A8_SNORM);
 		TangentsUAV = RHICreateUnorderedAccessView(
 			TangentsData ? TangentsVertexBuffer.VertexBufferRHI : nullptr,
-			GetUseHighPrecisionTangentBasis() ? PF_R16G16B16A16_SNORM : PF_R8G8B8A8_SNORM);
+			PF_R8G8B8A8_SNORM);
 	}
 	if (TexCoordVertexBuffer.VertexBufferRHI)
 	{
@@ -158,18 +157,9 @@ void FComputableMeshVertexBuffer::AllocateData()
 	CleanUp();
 
 	uint32 VertexStride = 0;
-	if (GetUseHighPrecisionTangentBasis())
-	{
-		typedef TStaticMeshVertexTangentDatum<typename TStaticMeshVertexTangentTypeSelector<EStaticMeshVertexTangentBasisType::HighPrecision>::TangentTypeT> TangentType;
-		TangentsStride = sizeof(TangentType);
-		TangentsData = new TStaticMeshVertexData<TangentType>(true);
-	}
-	else
-	{
-		typedef TStaticMeshVertexTangentDatum<typename TStaticMeshVertexTangentTypeSelector<EStaticMeshVertexTangentBasisType::Default>::TangentTypeT> TangentType;
-		TangentsStride = sizeof(TangentType);
-		TangentsData = new TStaticMeshVertexData<TangentType>(true);
-	}
+	typedef TStaticMeshVertexTangentDatum<typename TStaticMeshVertexTangentTypeSelector<EStaticMeshVertexTangentBasisType::Default>::TangentTypeT> TangentType;
+	TangentsStride = sizeof(TangentType);
+	TangentsData = new TStaticMeshVertexData<TangentType>(true);
 
 	if (GetUseFullPrecisionUVs())
 	{
@@ -198,23 +188,11 @@ void FComputableMeshVertexBuffer::BindTangentVertexBuffer(const FVertexFactory* 
 		uint32 TangentZOffset = 0;
 		EVertexElementType TangentElemType = VET_None;
 
-		if (GetUseHighPrecisionTangentBasis())
-		{
-			typedef TStaticMeshVertexTangentDatum<typename TStaticMeshVertexTangentTypeSelector<EStaticMeshVertexTangentBasisType::HighPrecision>::TangentTypeT> TangentType;
-			TangentElemType = TStaticMeshVertexTangentTypeSelector<EStaticMeshVertexTangentBasisType::HighPrecision>::VertexElementType;
-			TangentXOffset = STRUCT_OFFSET(TangentType, TangentX);
-			TangentZOffset = STRUCT_OFFSET(TangentType, TangentZ);
-			TangentSizeInBytes = sizeof(TangentType);
-
-		}
-		else
-		{
-			typedef TStaticMeshVertexTangentDatum<typename TStaticMeshVertexTangentTypeSelector<EStaticMeshVertexTangentBasisType::Default>::TangentTypeT> TangentType;
-			TangentElemType = TStaticMeshVertexTangentTypeSelector<EStaticMeshVertexTangentBasisType::Default>::VertexElementType;
-			TangentXOffset = STRUCT_OFFSET(TangentType, TangentX);
-			TangentZOffset = STRUCT_OFFSET(TangentType, TangentZ);
-			TangentSizeInBytes = sizeof(TangentType);
-		}
+		typedef TStaticMeshVertexTangentDatum<typename TStaticMeshVertexTangentTypeSelector<EStaticMeshVertexTangentBasisType::Default>::TangentTypeT> TangentType;
+		TangentElemType = TStaticMeshVertexTangentTypeSelector<EStaticMeshVertexTangentBasisType::Default>::VertexElementType;
+		TangentXOffset = STRUCT_OFFSET(TangentType, TangentX);
+		TangentZOffset = STRUCT_OFFSET(TangentType, TangentZ);
+		TangentSizeInBytes = sizeof(TangentType);
 
 		Data.TangentBasisComponents[0] = FVertexStreamComponent(
 			&TangentsVertexBuffer,
