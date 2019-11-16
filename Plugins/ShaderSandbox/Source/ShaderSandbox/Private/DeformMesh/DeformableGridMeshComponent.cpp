@@ -189,12 +189,14 @@ public:
 
 	void EnqueDeformableGridMeshRenderCommand(UDeformableGridMeshComponent* Component) const
 	{
+		uint32 NumRow = Component->GetNumRow();
+		uint32 NumColumn = Component->GetNumColumn();
 		uint32 NumVertex = Component->GetVertices().Num();
 
 		ENQUEUE_RENDER_COMMAND(SinWaveDeformGridMeshCommand)(
-			[this, NumVertex](FRHICommandListImmediate& RHICmdList)
+			[this, NumRow, NumColumn, NumVertex](FRHICommandListImmediate& RHICmdList)
 			{
-				SinWaveDeformGridMesh(RHICmdList, NumVertex, VertexBuffers.PositionVertexBuffer.GetUAV(), VertexBuffers.ComputableMeshVertexBuffer.GetTangentsUAV());
+				SinWaveDeformGridMesh(RHICmdList, NumRow, NumColumn, NumVertex, VertexBuffers.PositionVertexBuffer.GetUAV(), VertexBuffers.ComputableMeshVertexBuffer.GetTangentsUAV());
 			}
 		);
 	}

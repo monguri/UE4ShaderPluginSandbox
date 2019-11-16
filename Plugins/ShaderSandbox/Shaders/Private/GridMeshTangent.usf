@@ -1,16 +1,104 @@
 #include "/Engine/Public/Platform.ush"
 
+uint NumRow;
+uint NumColumn;
 uint NumVertex;
 RWBuffer<float> InPositionVertexBuffer;
-RWBuffer<float> OutTangentVertexBuffer;
+RWBuffer<float4> OutTangentVertexBuffer;
+
+#if 1
+float4 PackNormal( float3 N )
+{
+    return float4(N * 0.5 + 0.5, 1.0);
+}
+#else
+float4 PackNormal(float3 V)
+{
+	return float4(clamp(V,float(-1).xxx,float(1).xxx), 1.0f);
+}
+#endif
 
 [numthreads(32, 1, 1)]
 void MainCS(uint2 DispatchThreadId : SV_DispatchThreadID)
 {
-    const uint VertexIndex = DispatchThreadId.x;
+	const uint VertexIndex = DispatchThreadId.x;
 
-    if (VertexIndex < NumVertex)
+	if (VertexIndex >= NumVertex)
+	{
+		return;
+	}
+
+	// NumVertex == (NumRow + 1) * (NumColumn + 1)
+
+	uint RowIndex = VertexIndex / (NumColumn + 1);
+	uint ColumnIndex = VertexIndex % (NumColumn + 1);
+
+    float3 CurrPos = InPositionVertexBuffer[VertexIndex];
+	float3 ZAxis = float3(0.0, 0.0, 1.0);
+
+    float NumAvgEdge = 0.0;
+    float3 SumOfEachEdgeNormal = float3(0.0, 0.0, 0.0);
+    float3 DebugEdgeNormal = float3(0.0, 0.0, 0.0);
+
+	if (RowIndex + 1 < NumRow + 1)
     {
-        // TODO:Impl
+        NumAvgEdge += 1.0;
+
+        uint RightVertexIndex = VertexIndex + 1;
+        float3 RightEdge = InPositionVertexBuffer[RightVertexIndex] - CurrPos;
+		// RightEdgeNormal should not bet zero vector at no zero tile width grid mesh. So it can be normalized.
+        float3 RightEdgeNormal = normalize(ZAxis - dot(ZAxis, RightEdge) * RightEdge);
+        DebugEdgeNormal = normalize(RightEdge);
+
+        SumOfEachEdgeNormal += RightEdgeNormal;
     }
+
+	if (ColumnIndex + 1 < NumColumn + 1)
+    {
+        NumAvgEdge += 1.0;
+
+        uint LowerVertexIndex = VertexIndex + NumRow + 1;
+        float3 LowerEdge = InPositionVertexBuffer[LowerVertexIndex] - CurrPos;
+		// LowerEdgeNormal should not bet zero vector at no zero tile width grid mesh. So it can be normalized.
+        float3 LowerEdgeNormal = normalize(ZAxis - dot(ZAxis, LowerEdge) * LowerEdge);
+
+        SumOfEachEdgeNormal += LowerEdgeNormal;
+    }
+
+	if (RowIndex - 1 >= 0)
+    {
+        NumAvgEdge += 1.0;
+
+        uint LeftVertexIndex = VertexIndex - 1;
+        float3 LeftEdge = InPositionVertexBuffer[LeftVertexIndex] - CurrPos;
+		// LeftEdgeNormal should not bet zero vector at no zero tile width grid mesh. So it can be normalized.
+        float3 LeftEdgeNormal = normalize(ZAxis - dot(ZAxis, LeftEdge) * LeftEdge);
+
+        SumOfEachEdgeNormal += LeftEdgeNormal;
+    }
+
+	if (ColumnIndex - 1 >= 0)
+    {
+        NumAvgEdge += 1.0;
+
+        uint UpperVertexIndex = VertexIndex - NumRow - 1;
+        float3 UpperEdge = InPositionVertexBuffer[UpperVertexIndex] - CurrPos;
+		// UpperEdgeNormal should not bet zero vector at no zero tile width grid mesh. So it can be normalized.
+        float3 UpperEdgeNormal = normalize(ZAxis - dot(ZAxis, UpperEdge) * UpperEdge);
+
+        SumOfEachEdgeNormal += UpperEdgeNormal;
+    }
+
+	// TagentZ cannot be zero at the grid mesh which have one tile at least.
+    float3 TangentZ = normalize(SumOfEachEdgeNormal / NumAvgEdge);
+
+    float3 XAxis = float3(1.0, 0.0, 0.0);
+	// NewTangent should not bet zero vector at no zero tile width grid mesh. So it can be normalized.
+    float3 TangentX = normalize(XAxis - dot(XAxis, TangentZ) * TangentZ);
+
+	OutTangentVertexBuffer[VertexIndex * 2] = PackNormal(TangentX);
+    OutTangentVertexBuffer[VertexIndex * 2 + 1] = PackNormal(TangentZ);
+    //OutTangentVertexBuffer[VertexIndex * 2 + 1] = PackNormal(DebugEdgeNormal);
+    //OutTangentVertexBuffer[VertexIndex * 2 + 1] = PackNormal(float3(0, 0, 1));
+	return;
 }

@@ -29,9 +29,11 @@ class FGridMeshTangentCS : public FGlobalShader
 	SHADER_USE_PARAMETER_STRUCT(FGridMeshTangentCS, FGlobalShader);
 
 	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
+		SHADER_PARAMETER(uint32, NumRow)
+		SHADER_PARAMETER(uint32, NumColumn)
 		SHADER_PARAMETER(uint32, NumVertex)
 		SHADER_PARAMETER_UAV(RWBuffer<float>, InPositionVertexBuffer)
-		SHADER_PARAMETER_UAV(RWBuffer<float>, OutTangentVertexBuffer)
+		SHADER_PARAMETER_UAV(RWBuffer<float4>, OutTangentVertexBuffer)
 	END_SHADER_PARAMETER_STRUCT()
 
 public:
@@ -43,7 +45,7 @@ public:
 
 IMPLEMENT_GLOBAL_SHADER(FGridMeshTangentCS, "/Plugin/ShaderSandbox/Private/GridMeshTangent.usf", "MainCS", SF_Compute);
 
-void SinWaveDeformGridMesh(FRHICommandListImmediate& RHICmdList, uint32 NumVertex, FRHIUnorderedAccessView* PositionVertexBufferUAV, class FRHIUnorderedAccessView* TangentVertexBufferUAV)
+void SinWaveDeformGridMesh(FRHICommandListImmediate& RHICmdList, uint32 NumRow, uint32 NumColumn, uint32 NumVertex, FRHIUnorderedAccessView* PositionVertexBufferUAV, class FRHIUnorderedAccessView* TangentVertexBufferUAV)
 {
 	FRDGBuilder GraphBuilder(RHICmdList);
 
@@ -69,6 +71,8 @@ void SinWaveDeformGridMesh(FRHICommandListImmediate& RHICmdList, uint32 NumVerte
 	TShaderMapRef<FGridMeshTangentCS> GridMeshTangentCS(ShaderMap);
 
 	FGridMeshTangentCS::FParameters* GridMeshTangent = GraphBuilder.AllocParameters<FGridMeshTangentCS::FParameters>();
+	GridMeshTangent->NumRow = NumRow;
+	GridMeshTangent->NumColumn = NumColumn;
 	GridMeshTangent->NumVertex = NumVertex;
 	GridMeshTangent->InPositionVertexBuffer = PositionVertexBufferUAV;
 	GridMeshTangent->OutTangentVertexBuffer = TangentVertexBufferUAV;
