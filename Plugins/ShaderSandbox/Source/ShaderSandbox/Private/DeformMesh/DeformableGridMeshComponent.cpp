@@ -194,7 +194,7 @@ public:
 		ENQUEUE_RENDER_COMMAND(SinWaveDeformGridMeshCommand)(
 			[this, NumVertex](FRHICommandListImmediate& RHICmdList)
 			{
-				SinWaveDeformGridMesh(RHICmdList, NumVertex, VertexBuffers.PositionVertexBuffer.GetUAV());
+				SinWaveDeformGridMesh(RHICmdList, NumVertex, VertexBuffers.PositionVertexBuffer.GetUAV(), VertexBuffers.ComputableMeshVertexBuffer.GetTangentsUAV());
 			}
 		);
 	}

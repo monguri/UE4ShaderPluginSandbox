@@ -1,0 +1,16 @@
+#include "/Engine/Public/Platform.ush"
+
+uint NumVertex;
+RWBuffer<float> InPositionVertexBuffer;
+RWBuffer<float> OutTangentVertexBuffer;
+
+[numthreads(32, 1, 1)]
+void MainCS(uint2 DispatchThreadId : SV_DispatchThreadID)
+{
+    const uint VertexIndex = DispatchThreadId.x;
+
+    if (VertexIndex < NumVertex)
+    {
+        // TODO:Impl
+    }
+}

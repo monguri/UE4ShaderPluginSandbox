@@ -123,6 +123,8 @@ public:
 		virtual FString GetFriendlyName() const override { return TEXT("FTexcoordVertexBuffer"); }
 	} TexCoordVertexBuffer;
 
+	FRHIUnorderedAccessView* GetTangentsUAV() const { return TangentsUAV; }
+
 private:
 
 	/** The vertex data storage type */
