@@ -1,11 +1,13 @@
 #include "/Engine/Public/Platform.ush"
 
-uint NumVertex;
 uint NumRow;
 uint NumColumn;
-float WaveNumberRow;
-float WaveNumberColumn;
-float Frequency;
+uint NumVertex;
+float GridWidth;
+float GridHeight;
+float WaveLengthRow;
+float WaveLengthColumn;
+float Period;
 float Amplitude;
 float Time;
 
@@ -14,15 +16,20 @@ RWBuffer<float> OutPositionVertexBuffer;
 [numthreads(32, 1, 1)]
 void MainCS(uint2 DispatchThreadId : SV_DispatchThreadID)
 {
+	const float SMALL_NUMBER = 0.0001;
 	const uint VertexIndex = DispatchThreadId.x;
 
 	if (VertexIndex < NumVertex)
 	{
 		uint RowIndex = VertexIndex / (NumColumn + 1);
 		uint ColumnIndex = VertexIndex % (NumColumn + 1);
-        const float PI = 3.1415159;
+		const float PI = 3.1415159;
 
 		// Update Z only
-        OutPositionVertexBuffer[3 * VertexIndex + 2] = Amplitude * sin(2.0 * PI * (RowIndex * WaveNumberRow + ColumnIndex * WaveNumberColumn + Time * Frequency));
+		OutPositionVertexBuffer[3 * VertexIndex + 2] = Amplitude * sin(2.0 * PI *
+		(RowIndex * GridWidth / max(WaveLengthRow, SMALL_NUMBER)
+		+ ColumnIndex * GridHeight / max(WaveLengthColumn, SMALL_NUMBER)
+		+ Time / max(Period, SMALL_NUMBER))
+		);
 	}
 }

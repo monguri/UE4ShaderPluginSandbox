@@ -15,18 +15,20 @@ class SHADERSANDBOX_API UDeformableGridMeshComponent : public UMeshComponent
 public:
 	/** Set the geometry to use on this triangle mesh */
 	UFUNCTION(BlueprintCallable, Category="Components|DeformableGridMesh")
-	void InitSetting(int32 NumRow, int32 NumColumn, float GridWidth, float GridHeight, float WaveNumberRow, float WaveNumberColumn, float Frequency, float Amplitude);
+	void InitSetting(int32 NumRow, int32 NumColumn, float GridWidth, float GridHeight, float WaveLengthRow, float WaveLengthColumn, float Period, float Amplitude);
 
 	uint32 GetNumRow() const { return _NumRow; }
 	uint32 GetNumColumn() const { return _NumColumn; }
 	const TArray<FVector>& GetVertices() const { return _Vertices; }
 	const TArray<uint32>& GetIndices() const { return _Indices; }
-	float GetWaveNumberRow() const { return _WaveNumberRow; }
-	float GetWaveNumberColumn() const { return _WaveNumberColumn; }
-	float GetFrequency() const { return _Frequency; }
+	float GetGridWidth() const { return _GridWidth; }
+	float GetGridHeight() const { return _GridHeight; }
+	float GetWaveLengthRow() const { return _WaveLengthRow; }
+	float GetWaveLengthColumn() const { return _WaveLengthColumn; }
+	float GetPeriod() const { return _Period; }
 	float GetAmplitude() const { return _Amplitude; }
 
-	float GetDeltaTime() const { return _DeltaTime; }
+	float GetAccumulatedTime() const { return _AccumulatedTime; }
 
 public:
 	UDeformableGridMeshComponent();
@@ -48,14 +50,16 @@ protected:
 	virtual void SendRenderDynamicData_Concurrent() override;
 
 private:
-	uint32 _NumRow;
-	uint32 _NumColumn;
+	uint32 _NumRow = 10;
+	uint32 _NumColumn = 10;
 	TArray<FVector> _Vertices;
 	TArray<uint32> _Indices;
-	float _WaveNumberRow;
-	float _WaveNumberColumn;
-	float _Frequency;
-	float _Amplitude;
+	float _GridWidth = 10.0f;
+	float _GridHeight = 10.0f;
+	float _WaveLengthRow = 10.0f;
+	float _WaveLengthColumn = 10.0f;
+	float _Period = 1.0f;
+	float _Amplitude = 10.0f;
 
-	float _DeltaTime;
+	float _AccumulatedTime = 0.0f;
 };

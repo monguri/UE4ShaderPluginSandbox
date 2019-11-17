@@ -5,4 +5,18 @@
 #include "Engine/EngineTypes.h"
 #include "RHICommandList.h"
 
-void SinWaveDeformGridMesh(FRHICommandListImmediate& RHICmdList, uint32 NumRow, uint32 NumColumn, uint32 NumVertex, float WaveNumberRow, float WaveNumberColumn, float Frequency, float Amplitude, float DeltaTime, class FRHIUnorderedAccessView* PositionVertexBufferUAV, class FRHIUnorderedAccessView* TangentVertexBufferUAV);
+struct FGridSinWaveParameters
+{
+	uint32 NumRow;
+	uint32 NumColumn;
+	uint32 NumVertex;
+	float GridWidth;
+	float GridHeight;
+	float WaveLengthRow;
+	float WaveLengthColumn;
+	float Period;
+	float Amplitude;
+	float AccumulatedTime;
+};
+
+void SinWaveDeformGridMesh(FRHICommandListImmediate& RHICmdList, const FGridSinWaveParameters& GridSinWaveParams, class FRHIUnorderedAccessView* PositionVertexBufferUAV, class FRHIUnorderedAccessView* TangentVertexBufferUAV);

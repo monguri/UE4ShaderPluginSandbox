@@ -189,20 +189,22 @@ public:
 
 	void EnqueDeformableGridMeshRenderCommand(UDeformableGridMeshComponent* Component) const
 	{
+		FGridSinWaveParameters Params;
+		Params.NumRow = Component->GetNumRow();
+		Params.NumColumn = Component->GetNumColumn();
+		Params.NumVertex = Component->GetVertices().Num();
+		Params.GridWidth = Component->GetGridWidth();
+		Params.GridHeight = Component->GetGridHeight();
+		Params.WaveLengthRow = Component->GetWaveLengthRow();
+		Params.WaveLengthColumn = Component->GetWaveLengthColumn();
+		Params.Period = Component->GetPeriod();
+		Params.Amplitude = Component->GetAmplitude();
+		Params.AccumulatedTime = Component->GetAccumulatedTime();
+
 		ENQUEUE_RENDER_COMMAND(SinWaveDeformGridMeshCommand)(
-			[this, Component](FRHICommandListImmediate& RHICmdList)
+			[this, Params](FRHICommandListImmediate& RHICmdList)
 			{
-				SinWaveDeformGridMesh(RHICmdList,
-					Component->GetNumRow(),
-					Component->GetNumColumn(),
-					Component->GetVertices().Num(),
-					Component->GetWaveNumberRow(),
-					Component->GetWaveNumberColumn(),
-					Component->GetFrequency(),
-					Component->GetAmplitude(),
-					Component->GetDeltaTime(),
-					VertexBuffers.PositionVertexBuffer.GetUAV(),
-					VertexBuffers.ComputableMeshVertexBuffer.GetTangentsUAV());
+				SinWaveDeformGridMesh(RHICmdList, Params, VertexBuffers.PositionVertexBuffer.GetUAV(), VertexBuffers.ComputableMeshVertexBuffer.GetTangentsUAV());
 			}
 		);
 	}
@@ -234,15 +236,15 @@ FPrimitiveSceneProxy* UDeformableGridMeshComponent::CreateSceneProxy()
 	return Proxy;
 }
 
-void UDeformableGridMeshComponent::InitSetting(int32 NumRow, int32 NumColumn, float GridWidth, float GridHeight, float WaveNumberRow, float WaveNumberColumn, float Frequency, float Amplitude)
+void UDeformableGridMeshComponent::InitSetting(int32 NumRow, int32 NumColumn, float GridWidth, float GridHeight, float WaveLengthRow, float WaveLengthColumn, float Period, float Amplitude)
 {
 	_NumRow = NumRow;
 	_NumColumn = NumColumn;
 	_Vertices.Reset((NumRow + 1) * (NumColumn + 1));
 	_Indices.Reset(NumRow * NumColumn * 2 * 3); // ひとつのグリッドには3つのTriangle、6つの頂点インデックス指定がある
-	_WaveNumberRow = WaveNumberRow;
-	_WaveNumberColumn = WaveNumberColumn;
-	_Frequency = Frequency;
+	_WaveLengthRow = WaveLengthRow;
+	_WaveLengthColumn = WaveLengthColumn;
+	_Period = Period;
 	_Amplitude = Amplitude;
 
 	for (int32 y = 0; y < NumRow + 1; y++)
@@ -296,7 +298,14 @@ FBoxSphereBounds UDeformableGridMeshComponent::CalcBounds(const FTransform& Loca
 
 void UDeformableGridMeshComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
 {
-	_DeltaTime = DeltaTime;
+	_AccumulatedTime += DeltaTime;
+
+	// reset by a big number
+	if (_AccumulatedTime > 10000)
+	{
+		_AccumulatedTime = 0.0f;
+	}
+
 	MarkRenderDynamicDataDirty();
 }
 
