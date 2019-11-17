@@ -33,80 +33,71 @@ void MainCS(uint2 DispatchThreadId : SV_DispatchThreadID)
 
 	float3 ZAxis = float3(0.0, 0.0, 1.0);
 
-    float NumAvgEdge = 0.0;
     float3 SumOfEachEdgeNormal = float3(0.0, 0.0, 0.0);
     float3 DebugEdgeNormal = float3(0.0, 0.0, 0.0);
 
 	if (RowIndex + 1 < NumRow + 1)
     {
-        NumAvgEdge += 1.0;
-
         uint RightVertexIndex = VertexIndex + 1;
         float3 RightVertexPos;
 		RightVertexPos.x = InPositionVertexBuffer[3 * RightVertexIndex];
 		RightVertexPos.y = InPositionVertexBuffer[3 * RightVertexIndex + 1];
 		RightVertexPos.z = InPositionVertexBuffer[3 * RightVertexIndex + 2];
 
-        float3 RightEdge = RightVertexPos - CurrVertexPos;
+        float3 RightEdgeAxis = normalize(RightVertexPos - CurrVertexPos);
 		// RightEdgeNormal should not bet zero vector at no zero tile width grid mesh. So it can be normalized.
-        float3 RightEdgeNormal = normalize(ZAxis - dot(ZAxis, RightEdge) * RightEdge);
+        float3 RightEdgeNormal = normalize(ZAxis - dot(ZAxis, RightEdgeAxis) * RightEdgeAxis);
 
         SumOfEachEdgeNormal += RightEdgeNormal;
     }
 
 	if (ColumnIndex + 1 < NumColumn + 1)
     {
-        NumAvgEdge += 1.0;
-
-        uint LowerVertexIndex = VertexIndex + NumRow + 1;
+        uint LowerVertexIndex = VertexIndex + NumColumn + 1;
         float3 LowerVertexPos;
 		LowerVertexPos.x = InPositionVertexBuffer[3 * LowerVertexIndex];
 		LowerVertexPos.y = InPositionVertexBuffer[3 * LowerVertexIndex + 1];
 		LowerVertexPos.z = InPositionVertexBuffer[3 * LowerVertexIndex + 2];
 
-        float3 LowerEdge = LowerVertexPos - CurrVertexPos;
+        float3 LowerEdgeAxis = normalize(LowerVertexPos - CurrVertexPos);
 		// LowerEdgeNormal should not bet zero vector at no zero tile width grid mesh. So it can be normalized.
-        float3 LowerEdgeNormal = normalize(ZAxis - dot(ZAxis, LowerEdge) * LowerEdge);
+        float3 LowerEdgeNormal = normalize(ZAxis - dot(ZAxis, LowerEdgeAxis) * LowerEdgeAxis);
 
         SumOfEachEdgeNormal += LowerEdgeNormal;
     }
 
 	if (RowIndex - 1 >= 0)
     {
-        NumAvgEdge += 1.0;
-
         uint LeftVertexIndex = VertexIndex - 1;
         float3 LeftVertexPos;
 		LeftVertexPos.x = InPositionVertexBuffer[3 * LeftVertexIndex];
 		LeftVertexPos.y = InPositionVertexBuffer[3 * LeftVertexIndex + 1];
 		LeftVertexPos.z = InPositionVertexBuffer[3 * LeftVertexIndex + 2];
 
-        float3 LeftEdge = LeftVertexPos - CurrVertexPos;
+        float3 LeftEdgeAxis = normalize(LeftVertexPos - CurrVertexPos);
 		// LeftEdgeNormal should not bet zero vector at no zero tile width grid mesh. So it can be normalized.
-        float3 LeftEdgeNormal = normalize(ZAxis - dot(ZAxis, LeftEdge) * LeftEdge);
+        float3 LeftEdgeNormal = normalize(ZAxis - dot(ZAxis, LeftEdgeAxis) * LeftEdgeAxis);
 
         SumOfEachEdgeNormal += LeftEdgeNormal;
     }
 
 	if (ColumnIndex - 1 >= 0)
     {
-        NumAvgEdge += 1.0;
-
-        uint UpperVertexIndex = VertexIndex - NumRow - 1;
+        uint UpperVertexIndex = VertexIndex - NumColumn - 1;
         float3 UpperVertexPos;
 		UpperVertexPos.x = InPositionVertexBuffer[3 * UpperVertexIndex];
 		UpperVertexPos.y = InPositionVertexBuffer[3 * UpperVertexIndex + 1];
 		UpperVertexPos.z = InPositionVertexBuffer[3 * UpperVertexIndex + 2];
 
-        float3 UpperEdge = UpperVertexPos - CurrVertexPos;
+        float3 UpperEdgeAxis = normalize(UpperVertexPos - CurrVertexPos);
 		// UpperEdgeNormal should not bet zero vector at no zero tile width grid mesh. So it can be normalized.
-        float3 UpperEdgeNormal = normalize(ZAxis - dot(ZAxis, UpperEdge) * UpperEdge);
+        float3 UpperEdgeNormal = normalize(ZAxis - dot(ZAxis, UpperEdgeAxis) * UpperEdgeAxis);
 
         SumOfEachEdgeNormal += UpperEdgeNormal;
     }
 
 	// TagentZ cannot be zero at the grid mesh which have one tile at least.
-    float3 TangentZ = normalize(SumOfEachEdgeNormal / NumAvgEdge);
+    float3 TangentZ = normalize(SumOfEachEdgeNormal);
 
     float3 XAxis = float3(1.0, 0.0, 0.0);
 	// NewTangent should not bet zero vector at no zero tile width grid mesh. So it can be normalized.
