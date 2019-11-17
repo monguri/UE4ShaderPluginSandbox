@@ -27,7 +27,7 @@ Japanese
 また、キャンバスレンダーターゲットがComputeShaderによって描画され緑一色になります。
 
 ## DeformGridDemo
-It has been tested only on UE4.23, Win64 DX11 and DX12.
+It has been tested only on UE4.23, Win64 DX11 and DX12, not on ray tracing.
 
 ![DeformGridDemo](Plugins/ShaderSandbox/SinWaveDeformGridMesh.gif "DeformGridDemo")
 
