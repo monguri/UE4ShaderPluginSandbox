@@ -29,7 +29,7 @@ Japanese
 ## DeformGridDemo
 It has been tested only on UE4.23, Win64 DX11 and DX12.
 
-![DeformGridDemo](SinWaveDeformGridMesh.gif "DeformGridDemo")
+![DeformGridDemo](Plugins/ShaderSandbox/SinWaveDeformGridMesh.gif "DeformGridDemo")
 
 English
 
