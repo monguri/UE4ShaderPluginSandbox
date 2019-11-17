@@ -18,19 +18,11 @@ void MainCS(uint2 DispatchThreadId : SV_DispatchThreadID)
 
 	if (VertexIndex < NumVertex)
 	{
-#if 0
-		const float X = OutPositionVertexBuffer[3 * VertexIndex];
-		const float Y = OutPositionVertexBuffer[3 * VertexIndex + 1];
-		const float Z = OutPositionVertexBuffer[3 * VertexIndex + 2];
-		OutPositionVertexBuffer[3 * VertexIndex] = X;
-		OutPositionVertexBuffer[3 * VertexIndex + 1] = Y;
-#endif
-
 		uint RowIndex = VertexIndex / (NumColumn + 1);
 		uint ColumnIndex = VertexIndex % (NumColumn + 1);
         const float PI = 3.1415159;
 
+		// Update Z only
         OutPositionVertexBuffer[3 * VertexIndex + 2] = Amplitude * sin(2.0 * PI * (RowIndex * WaveNumberRow + ColumnIndex * WaveNumberColumn + Time * Frequency));
-		// TODO:30.0 is magic number. It is worldZ of the current grid mesh.
 	}
 }
