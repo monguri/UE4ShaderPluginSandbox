@@ -29,6 +29,8 @@ Japanese
 ## DeformGridDemo
 It has been tested only on UE4.23, Win64 DX11 and DX12.
 
+![DeformGridDemo](SinWaveDeformGridMesh.gif "DeformGridDemo")
+
 English
 
 If you play on the test map, a DeformMeshActor begin to wave.
