@@ -7,9 +7,7 @@ public class ShaderSandbox : ModuleRules
 	public ShaderSandbox(ReadOnlyTargetRules Target) : base(Target)
 	{
 		PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
-#if false
-        PrivateIncludePaths.Add("C:/Program Files/Epic Games/UE_4.23/Engine/Shaders/Shared");
-#endif
+        PrivateIncludePaths.Add(EngineDirectory + "/Shaders/Shared");
 		
 		PublicIncludePaths.AddRange(
 			new string[] {

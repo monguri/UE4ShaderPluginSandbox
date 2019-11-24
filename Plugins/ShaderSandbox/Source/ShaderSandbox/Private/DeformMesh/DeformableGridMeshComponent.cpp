@@ -14,9 +14,7 @@
 #include "Engine/Engine.h"
 #include "Common/ComputableVertexBuffers.h"
 #include "SinWaveGridMeshDeformer.h"
-#if 0 // TODO:中でインクルードしているRaytracingDefinitions.hがShaders/Sharedのヘッダでインクルードできない。よってレイトレ対応できない
 #include "RayTracingInstance.h"
-#endif
 
 /** almost all is copy of FCustomMeshSceneProxy. */
 class FDeformableGridMeshSceneProxy final : public FPrimitiveSceneProxy
@@ -58,7 +56,6 @@ public:
 			Material = UMaterial::GetDefaultMaterial(MD_Surface);
 		}
 
-#if 0 // TODO:
 #if RHI_RAYTRACING
 		if (IsRayTracingEnabled())
 		{
@@ -89,18 +86,15 @@ public:
 			});
 		}
 #endif
-#endif
 	}
 
 	virtual ~FDeformableGridMeshSceneProxy()
 	{
-#if 0
 #if RHI_RAYTRACING
 		if (IsRayTracingEnabled())
 		{
 			VertexBuffers.RayTracingGeometry.ReleaseResource();
 		}
-#endif
 #endif
 		VertexBuffers.PositionVertexBuffer.ReleaseResource();
 		VertexBuffers.ComputableMeshVertexBuffer.ReleaseResource();
@@ -192,7 +186,6 @@ public:
 
 	uint32 GetAllocatedSize( void ) const { return( FPrimitiveSceneProxy::GetAllocatedSize() ); }
 
-#if 0
 #if RHI_RAYTRACING
 	virtual bool IsRayTracingRelevant() const override { return true; }
 
@@ -242,7 +235,6 @@ public:
 			OutRayTracingInstances.Add(RayTracingInstance);
 		}
 	}
-#endif
 #endif
 
 	void EnqueDeformableGridMeshRenderCommand(UDeformableGridMeshComponent* Component) const

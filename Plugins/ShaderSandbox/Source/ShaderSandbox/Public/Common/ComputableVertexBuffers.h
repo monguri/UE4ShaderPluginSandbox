@@ -311,10 +311,8 @@ struct FComputableVertexBuffers
 	/** The buffer containing the vertex color data. */
 	FComputableColorVertexBuffer ColorVertexBuffer;
 
-#if 0 //TODO:レイトレ対応不能。理由はDeformableGridMeshComponent.cppの上の方に書いた
 #if RHI_RAYTRACING
 	FRayTracingGeometry RayTracingGeometry;
-#endif
 #endif
 
 	/* This is a temporary function to refactor and convert old code, do not copy this as is and try to build your data as SoA from the beginning.*/
