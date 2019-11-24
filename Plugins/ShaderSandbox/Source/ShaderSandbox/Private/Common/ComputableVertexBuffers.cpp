@@ -1,10 +1,7 @@
 #include "Common/ComputableVertexBuffers.h"
 #include "LocalVertexFactory.h"
 #include "DynamicMeshBuilder.h"
-
-#include "Rendering/StaticMeshVertexBuffer.h"
 #include "StaticMeshVertexData.h"
-#include "GPUSkinCache.h"
 
 FComputableMeshVertexBuffer::FComputableMeshVertexBuffer() :
 	TangentsData(nullptr),

@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "RenderResource.h"
+#include "Rendering/StaticMeshVertexBuffer.h"
 
 class FComputableMeshVertexBuffer : public FRenderResource
 {
@@ -309,6 +310,12 @@ struct FComputableVertexBuffers
 	FComputablePositionVertexBuffer PositionVertexBuffer;
 	/** The buffer containing the vertex color data. */
 	FComputableColorVertexBuffer ColorVertexBuffer;
+
+#if 0 //TODO:レイトレ対応不能。理由はDeformableGridMeshComponent.cppの上の方に書いた
+#if RHI_RAYTRACING
+	FRayTracingGeometry RayTracingGeometry;
+#endif
+#endif
 
 	/* This is a temporary function to refactor and convert old code, do not copy this as is and try to build your data as SoA from the beginning.*/
 	void InitFromDynamicVertex(class FLocalVertexFactory* VertexFactory, TArray<struct FDynamicMeshVertex>& Vertices, uint32 NumTexCoords = 1, uint32 LightMapIndex = 0);

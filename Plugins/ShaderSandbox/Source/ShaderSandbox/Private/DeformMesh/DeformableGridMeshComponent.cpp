@@ -14,6 +14,9 @@
 #include "Engine/Engine.h"
 #include "Common/ComputableVertexBuffers.h"
 #include "SinWaveGridMeshDeformer.h"
+#if 0 // TODO:中でインクルードしているRaytracingDefinitions.hがShaders/Sharedのヘッダでインクルードできない。よってレイトレ対応できない
+#include "RayTracingInstance.h"
+#endif
 
 /** almost all is copy of FCustomMeshSceneProxy. */
 class FDeformableGridMeshSceneProxy final : public FPrimitiveSceneProxy
@@ -30,7 +33,6 @@ public:
 		, VertexFactory(GetScene().GetFeatureLevel(), "FDeformableGridMeshSceneProxy")
 		, MaterialRelevance(Component->GetMaterialRelevance(GetScene().GetFeatureLevel()))
 	{
-#if 1
 		TArray<FDynamicMeshVertex> Vertices;
 		Vertices.Reset(Component->GetVertices().Num());
 		IndexBuffer.Indices = Component->GetIndices();
@@ -40,44 +42,6 @@ public:
 			// TODO:ColorとTangentはとりあえずFDynamicMeshVertexのデフォルト値まかせにする
 			Vertices.Emplace(Component->GetVertices()[VertIdx]);
 		}
-#else
-		const FColor VertexColor(255,255,255);
-
-		TArray<FDynamicMeshVertex> Vertices;
-		const int32 NumTris = Component->DeformableGridMeshTris.Num();
-		Vertices.AddUninitialized(NumTris * 3);
-		IndexBuffer.Indices.AddUninitialized(NumTris * 3);
-		// Add each triangle to the vertex/index buffer
-		for(int32 TriIdx = 0; TriIdx < NumTris; TriIdx++)
-		{
-			FDeformableGridMeshTriangle& Tri = Component->DeformableGridMeshTris[TriIdx];
-
-			const FVector Edge01 = (Tri.Vertex1 - Tri.Vertex0);
-			const FVector Edge02 = (Tri.Vertex2 - Tri.Vertex0);
-
-			const FVector TangentX = Edge01.GetSafeNormal();
-			const FVector TangentZ = (Edge02 ^ Edge01).GetSafeNormal();
-			const FVector TangentY = (TangentX ^ TangentZ).GetSafeNormal();
-
-			FDynamicMeshVertex Vert;
-			
-			Vert.Color = VertexColor;
-			Vert.SetTangents(TangentX, TangentY, TangentZ);
-
-			Vert.Position = Tri.Vertex0;
-			Vertices[TriIdx * 3 + 0] = Vert;
-			IndexBuffer.Indices[TriIdx * 3 + 0] = TriIdx * 3 + 0;
-
-			Vert.Position = Tri.Vertex1;
-			Vertices[TriIdx * 3 + 1] = Vert;
-			IndexBuffer.Indices[TriIdx * 3 + 1] = TriIdx * 3 + 1;
-
-			Vert.Position = Tri.Vertex2;
-			Vertices[TriIdx * 3 + 2] = Vert;
-			IndexBuffer.Indices[TriIdx * 3 + 2] = TriIdx * 3 + 2;
-		}
-#endif
-
 		VertexBuffers.InitFromDynamicVertex(&VertexFactory, Vertices);
 
 		// Enqueue initialization of render resource
@@ -93,10 +57,51 @@ public:
 		{
 			Material = UMaterial::GetDefaultMaterial(MD_Surface);
 		}
+
+#if 0 // TODO:
+#if RHI_RAYTRACING
+		if (IsRayTracingEnabled())
+		{
+			ENQUEUE_RENDER_COMMAND(InitProceduralMeshRayTracingGeometry)(
+				[this](FRHICommandListImmediate& RHICmdList)
+			{
+				FRayTracingGeometryInitializer Initializer;
+				Initializer.PositionVertexBuffer = nullptr;
+				Initializer.IndexBuffer = nullptr;
+				Initializer.BaseVertexIndex = 0;
+				Initializer.VertexBufferStride = 12;
+				Initializer.VertexBufferByteOffset = 0;
+				Initializer.TotalPrimitiveCount = 0;
+				Initializer.VertexBufferElementType = VET_Float3;
+				Initializer.GeometryType = RTGT_Triangles;
+				Initializer.bFastBuild = true;
+				Initializer.bAllowUpdate = false;
+				VertexBuffers.RayTracingGeometry.SetInitializer(Initializer);
+				VertexBuffers.RayTracingGeometry.InitResource();
+
+				VertexBuffers.RayTracingGeometry.Initializer.PositionVertexBuffer = VertexBuffers.PositionVertexBuffer.VertexBufferRHI;
+				VertexBuffers.RayTracingGeometry.Initializer.IndexBuffer = IndexBuffer.IndexBufferRHI;
+				VertexBuffers.RayTracingGeometry.Initializer.TotalPrimitiveCount = IndexBuffer.Indices.Num() / 3;
+
+				//#dxr_todo: add support for segments?
+				
+				VertexBuffers.RayTracingGeometry.UpdateRHI();
+			});
+		}
+#endif
+#endif
 	}
 
 	virtual ~FDeformableGridMeshSceneProxy()
 	{
+#if 0
+#if RHI_RAYTRACING
+		if (IsRayTracingEnabled())
+		{
+			VertexBuffers.RayTracingGeometry.ReleaseResource();
+		}
+#endif
+#endif
 		VertexBuffers.PositionVertexBuffer.ReleaseResource();
 		VertexBuffers.ComputableMeshVertexBuffer.ReleaseResource();
 		VertexBuffers.ColorVertexBuffer.ReleaseResource();
@@ -186,6 +191,59 @@ public:
 	virtual uint32 GetMemoryFootprint( void ) const override { return( sizeof( *this ) + GetAllocatedSize() ); }
 
 	uint32 GetAllocatedSize( void ) const { return( FPrimitiveSceneProxy::GetAllocatedSize() ); }
+
+#if 0
+#if RHI_RAYTRACING
+	virtual bool IsRayTracingRelevant() const override { return true; }
+
+	virtual void GetDynamicRayTracingInstances(FRayTracingMaterialGatheringContext& Context, TArray<FRayTracingInstance>& OutRayTracingInstances) override
+	{
+		if (VertexBuffers.RayTracingGeometry.RayTracingGeometryRHI.IsValid())
+		{
+			check(VertexBuffers.RayTracingGeometry.Initializer.PositionVertexBuffer.IsValid());
+			check(VertexBuffers.RayTracingGeometry.Initializer.IndexBuffer.IsValid());
+
+			FRayTracingInstance RayTracingInstance;
+			RayTracingInstance.Geometry = &VertexBuffers.RayTracingGeometry;
+			RayTracingInstance.InstanceTransforms.Add(GetLocalToWorld());
+
+			uint32 SectionIdx = 0;
+			FMeshBatch MeshBatch;
+
+			MeshBatch.VertexFactory = &VertexFactory;
+			MeshBatch.SegmentIndex = 0;
+			MeshBatch.MaterialRenderProxy = Material->GetRenderProxy();
+			MeshBatch.ReverseCulling = IsLocalToWorldDeterminantNegative();
+			MeshBatch.Type = PT_TriangleList;
+			MeshBatch.DepthPriorityGroup = SDPG_World;
+			MeshBatch.bCanApplyViewModeOverrides = false;
+
+			FMeshBatchElement& BatchElement = MeshBatch.Elements[0];
+			BatchElement.IndexBuffer = &IndexBuffer;
+
+			bool bHasPrecomputedVolumetricLightmap;
+			FMatrix PreviousLocalToWorld;
+			int32 SingleCaptureIndex;
+			bool bOutputVelocity;
+			GetScene().GetPrimitiveUniformShaderParameters_RenderThread(GetPrimitiveSceneInfo(), bHasPrecomputedVolumetricLightmap, PreviousLocalToWorld, SingleCaptureIndex, bOutputVelocity);
+
+			FDynamicPrimitiveUniformBuffer& DynamicPrimitiveUniformBuffer = Context.RayTracingMeshResourceCollector.AllocateOneFrameResource<FDynamicPrimitiveUniformBuffer>();
+			DynamicPrimitiveUniformBuffer.Set(GetLocalToWorld(), PreviousLocalToWorld, GetBounds(), GetLocalBounds(), true, bHasPrecomputedVolumetricLightmap, DrawsVelocity(), bOutputVelocity);
+			BatchElement.PrimitiveUniformBufferResource = &DynamicPrimitiveUniformBuffer.UniformBuffer;
+
+			BatchElement.FirstIndex = 0;
+			BatchElement.NumPrimitives = IndexBuffer.Indices.Num() / 3;
+			BatchElement.MinVertexIndex = 0;
+			BatchElement.MaxVertexIndex = VertexBuffers.PositionVertexBuffer.GetNumVertices() - 1;
+
+			RayTracingInstance.Materials.Add(MeshBatch);
+
+			RayTracingInstance.BuildInstanceMaskAndFlags();
+			OutRayTracingInstances.Add(RayTracingInstance);
+		}
+	}
+#endif
+#endif
 
 	void EnqueDeformableGridMeshRenderCommand(UDeformableGridMeshComponent* Component) const
 	{
