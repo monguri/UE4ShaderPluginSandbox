@@ -32,10 +32,10 @@ public:
 
 IMPLEMENT_GLOBAL_SHADER(FSinWaveDeformCS, "/Plugin/ShaderSandbox/Private/SinWaveDeformGridMesh.usf", "MainCS", SF_Compute);
 
-class FGridMeshTangentCS : public FGlobalShader
+class FSinWaveGridMeshTangentCS : public FGlobalShader
 {
-	DECLARE_GLOBAL_SHADER(FGridMeshTangentCS);
-	SHADER_USE_PARAMETER_STRUCT(FGridMeshTangentCS, FGlobalShader);
+	DECLARE_GLOBAL_SHADER(FSinWaveGridMeshTangentCS);
+	SHADER_USE_PARAMETER_STRUCT(FSinWaveGridMeshTangentCS, FGlobalShader);
 
 	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
 		SHADER_PARAMETER(uint32, NumRow)
@@ -52,7 +52,7 @@ public:
 	}
 };
 
-IMPLEMENT_GLOBAL_SHADER(FGridMeshTangentCS, "/Plugin/ShaderSandbox/Private/GridMeshTangent.usf", "MainCS", SF_Compute);
+IMPLEMENT_GLOBAL_SHADER(FSinWaveGridMeshTangentCS, "/Plugin/ShaderSandbox/Private/GridMeshTangent.usf", "MainCS", SF_Compute);
 
 void SinWaveDeformGridMesh(FRHICommandListImmediate& RHICmdList, const FGridSinWaveParameters& GridSinWaveParams, FRHIUnorderedAccessView* PositionVertexBufferUAV, class FRHIUnorderedAccessView* TangentVertexBufferUAV
 #if 0
@@ -92,9 +92,9 @@ void SinWaveDeformGridMesh(FRHICommandListImmediate& RHICmdList, const FGridSinW
 		FIntVector(DispatchCount, 1, 1)
 	);
 
-	TShaderMapRef<FGridMeshTangentCS> GridMeshTangentCS(ShaderMap);
+	TShaderMapRef<FSinWaveGridMeshTangentCS> GridMeshTangentCS(ShaderMap);
 
-	FGridMeshTangentCS::FParameters* GridMeshTangent = GraphBuilder.AllocParameters<FGridMeshTangentCS::FParameters>();
+	FSinWaveGridMeshTangentCS::FParameters* GridMeshTangent = GraphBuilder.AllocParameters<FSinWaveGridMeshTangentCS::FParameters>();
 	GridMeshTangent->NumRow = GridSinWaveParams.NumRow;
 	GridMeshTangent->NumColumn = GridSinWaveParams.NumColumn;
 	GridMeshTangent->NumVertex = GridSinWaveParams.NumVertex;
