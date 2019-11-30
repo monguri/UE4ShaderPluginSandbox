@@ -20,7 +20,9 @@ struct FGridSinWaveParameters
 };
 
 void SinWaveDeformGridMesh(FRHICommandListImmediate& RHICmdList, const FGridSinWaveParameters& GridSinWaveParams, class FRHIUnorderedAccessView* PositionVertexBufferUAV, class FRHIUnorderedAccessView* TangentVertexBufferUAV
+#if 0
 #if RHI_RAYTRACING
-	, const FRayTracingGeometry& RayTracingGeometry
+	, const FRayTracingGeometry& RayTracingGeomt
+#endif
 #endif
 );

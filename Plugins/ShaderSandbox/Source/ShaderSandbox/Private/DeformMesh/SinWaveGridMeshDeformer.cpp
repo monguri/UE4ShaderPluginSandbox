@@ -55,8 +55,10 @@ public:
 IMPLEMENT_GLOBAL_SHADER(FGridMeshTangentCS, "/Plugin/ShaderSandbox/Private/GridMeshTangent.usf", "MainCS", SF_Compute);
 
 void SinWaveDeformGridMesh(FRHICommandListImmediate& RHICmdList, const FGridSinWaveParameters& GridSinWaveParams, FRHIUnorderedAccessView* PositionVertexBufferUAV, class FRHIUnorderedAccessView* TangentVertexBufferUAV
+#if 0
 #if RHI_RAYTRACING
 	, const FRayTracingGeometry& RayTracingGeometry
+#endif
 #endif
 )
 {
@@ -109,13 +111,15 @@ void SinWaveDeformGridMesh(FRHICommandListImmediate& RHICmdList, const FGridSinW
 
 	GraphBuilder.Execute();
 
+#if 0
 #if RHI_RAYTRACING
 	TArray<FAccelerationStructureUpdateParams> Updates;
 	FAccelerationStructureUpdateParams Params;
 	Params.Geometry = RayTracingGeometry.RayTracingGeometryRHI;
-	Params.VertexBuffer = RayTracingGeometry.Initializer.PositionVertexBuffer;
+	Params.VertexBuffer = RayTracingGeometry.>Initializer.PositionVertexBuffer;
 	Updates.Add(Params);
 
 	RHICmdList.UpdateAccelerationStructures(Updates);
+#endif
 #endif
 }
