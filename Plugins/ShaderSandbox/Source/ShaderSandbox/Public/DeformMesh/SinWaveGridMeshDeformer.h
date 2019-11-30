@@ -19,4 +19,8 @@ struct FGridSinWaveParameters
 	float AccumulatedTime;
 };
 
-void SinWaveDeformGridMesh(FRHICommandListImmediate& RHICmdList, const FGridSinWaveParameters& GridSinWaveParams, class FRHIUnorderedAccessView* PositionVertexBufferUAV, class FRHIUnorderedAccessView* TangentVertexBufferUAV);
+void SinWaveDeformGridMesh(FRHICommandListImmediate& RHICmdList, const FGridSinWaveParameters& GridSinWaveParams, class FRHIUnorderedAccessView* PositionVertexBufferUAV, class FRHIUnorderedAccessView* TangentVertexBufferUAV
+#if RHI_RAYTRACING
+	, const FRayTracingGeometry& RayTracingGeometry
+#endif
+);

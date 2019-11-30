@@ -59,8 +59,8 @@ public:
 #if RHI_RAYTRACING
 		if (IsRayTracingEnabled())
 		{
-			ENQUEUE_RENDER_COMMAND(InitProceduralMeshRayTracingGeometry)(
-				[this](FRHICommandListImmediate& RHICmdList)
+			ENQUEUE_RENDER_COMMAND(InitDeformableGridMeshRayTracingGeometry)(
+				[this](FRHICommandList& RHICmdList)
 			{
 				FRayTracingGeometryInitializer Initializer;
 				Initializer.PositionVertexBuffer = nullptr;
@@ -72,7 +72,7 @@ public:
 				Initializer.VertexBufferElementType = VET_Float3;
 				Initializer.GeometryType = RTGT_Triangles;
 				Initializer.bFastBuild = true;
-				Initializer.bAllowUpdate = false;
+				Initializer.bAllowUpdate = true;
 				VertexBuffers.RayTracingGeometry.SetInitializer(Initializer);
 				VertexBuffers.RayTracingGeometry.InitResource();
 
@@ -254,7 +254,12 @@ public:
 		ENQUEUE_RENDER_COMMAND(SinWaveDeformGridMeshCommand)(
 			[this, Params](FRHICommandListImmediate& RHICmdList)
 			{
-				SinWaveDeformGridMesh(RHICmdList, Params, VertexBuffers.PositionVertexBuffer.GetUAV(), VertexBuffers.ComputableMeshVertexBuffer.GetTangentsUAV());
+				SinWaveDeformGridMesh(RHICmdList, Params, VertexBuffers.PositionVertexBuffer.GetUAV(), VertexBuffers.ComputableMeshVertexBuffer.GetTangentsUAV()
+#if RHI_RAYTRACING
+					, VertexBuffers.RayTracingGeometry
+
+#endif
+				);
 			}
 		);
 	}
