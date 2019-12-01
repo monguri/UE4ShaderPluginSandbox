@@ -400,7 +400,7 @@ void FComputablePositionVertexBuffer::BindPositionVertexBuffer(const class FVert
 		this,
 		STRUCT_OFFSET(FComputablePositionVertex, Position),
 		GetStride(),
-		VET_Float3
+		VET_Float4
 	);
 	StaticMeshData.PositionComponentSRV = PositionComponentSRV;
 	// TODO:‚±‚±‚É‘Š“–‚·‚éUAV‚Ìˆ—‚Í•K—v‚È‚¢H

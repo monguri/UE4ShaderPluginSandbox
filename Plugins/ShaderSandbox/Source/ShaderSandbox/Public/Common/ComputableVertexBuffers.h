@@ -151,10 +151,10 @@ private:
 	void InitTangentAndTexCoordStrides();
 };
 
-/** A vertex that stores just position. */
+/** A vertex that stores position and extra w. */
 struct FComputablePositionVertex
 {
-	FVector	Position;
+	FVector4 Position;
 
 	friend FArchive& operator<<(FArchive& Ar, FComputablePositionVertex& V)
 	{
@@ -182,12 +182,12 @@ public:
 	virtual FString GetFriendlyName() const override { return TEXT("PositionOnly Static-mesh vertices"); }
 
 	// Vertex data accessors.
-	FORCEINLINE FVector& VertexPosition(uint32 VertexIndex)
+	FORCEINLINE FVector4& VertexPosition(uint32 VertexIndex)
 	{
 		checkSlow(VertexIndex < GetNumVertices());
 		return ((FComputablePositionVertex*)(Data + VertexIndex * Stride))->Position;
 	}
-	FORCEINLINE const FVector& VertexPosition(uint32 VertexIndex) const
+	FORCEINLINE const FVector4& VertexPosition(uint32 VertexIndex) const
 	{
 		checkSlow(VertexIndex < GetNumVertices());
 		return ((FComputablePositionVertex*)(Data + VertexIndex * Stride))->Position;

@@ -68,10 +68,10 @@ public:
 				Initializer.PositionVertexBuffer = nullptr;
 				Initializer.IndexBuffer = nullptr;
 				Initializer.BaseVertexIndex = 0;
-				Initializer.VertexBufferStride = 12;
+				Initializer.VertexBufferStride = 16;
 				Initializer.VertexBufferByteOffset = 0;
 				Initializer.TotalPrimitiveCount = 0;
-				Initializer.VertexBufferElementType = VET_Float3;
+				Initializer.VertexBufferElementType = VET_Float4;
 				Initializer.GeometryType = RTGT_Triangles;
 				Initializer.bFastBuild = true;
 				Initializer.bAllowUpdate = true;

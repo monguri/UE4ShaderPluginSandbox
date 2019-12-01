@@ -27,9 +27,9 @@ void MainCS(uint2 DispatchThreadId : SV_DispatchThreadID)
 	uint ColumnIndex = VertexIndex % (NumColumn + 1);
 
     float3 CurrVertexPos;
-    CurrVertexPos.x = InPositionVertexBuffer[3 * VertexIndex];
-    CurrVertexPos.y = InPositionVertexBuffer[3 * VertexIndex + 1];
-    CurrVertexPos.z = InPositionVertexBuffer[3 * VertexIndex + 2];
+    CurrVertexPos.x = InPositionVertexBuffer[4 * VertexIndex];
+    CurrVertexPos.y = InPositionVertexBuffer[4 * VertexIndex + 1];
+    CurrVertexPos.z = InPositionVertexBuffer[4 * VertexIndex + 2];
 
 	float3 ZAxis = float3(0.0, 0.0, 1.0);
 
@@ -40,9 +40,9 @@ void MainCS(uint2 DispatchThreadId : SV_DispatchThreadID)
     {
         uint RightVertexIndex = VertexIndex + 1;
         float3 RightVertexPos;
-		RightVertexPos.x = InPositionVertexBuffer[3 * RightVertexIndex];
-		RightVertexPos.y = InPositionVertexBuffer[3 * RightVertexIndex + 1];
-		RightVertexPos.z = InPositionVertexBuffer[3 * RightVertexIndex + 2];
+		RightVertexPos.x = InPositionVertexBuffer[4 * RightVertexIndex];
+		RightVertexPos.y = InPositionVertexBuffer[4 * RightVertexIndex + 1];
+		RightVertexPos.z = InPositionVertexBuffer[4 * RightVertexIndex + 2];
 
         float3 RightEdgeAxis = normalize(RightVertexPos - CurrVertexPos);
 		// RightEdgeNormal should not bet zero vector at no zero tile width grid mesh. So it can be normalized.
@@ -55,9 +55,9 @@ void MainCS(uint2 DispatchThreadId : SV_DispatchThreadID)
     {
         uint LowerVertexIndex = VertexIndex + NumColumn + 1;
         float3 LowerVertexPos;
-		LowerVertexPos.x = InPositionVertexBuffer[3 * LowerVertexIndex];
-		LowerVertexPos.y = InPositionVertexBuffer[3 * LowerVertexIndex + 1];
-		LowerVertexPos.z = InPositionVertexBuffer[3 * LowerVertexIndex + 2];
+		LowerVertexPos.x = InPositionVertexBuffer[4 * LowerVertexIndex];
+		LowerVertexPos.y = InPositionVertexBuffer[4 * LowerVertexIndex + 1];
+		LowerVertexPos.z = InPositionVertexBuffer[4 * LowerVertexIndex + 2];
 
         float3 LowerEdgeAxis = normalize(LowerVertexPos - CurrVertexPos);
 		// LowerEdgeNormal should not bet zero vector at no zero tile width grid mesh. So it can be normalized.
@@ -70,9 +70,9 @@ void MainCS(uint2 DispatchThreadId : SV_DispatchThreadID)
     {
         uint LeftVertexIndex = VertexIndex - 1;
         float3 LeftVertexPos;
-		LeftVertexPos.x = InPositionVertexBuffer[3 * LeftVertexIndex];
-		LeftVertexPos.y = InPositionVertexBuffer[3 * LeftVertexIndex + 1];
-		LeftVertexPos.z = InPositionVertexBuffer[3 * LeftVertexIndex + 2];
+		LeftVertexPos.x = InPositionVertexBuffer[4 * LeftVertexIndex];
+		LeftVertexPos.y = InPositionVertexBuffer[4 * LeftVertexIndex + 1];
+		LeftVertexPos.z = InPositionVertexBuffer[4 * LeftVertexIndex + 2];
 
         float3 LeftEdgeAxis = normalize(LeftVertexPos - CurrVertexPos);
 		// LeftEdgeNormal should not bet zero vector at no zero tile width grid mesh. So it can be normalized.
@@ -85,9 +85,9 @@ void MainCS(uint2 DispatchThreadId : SV_DispatchThreadID)
     {
         uint UpperVertexIndex = VertexIndex - NumColumn - 1;
         float3 UpperVertexPos;
-		UpperVertexPos.x = InPositionVertexBuffer[3 * UpperVertexIndex];
-		UpperVertexPos.y = InPositionVertexBuffer[3 * UpperVertexIndex + 1];
-		UpperVertexPos.z = InPositionVertexBuffer[3 * UpperVertexIndex + 2];
+		UpperVertexPos.x = InPositionVertexBuffer[4 * UpperVertexIndex];
+		UpperVertexPos.y = InPositionVertexBuffer[4 * UpperVertexIndex + 1];
+		UpperVertexPos.z = InPositionVertexBuffer[4 * UpperVertexIndex + 2];
 
         float3 UpperEdgeAxis = normalize(UpperVertexPos - CurrVertexPos);
 		// UpperEdgeNormal should not bet zero vector at no zero tile width grid mesh. So it can be normalized.

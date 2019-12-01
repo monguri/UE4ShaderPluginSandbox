@@ -26,7 +26,7 @@ void MainCS(uint2 DispatchThreadId : SV_DispatchThreadID)
 		const float PI = 3.1415159;
 
 		// Update Z only
-		OutPositionVertexBuffer[3 * VertexIndex + 2] = Amplitude * sin(2.0 * PI *
+		OutPositionVertexBuffer[4 * VertexIndex + 2] = Amplitude * sin(2.0 * PI *
 		(RowIndex * GridWidth / max(WaveLengthRow, SMALL_NUMBER)
 		+ ColumnIndex * GridHeight / max(WaveLengthColumn, SMALL_NUMBER)
 		+ Time / max(Period, SMALL_NUMBER))
