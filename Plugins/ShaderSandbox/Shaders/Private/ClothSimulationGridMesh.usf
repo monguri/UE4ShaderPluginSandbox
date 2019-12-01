@@ -7,6 +7,8 @@ float GridWidth;
 float GridHeight;
 float Time;
 
+Buffer<float4> InAccelerationVertexBuffer;
+RWBuffer<float> OutPrevPositionVertexBuffer;
 RWBuffer<float> OutPositionVertexBuffer;
 
 [numthreads(32, 1, 1)]

@@ -547,7 +547,7 @@ static inline void InitOrUpdateResourceMacro(FRenderResource* Resource)
 	}
 }
 
-void FComputableVertexBuffers::InitFromDynamicVertex(FLocalVertexFactory* VertexFactory, TArray<FDynamicMeshVertex>& Vertices, uint32 NumTexCoords, uint32 LightMapIndex)
+void FComputableVertexBuffers::InitFromDynamicVertex(FLocalVertexFactory* VertexFactory, const TArray<FDynamicMeshVertex>& Vertices, uint32 NumTexCoords, uint32 LightMapIndex)
 {
 	check(NumTexCoords < MAX_STATIC_TEXCOORDS && NumTexCoords > 0);
 	check(LightMapIndex < NumTexCoords);

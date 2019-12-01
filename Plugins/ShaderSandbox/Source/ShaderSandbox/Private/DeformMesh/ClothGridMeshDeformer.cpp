@@ -20,6 +20,8 @@ class FClothSimulationCS : public FGlobalShader
 		SHADER_PARAMETER(float, Period)
 		SHADER_PARAMETER(float, Amplitude)
 		SHADER_PARAMETER(float, Time)
+		SHADER_PARAMETER_SRV(Buffer<float4>, InAccelerationVertexBuffer)
+		SHADER_PARAMETER_UAV(RWBuffer<float>, OutPrevPositionVertexBuffer)
 		SHADER_PARAMETER_UAV(RWBuffer<float>, OutPositionVertexBuffer)
 	END_SHADER_PARAMETER_STRUCT()
 
@@ -54,7 +56,7 @@ public:
 
 IMPLEMENT_GLOBAL_SHADER(FClothGridMeshTangentCS, "/Plugin/ShaderSandbox/Private/GridMeshTangent.usf", "MainCS", SF_Compute);
 
-void ClothSimulationGridMesh(FRHICommandListImmediate& RHICmdList, const FGridClothParameters& GridClothParams, class FRHIUnorderedAccessView* PositionVertexBufferUAV, class FRHIUnorderedAccessView* TangentVertexBufferUAV)
+void ClothSimulationGridMesh(FRHICommandListImmediate& RHICmdList, const FGridClothParameters& GridClothParams, class FRHIUnorderedAccessView* PositionVertexBufferUAV, class FRHIUnorderedAccessView* TangentVertexBufferUAV, class FRHIUnorderedAccessView* PrevPositionVertexBufferUAV, class FRHIShaderResourceView* AccelerationVertexBufferSRV)
 {
 	FRDGBuilder GraphBuilder(RHICmdList);
 
@@ -72,6 +74,8 @@ void ClothSimulationGridMesh(FRHICommandListImmediate& RHICmdList, const FGridCl
 	ClothSimulationParams->GridWidth = GridClothParams.GridWidth;
 	ClothSimulationParams->GridHeight = GridClothParams.GridHeight;
 	ClothSimulationParams->Time = GridClothParams.AccumulatedTime;
+	ClothSimulationParams->InAccelerationVertexBuffer = AccelerationVertexBufferSRV;
+	ClothSimulationParams->OutPrevPositionVertexBuffer = PrevPositionVertexBufferUAV;
 	ClothSimulationParams->OutPositionVertexBuffer = PositionVertexBufferUAV;
 
 	FComputeShaderUtils::AddPass(

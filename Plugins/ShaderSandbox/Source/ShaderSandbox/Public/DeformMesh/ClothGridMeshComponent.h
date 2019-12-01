@@ -11,10 +11,19 @@ class SHADERSANDBOX_API UClothGridMeshComponent : public UDeformableGridMeshComp
 	GENERATED_BODY()
 
 public:
+	/** Set the geometry and vertex paintings to use on this triangle mesh as cloth. */
+	UFUNCTION(BlueprintCallable, Category="Components|ClothGridMesh")
+	void InitClothSettings(int32 NumRow, int32 NumColumn, float GridWidth, float GridHeight);
+
 	//~ Begin UPrimitiveComponent Interface.
 	virtual FPrimitiveSceneProxy* CreateSceneProxy() override;
 	//~ End UPrimitiveComponent Interface.
 
+	const TArray<FVector>& GetAccelerations() const { return _Accelerations; }
+
 protected:
 	virtual void SendRenderDynamicData_Concurrent() override;
+
+private:
+	TArray<FVector> _Accelerations;
 };

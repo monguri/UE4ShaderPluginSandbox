@@ -34,20 +34,25 @@ public:
 		, MaterialRelevance(Component->GetMaterialRelevance(GetScene().GetFeatureLevel()))
 	{
 		TArray<FDynamicMeshVertex> Vertices;
+		TArray<float> InvMasses;
 		Vertices.Reset(Component->GetVertices().Num());
+		InvMasses.Reset(Component->GetVertices().Num());
 		IndexBuffer.Indices = Component->GetIndices();
 
 		for (int32 VertIdx = 0; VertIdx < Component->GetVertices().Num(); VertIdx++)
 		{
 			// TODO:ColorとTangentはとりあえずFDynamicMeshVertexのデフォルト値まかせにする
 			Vertices.Emplace(Component->GetVertices()[VertIdx]);
+			InvMasses.Emplace(Component->GetVertices()[VertIdx].W);
 		}
-		VertexBuffers.InitFromDynamicVertex(&VertexFactory, Vertices);
+		VertexBuffers.InitFromClothVertexAttributes(&VertexFactory, Vertices, InvMasses, Component->GetAccelerations());
 
 		// Enqueue initialization of render resource
 		BeginInitResource(&VertexBuffers.PositionVertexBuffer);
 		BeginInitResource(&VertexBuffers.ComputableMeshVertexBuffer);
 		BeginInitResource(&VertexBuffers.ColorVertexBuffer);
+		BeginInitResource(&VertexBuffers.PrevPositionVertexBuffer);
+		BeginInitResource(&VertexBuffers.AcceralationVertexBuffer);
 		BeginInitResource(&IndexBuffer);
 		BeginInitResource(&VertexFactory);
 
@@ -101,6 +106,8 @@ public:
 		VertexBuffers.PositionVertexBuffer.ReleaseResource();
 		VertexBuffers.ComputableMeshVertexBuffer.ReleaseResource();
 		VertexBuffers.ColorVertexBuffer.ReleaseResource();
+		VertexBuffers.PrevPositionVertexBuffer.ReleaseResource();
+		VertexBuffers.AcceralationVertexBuffer.ReleaseResource();
 		IndexBuffer.ReleaseResource();
 		VertexFactory.ReleaseResource();
 	}
@@ -252,7 +259,7 @@ public:
 		ENQUEUE_RENDER_COMMAND(ClothSimulationGridMeshCommand)(
 			[this, Params](FRHICommandListImmediate& RHICmdList)
 			{
-				ClothSimulationGridMesh(RHICmdList, Params, VertexBuffers.PositionVertexBuffer.GetUAV(), VertexBuffers.ComputableMeshVertexBuffer.GetTangentsUAV());
+				ClothSimulationGridMesh(RHICmdList, Params, VertexBuffers.PositionVertexBuffer.GetUAV(), VertexBuffers.ComputableMeshVertexBuffer.GetTangentsUAV(), VertexBuffers.PrevPositionVertexBuffer.GetUAV(), VertexBuffers.AcceralationVertexBuffer.GetSRV());
 			}
 		);
 	}
@@ -268,6 +275,58 @@ private:
 };
 
 //////////////////////////////////////////////////////////////////////////
+
+void UClothGridMeshComponent::InitClothSettings(int32 NumRow, int32 NumColumn, float GridWidth, float GridHeight)
+{
+	_NumRow = NumRow;
+	_NumColumn = NumColumn;
+	_GridWidth = GridWidth;
+	_GridHeight = GridHeight;
+	_Vertices.Reset((NumRow + 1) * (NumColumn + 1));
+	_Indices.Reset(NumRow * NumColumn * 2 * 3); // ひとつのグリッドには3つのTriangle、6つの頂点インデックス指定がある
+	_Accelerations.Reset((NumRow + 1) * (NumColumn + 1));
+
+	//TODO:とりあえずy=0の一行目のみInvMass=0に
+	for (int32 x = 0; x < NumColumn + 1; x++)
+	{
+		_Vertices.Emplace(x * GridWidth, 0.0f, 0.0f, 0.0f);
+	}
+
+	//TODO:とりあえずy>0の二行目以降はInvMass=1に
+	for (int32 y = 1; y < NumRow + 1; y++)
+	{
+		for (int32 x = 0; x < NumColumn + 1; x++)
+		{
+			_Vertices.Emplace(x * GridWidth, y * GridHeight, 0.0f, 1.0f);
+		}
+	}
+
+	//TODO:とりあえず加速度はZ方向の重力を一律に入れるのみ
+	for (int32 y = 0; y < NumRow + 1; y++)
+	{
+		for (int32 x = 0; x < NumColumn + 1; x++)
+		{
+			_Accelerations.Emplace(0.0f, 0.0f, -980.0f);
+		}
+	}
+
+	for (int32 Row = 0; Row < NumRow; Row++)
+	{
+		for (int32 Column = 0; Column < NumColumn; Column++)
+		{
+			_Indices.Emplace(Row * (NumColumn + 1) + Column);
+			_Indices.Emplace((Row + 1) * (NumColumn + 1) + Column);
+			_Indices.Emplace((Row + 1) * (NumColumn + 1) + Column + 1);
+
+			_Indices.Emplace(Row * (NumColumn + 1) + Column);
+			_Indices.Emplace((Row + 1) * (NumColumn + 1) + Column + 1);
+			_Indices.Emplace(Row * (NumColumn + 1) + Column + 1);
+		}
+	}
+
+	MarkRenderStateDirty();
+	UpdateBounds();
+}
 
 FPrimitiveSceneProxy* UClothGridMeshComponent::CreateSceneProxy()
 {

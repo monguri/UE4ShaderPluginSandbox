@@ -11,7 +11,7 @@ class SHADERSANDBOX_API USinWaveGridMeshComponent : public UDeformableGridMeshCo
 	GENERATED_BODY()
 
 public:
-	/** Set the geometry to use on this triangle mesh */
+	/** Set sin wave settings. */
 	UFUNCTION(BlueprintCallable, Category="Components|SinWaveGridMesh")
 	void SetSinWaveSettings(float WaveLengthRow, float WaveLengthColumn, float Period, float Amplitude);
 

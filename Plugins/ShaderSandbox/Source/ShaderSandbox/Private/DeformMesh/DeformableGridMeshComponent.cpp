@@ -19,7 +19,7 @@ void UDeformableGridMeshComponent::InitGridMeshSetting(int32 NumRow, int32 NumCo
 	{
 		for (int32 x = 0; x < NumColumn + 1; x++)
 		{
-			_Vertices.Emplace(x * GridWidth, y * GridHeight, 0.0f);
+			_Vertices.Emplace(x * GridWidth, y * GridHeight, 0.0f, 0.0f);
 		}
 	}
 
@@ -51,7 +51,7 @@ FBoxSphereBounds UDeformableGridMeshComponent::CalcBounds(const FTransform& Loca
 	FBox BoundingBox(ForceInit);
 
 	// Bounds are tighter if the box is generated from pre-transformed vertices.
-	for (const FVector& Vertex : _Vertices)
+	for (const FVector4& Vertex : _Vertices)
 	{
 		BoundingBox += LocalToWorld.TransformPosition(Vertex);
 	}
