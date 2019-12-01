@@ -12,7 +12,7 @@
 #include "DynamicMeshBuilder.h"
 #include "EngineGlobals.h"
 #include "Engine/Engine.h"
-#include "Common/ComputableVertexBuffers.h"
+#include "ClothVertexBuffers.h"
 #include "ClothGridMeshDeformer.h"
 #include "RayTracingInstance.h"
 
@@ -260,7 +260,7 @@ public:
 private:
 
 	UMaterialInterface* Material;
-	FComputableVertexBuffers VertexBuffers;
+	FClothVertexBuffers VertexBuffers;
 	FDynamicMeshIndexBuffer32 IndexBuffer;
 	FLocalVertexFactory VertexFactory;
 
