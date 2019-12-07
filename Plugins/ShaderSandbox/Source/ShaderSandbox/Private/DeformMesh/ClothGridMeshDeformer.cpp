@@ -15,8 +15,8 @@ class FClothSimulationCS : public FGlobalShader
 		SHADER_PARAMETER(uint32, NumVertex)
 		SHADER_PARAMETER(float, GridWidth)
 		SHADER_PARAMETER(float, GridHeight)
-		SHADER_PARAMETER(float, Time)
-		SHADER_PARAMETER_SRV(Buffer<float4>, InAccelerationVertexBuffer)
+		SHADER_PARAMETER(float, SquareDeltaTime)
+		SHADER_PARAMETER_SRV(Buffer<float>, InAccelerationVertexBuffer)
 		SHADER_PARAMETER_UAV(RWBuffer<float>, OutPrevPositionVertexBuffer)
 		SHADER_PARAMETER_UAV(RWBuffer<float>, OutPositionVertexBuffer)
 	END_SHADER_PARAMETER_STRUCT()
@@ -69,7 +69,7 @@ void ClothSimulationGridMesh(FRHICommandListImmediate& RHICmdList, const FGridCl
 	ClothSimulationParams->NumVertex = GridClothParams.NumVertex;
 	ClothSimulationParams->GridWidth = GridClothParams.GridWidth;
 	ClothSimulationParams->GridHeight = GridClothParams.GridHeight;
-	ClothSimulationParams->Time = GridClothParams.AccumulatedTime;
+	ClothSimulationParams->SquareDeltaTime = GridClothParams.DeltaTime * GridClothParams.DeltaTime;
 	ClothSimulationParams->InAccelerationVertexBuffer = AccelerationVertexBufferSRV;
 	ClothSimulationParams->OutPrevPositionVertexBuffer = PrevPositionVertexBufferUAV;
 	ClothSimulationParams->OutPositionVertexBuffer = PositionVertexBufferUAV;

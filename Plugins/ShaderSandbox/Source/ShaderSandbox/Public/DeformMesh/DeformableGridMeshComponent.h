@@ -24,6 +24,7 @@ public:
 	float GetGridWidth() const { return _GridWidth; }
 	float GetGridHeight() const { return _GridHeight; }
 
+	float GetDeltaTime() const { return _DeltaTime; }
 	float GetAccumulatedTime() const { return _AccumulatedTime; }
 
 public:
@@ -47,6 +48,7 @@ protected:
 	float _GridWidth = 10.0f;
 	float _GridHeight = 10.0f;
 
+	float _DeltaTime = 0.0f;
 	float _AccumulatedTime = 0.0f;
 };
 

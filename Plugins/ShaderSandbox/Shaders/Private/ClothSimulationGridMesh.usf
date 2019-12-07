@@ -5,9 +5,9 @@ uint NumColumn;
 uint NumVertex;
 float GridWidth;
 float GridHeight;
-float Time;
+float SquareDeltaTime;
 
-Buffer<float4> InAccelerationVertexBuffer;
+Buffer<float> InAccelerationVertexBuffer;
 RWBuffer<float> OutPrevPositionVertexBuffer;
 RWBuffer<float> OutPositionVertexBuffer;
 
@@ -22,14 +22,38 @@ void MainCS(uint2 DispatchThreadId : SV_DispatchThreadID)
 		uint RowIndex = VertexIndex / (NumColumn + 1);
 		uint ColumnIndex = VertexIndex % (NumColumn + 1);
 
-#if 0
-		// Update Z only
-		OutPositionVertexBuffer[3 * VertexIndex + 2] = Amplitude * sin(2.0 * PI *
-		(RowIndex * GridWidth / max(WaveLengthRow, SMALL_NUMBER)
-		+ ColumnIndex * GridHeight / max(WaveLengthColumn, SMALL_NUMBER)
-		+ Time / max(Period, SMALL_NUMBER))
-		);
-#endif
+		//
+		// integrate
+		//
+		float3 CurrPos = float3(OutPositionVertexBuffer[4 * VertexIndex + 0], OutPositionVertexBuffer[4 * VertexIndex + 1], OutPositionVertexBuffer[4 * VertexIndex + 2]);
+		float3 PrevPos = float3(OutPrevPositionVertexBuffer[4 * VertexIndex + 0], OutPrevPositionVertexBuffer[4 * VertexIndex + 1], OutPrevPositionVertexBuffer[4 * VertexIndex + 2]);
+
+		float3 NextPos;
+
+		// Ž¿—Ê‚Í•Ï‚í‚ç‚È‚¢‚Æ‚¢‚¤‘O’ñ‚ð’u‚¢‚Ä‚¢‚é
+		float CurrInvMass = OutPositionVertexBuffer[4 * VertexIndex + 3];
+		if (CurrInvMass < SMALL_NUMBER)
+		{
+			NextPos = CurrPos;
+		}
+		else
+		{
+			// ‚Æ‚è‚ ‚¦‚¸Damping‚Í0.1‚É‚µ‚Ä0.9‚ð‚©‚¯‚é
+			float3 Acceleration = float3(InAccelerationVertexBuffer[3 * VertexIndex + 0], InAccelerationVertexBuffer[3 * VertexIndex + 1], InAccelerationVertexBuffer[3 * VertexIndex + 2]);
+			NextPos = CurrPos + (CurrPos - PrevPos) * 0.9 + Acceleration * SquareDeltaTime;
+		}
+
+		OutPositionVertexBuffer[4 * VertexIndex + 0] = NextPos.x;
+		OutPositionVertexBuffer[4 * VertexIndex + 1] = NextPos.y;
+		OutPositionVertexBuffer[4 * VertexIndex + 2] = NextPos.z;
+
+		OutPrevPositionVertexBuffer[4 * VertexIndex + 0] = CurrPos.x;
+		OutPrevPositionVertexBuffer[4 * VertexIndex + 1] = CurrPos.y;
+		OutPrevPositionVertexBuffer[4 * VertexIndex + 2] = CurrPos.z;
+
+		//
+		// edge rest length constraint
+		//
 	}
 }
 

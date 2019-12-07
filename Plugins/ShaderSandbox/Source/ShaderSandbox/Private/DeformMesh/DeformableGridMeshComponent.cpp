@@ -66,6 +66,7 @@ FBoxSphereBounds UDeformableGridMeshComponent::CalcBounds(const FTransform& Loca
 
 void UDeformableGridMeshComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
 {
+	_DeltaTime = DeltaTime;
 	_AccumulatedTime += DeltaTime;
 
 	// reset by a big number

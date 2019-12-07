@@ -254,7 +254,7 @@ public:
 		Params.NumVertex = Component->GetVertices().Num();
 		Params.GridWidth = Component->GetGridWidth();
 		Params.GridHeight = Component->GetGridHeight();
-		Params.AccumulatedTime = Component->GetAccumulatedTime();
+		Params.DeltaTime = Component->GetDeltaTime();
 
 		ENQUEUE_RENDER_COMMAND(ClothSimulationGridMeshCommand)(
 			[this, Params](FRHICommandListImmediate& RHICmdList)
