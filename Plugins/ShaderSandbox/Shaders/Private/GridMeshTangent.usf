@@ -38,7 +38,7 @@ void MainCS(uint2 DispatchThreadId : SV_DispatchThreadID)
     float3 SumOfEachEdgeNormal = float3(0.0, 0.0, 0.0);
     float3 DebugEdgeNormal = float3(0.0, 0.0, 0.0);
 
-	if (RowIndex < NumRow)
+	if (ColumnIndex < NumColumn + 1)
     {
         uint RightVertexIndex = VertexIndex + 1;
         float3 RightVertexPos;
@@ -65,7 +65,7 @@ void MainCS(uint2 DispatchThreadId : SV_DispatchThreadID)
         SumOfEachEdgeNormal += RightEdgeNormal;
     }
 
-	if (ColumnIndex < NumColumn)
+	if (RowIndex < NumRow + 1)
     {
         uint LowerVertexIndex = VertexIndex + NumColumn + 1;
         float3 LowerVertexPos;
@@ -92,7 +92,7 @@ void MainCS(uint2 DispatchThreadId : SV_DispatchThreadID)
         SumOfEachEdgeNormal += LowerEdgeNormal;
     }
 
-	if (RowIndex > 0)
+	if (ColumnIndex > 0)
     {
         uint LeftVertexIndex = VertexIndex - 1;
         float3 LeftVertexPos;
@@ -119,7 +119,7 @@ void MainCS(uint2 DispatchThreadId : SV_DispatchThreadID)
         SumOfEachEdgeNormal += LeftEdgeNormal;
     }
 
-	if (ColumnIndex > 0)
+	if (RowIndex > 0)
     {
         uint UpperVertexIndex = VertexIndex - NumColumn - 1;
         float3 UpperVertexPos;
