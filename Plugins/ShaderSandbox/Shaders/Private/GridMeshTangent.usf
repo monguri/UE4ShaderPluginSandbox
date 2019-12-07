@@ -14,6 +14,7 @@ float4 PackNormal(float3 V)
 [numthreads(32, 1, 1)]
 void MainCS(uint2 DispatchThreadId : SV_DispatchThreadID)
 {
+	const float SMALL_NUMBER = 0.0001;
 	const uint VertexIndex = DispatchThreadId.x;
 
 	if (VertexIndex >= NumVertex)
@@ -32,6 +33,7 @@ void MainCS(uint2 DispatchThreadId : SV_DispatchThreadID)
     CurrVertexPos.z = InPositionVertexBuffer[4 * VertexIndex + 2];
 
 	float3 ZAxis = float3(0.0, 0.0, 1.0);
+	float3 YAxis = float3(0.0, 0.0, 1.0);
 
     float3 SumOfEachEdgeNormal = float3(0.0, 0.0, 0.0);
     float3 DebugEdgeNormal = float3(0.0, 0.0, 0.0);
@@ -44,9 +46,21 @@ void MainCS(uint2 DispatchThreadId : SV_DispatchThreadID)
 		RightVertexPos.y = InPositionVertexBuffer[4 * RightVertexIndex + 1];
 		RightVertexPos.z = InPositionVertexBuffer[4 * RightVertexIndex + 2];
 
-        float3 RightEdgeAxis = normalize(RightVertexPos - CurrVertexPos);
-		// RightEdgeNormal should not bet zero vector at no zero tile width grid mesh. So it can be normalized.
-        float3 RightEdgeNormal = normalize(ZAxis - dot(ZAxis, RightEdgeAxis) * RightEdgeAxis);
+		float RightEdgeLength = max(length(RightVertexPos - CurrVertexPos), SMALL_NUMBER); // to avoid 0 division
+        float3 RightEdgeAxis = (RightVertexPos - CurrVertexPos) / RightEdgeLength;
+
+		float3 RightEdgeNormal;
+
+		float ProjectionToZAxis = dot(ZAxis, RightEdgeAxis);
+		if (ProjectionToZAxis < SMALL_NUMBER)
+		{
+			// ほぼエッジ方向がZ軸方向のときはnomalize()に0ベクトルを入れないようにノーマルをY軸とする
+			RightEdgeNormal = YAxis;
+		}
+		else
+		{
+			RightEdgeNormal = normalize(ZAxis - dot(ZAxis, RightEdgeAxis) * RightEdgeAxis);
+		}
 
         SumOfEachEdgeNormal += RightEdgeNormal;
     }
@@ -59,9 +73,21 @@ void MainCS(uint2 DispatchThreadId : SV_DispatchThreadID)
 		LowerVertexPos.y = InPositionVertexBuffer[4 * LowerVertexIndex + 1];
 		LowerVertexPos.z = InPositionVertexBuffer[4 * LowerVertexIndex + 2];
 
-        float3 LowerEdgeAxis = normalize(LowerVertexPos - CurrVertexPos);
-		// LowerEdgeNormal should not bet zero vector at no zero tile width grid mesh. So it can be normalized.
-        float3 LowerEdgeNormal = normalize(ZAxis - dot(ZAxis, LowerEdgeAxis) * LowerEdgeAxis);
+		float LowerEdgeLength = max(length(LowerVertexPos - CurrVertexPos), SMALL_NUMBER); // to avoid 0 division
+        float3 LowerEdgeAxis = (LowerVertexPos - CurrVertexPos) / LowerEdgeLength;
+
+		float3 LowerEdgeNormal;
+
+		float ProjectionToZAxis = dot(ZAxis, LowerEdgeAxis);
+		if (ProjectionToZAxis > 1.0 - SMALL_NUMBER)
+		{
+			// ほぼエッジ方向がZ軸方向のときはnomalize()に0ベクトルを入れないようにノーマルをY軸とする
+			LowerEdgeNormal = YAxis;
+		}
+		else
+		{
+			LowerEdgeNormal = normalize(ZAxis - dot(ZAxis, LowerEdgeAxis) * LowerEdgeAxis);
+		}
 
         SumOfEachEdgeNormal += LowerEdgeNormal;
     }
@@ -74,9 +100,21 @@ void MainCS(uint2 DispatchThreadId : SV_DispatchThreadID)
 		LeftVertexPos.y = InPositionVertexBuffer[4 * LeftVertexIndex + 1];
 		LeftVertexPos.z = InPositionVertexBuffer[4 * LeftVertexIndex + 2];
 
-        float3 LeftEdgeAxis = normalize(LeftVertexPos - CurrVertexPos);
-		// LeftEdgeNormal should not bet zero vector at no zero tile width grid mesh. So it can be normalized.
-        float3 LeftEdgeNormal = normalize(ZAxis - dot(ZAxis, LeftEdgeAxis) * LeftEdgeAxis);
+		float LeftEdgeLength = max(length(LeftVertexPos - CurrVertexPos), SMALL_NUMBER); // to avoid 0 division
+        float3 LeftEdgeAxis = (LeftVertexPos - CurrVertexPos) / LeftEdgeLength;
+
+		float3 LeftEdgeNormal;
+
+		float ProjectionToZAxis = dot(ZAxis, LeftEdgeAxis);
+		if (ProjectionToZAxis < SMALL_NUMBER)
+		{
+			// ほぼエッジ方向がZ軸方向のときはnomalize()に0ベクトルを入れないようにノーマルをY軸とする
+			LeftEdgeNormal = YAxis;
+		}
+		else
+		{
+			LeftEdgeNormal = normalize(ZAxis - dot(ZAxis, LeftEdgeAxis) * LeftEdgeAxis);
+		}
 
         SumOfEachEdgeNormal += LeftEdgeNormal;
     }
@@ -89,9 +127,21 @@ void MainCS(uint2 DispatchThreadId : SV_DispatchThreadID)
 		UpperVertexPos.y = InPositionVertexBuffer[4 * UpperVertexIndex + 1];
 		UpperVertexPos.z = InPositionVertexBuffer[4 * UpperVertexIndex + 2];
 
-        float3 UpperEdgeAxis = normalize(UpperVertexPos - CurrVertexPos);
-		// UpperEdgeNormal should not bet zero vector at no zero tile width grid mesh. So it can be normalized.
-        float3 UpperEdgeNormal = normalize(ZAxis - dot(ZAxis, UpperEdgeAxis) * UpperEdgeAxis);
+		float UpperEdgeLength = max(length(UpperVertexPos - CurrVertexPos), SMALL_NUMBER); // to avoid 0 division
+        float3 UpperEdgeAxis = (UpperVertexPos - CurrVertexPos) / UpperEdgeLength;
+
+		float3 UpperEdgeNormal;
+
+		float ProjectionToZAxis = dot(ZAxis, UpperEdgeAxis);
+		if (ProjectionToZAxis < SMALL_NUMBER)
+		{
+			// ほぼエッジ方向がZ軸方向のときはnomalize()に0ベクトルを入れないようにノーマルをY軸とする
+			UpperEdgeNormal = YAxis;
+		}
+		else
+		{
+			UpperEdgeNormal = normalize(ZAxis - dot(ZAxis, UpperEdgeAxis) * UpperEdgeAxis);
+		}
 
         SumOfEachEdgeNormal += UpperEdgeNormal;
     }
