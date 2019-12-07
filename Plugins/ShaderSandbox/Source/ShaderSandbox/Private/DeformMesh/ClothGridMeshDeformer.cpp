@@ -4,17 +4,13 @@
 #include "RenderGraphBuilder.h"
 #include "RenderGraphUtils.h"
 
-class FClothSimulationCS : public FGlobalShader
+class FClothSimulationIntegrationCS : public FGlobalShader
 {
-	DECLARE_GLOBAL_SHADER(FClothSimulationCS);
-	SHADER_USE_PARAMETER_STRUCT(FClothSimulationCS, FGlobalShader);
+	DECLARE_GLOBAL_SHADER(FClothSimulationIntegrationCS);
+	SHADER_USE_PARAMETER_STRUCT(FClothSimulationIntegrationCS, FGlobalShader);
 
 	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
-		SHADER_PARAMETER(uint32, NumRow)
-		SHADER_PARAMETER(uint32, NumColumn)
 		SHADER_PARAMETER(uint32, NumVertex)
-		SHADER_PARAMETER(float, GridWidth)
-		SHADER_PARAMETER(float, GridHeight)
 		SHADER_PARAMETER(float, SquareDeltaTime)
 		SHADER_PARAMETER_SRV(Buffer<float>, InAccelerationVertexBuffer)
 		SHADER_PARAMETER_UAV(RWBuffer<float>, OutPrevPositionVertexBuffer)
@@ -28,7 +24,30 @@ public:
 	}
 };
 
-IMPLEMENT_GLOBAL_SHADER(FClothSimulationCS, "/Plugin/ShaderSandbox/Private/ClothSimulationGridMesh.usf", "MainCS", SF_Compute);
+IMPLEMENT_GLOBAL_SHADER(FClothSimulationIntegrationCS, "/Plugin/ShaderSandbox/Private/ClothSimulationGridMesh.usf", "Interate", SF_Compute);
+
+class FClothSimulationSolveDistanceConstraintCS : public FGlobalShader
+{
+	DECLARE_GLOBAL_SHADER(FClothSimulationSolveDistanceConstraintCS);
+	SHADER_USE_PARAMETER_STRUCT(FClothSimulationSolveDistanceConstraintCS, FGlobalShader);
+
+	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
+		SHADER_PARAMETER(uint32, NumRow)
+		SHADER_PARAMETER(uint32, NumColumn)
+		SHADER_PARAMETER(uint32, NumVertex)
+		SHADER_PARAMETER(float, GridWidth)
+		SHADER_PARAMETER(float, GridHeight)
+		SHADER_PARAMETER_UAV(RWBuffer<float>, OutPositionVertexBuffer)
+	END_SHADER_PARAMETER_STRUCT()
+
+public:
+	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters)
+	{
+		return IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
+	}
+};
+
+IMPLEMENT_GLOBAL_SHADER(FClothSimulationSolveDistanceConstraintCS, "/Plugin/ShaderSandbox/Private/ClothSimulationGridMesh.usf", "SolveDistanceConstraint", SF_Compute);
 
 class FClothGridMeshTangentCS : public FGlobalShader
 {
@@ -61,41 +80,58 @@ void ClothSimulationGridMesh(FRHICommandListImmediate& RHICmdList, const FGridCl
 	const uint32 DispatchCount = FMath::DivideAndRoundUp(GridClothParams.NumVertex, (uint32)32);
 	check(DispatchCount <= 65535);
 
-	TShaderMapRef<FClothSimulationCS> ClothSimulationCS(ShaderMap);
 
-	FClothSimulationCS::FParameters* ClothSimulationParams = GraphBuilder.AllocParameters<FClothSimulationCS::FParameters>();
-	ClothSimulationParams->NumRow = GridClothParams.NumRow;
-	ClothSimulationParams->NumColumn = GridClothParams.NumColumn;
-	ClothSimulationParams->NumVertex = GridClothParams.NumVertex;
-	ClothSimulationParams->GridWidth = GridClothParams.GridWidth;
-	ClothSimulationParams->GridHeight = GridClothParams.GridHeight;
-	ClothSimulationParams->SquareDeltaTime = GridClothParams.DeltaTime * GridClothParams.DeltaTime;
-	ClothSimulationParams->InAccelerationVertexBuffer = AccelerationVertexBufferSRV;
-	ClothSimulationParams->OutPrevPositionVertexBuffer = PrevPositionVertexBufferUAV;
-	ClothSimulationParams->OutPositionVertexBuffer = PositionVertexBufferUAV;
+	TShaderMapRef<FClothSimulationIntegrationCS> ClothSimIntegrationCS(ShaderMap);
+
+	FClothSimulationIntegrationCS::FParameters* ClothSimIntegrateParams = GraphBuilder.AllocParameters<FClothSimulationIntegrationCS::FParameters>();
+	ClothSimIntegrateParams->NumVertex = GridClothParams.NumVertex;
+	ClothSimIntegrateParams->SquareDeltaTime = GridClothParams.DeltaTime * GridClothParams.DeltaTime;
+	ClothSimIntegrateParams->InAccelerationVertexBuffer = AccelerationVertexBufferSRV;
+	ClothSimIntegrateParams->OutPrevPositionVertexBuffer = PrevPositionVertexBufferUAV;
+	ClothSimIntegrateParams->OutPositionVertexBuffer = PositionVertexBufferUAV;
 
 	FComputeShaderUtils::AddPass(
 		GraphBuilder,
-		RDG_EVENT_NAME("ClothSimulationMesh"),
-		*ClothSimulationCS,
-		ClothSimulationParams,
+		RDG_EVENT_NAME("ClothSimulationIntegration"),
+		*ClothSimIntegrationCS,
+		ClothSimIntegrateParams,
 		FIntVector(DispatchCount, 1, 1)
 	);
 
+
+	TShaderMapRef<FClothSimulationSolveDistanceConstraintCS> ClothSimSolveDistanceConstraintCS(ShaderMap);
+
+	FClothSimulationSolveDistanceConstraintCS::FParameters* ClothSimDistanceConstraintParams = GraphBuilder.AllocParameters<FClothSimulationSolveDistanceConstraintCS::FParameters>();
+	ClothSimDistanceConstraintParams->NumRow = GridClothParams.NumRow;
+	ClothSimDistanceConstraintParams->NumColumn = GridClothParams.NumColumn;
+	ClothSimDistanceConstraintParams->NumVertex = GridClothParams.NumVertex;
+	ClothSimDistanceConstraintParams->GridWidth = GridClothParams.GridWidth;
+	ClothSimDistanceConstraintParams->GridHeight = GridClothParams.GridHeight;
+	ClothSimDistanceConstraintParams->OutPositionVertexBuffer = PositionVertexBufferUAV;
+
+	FComputeShaderUtils::AddPass(
+		GraphBuilder,
+		RDG_EVENT_NAME("ClothSimulationSolveDistanceConstraint"),
+		*ClothSimSolveDistanceConstraintCS,
+		ClothSimDistanceConstraintParams,
+		FIntVector(GridClothParams.NumVertex, 1, 1) // TODO:とりあえず、ここはマルチスレッドをしない
+	);
+
+
 	TShaderMapRef<FClothGridMeshTangentCS> GridMeshTangentCS(ShaderMap);
 
-	FClothGridMeshTangentCS::FParameters* GridMeshTangent = GraphBuilder.AllocParameters<FClothGridMeshTangentCS::FParameters>();
-	GridMeshTangent->NumRow = GridClothParams.NumRow;
-	GridMeshTangent->NumColumn = GridClothParams.NumColumn;
-	GridMeshTangent->NumVertex = GridClothParams.NumVertex;
-	GridMeshTangent->InPositionVertexBuffer = PositionVertexBufferUAV;
-	GridMeshTangent->OutTangentVertexBuffer = TangentVertexBufferUAV;
+	FClothGridMeshTangentCS::FParameters* GridMeshTangentParams = GraphBuilder.AllocParameters<FClothGridMeshTangentCS::FParameters>();
+	GridMeshTangentParams->NumRow = GridClothParams.NumRow;
+	GridMeshTangentParams->NumColumn = GridClothParams.NumColumn;
+	GridMeshTangentParams->NumVertex = GridClothParams.NumVertex;
+	GridMeshTangentParams->InPositionVertexBuffer = PositionVertexBufferUAV;
+	GridMeshTangentParams->OutTangentVertexBuffer = TangentVertexBufferUAV;
 
 	FComputeShaderUtils::AddPass(
 		GraphBuilder,
 		RDG_EVENT_NAME("GridMeshTangent"),
 		*GridMeshTangentCS,
-		GridMeshTangent,
+		GridMeshTangentParams,
 		FIntVector(DispatchCount, 1, 1)
 	);
 
