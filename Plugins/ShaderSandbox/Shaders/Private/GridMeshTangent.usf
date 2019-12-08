@@ -14,7 +14,6 @@ float4 PackNormal(float3 V)
 [numthreads(32, 1, 1)]
 void MainCS(uint2 DispatchThreadId : SV_DispatchThreadID)
 {
-	const float SMALL_NUMBER = 0.0001;
 	const uint VertexIndex = DispatchThreadId.x;
 
 	if (VertexIndex >= NumVertex)
@@ -36,7 +35,11 @@ void MainCS(uint2 DispatchThreadId : SV_DispatchThreadID)
 	float3 YAxis = float3(0.0, 0.0, 1.0);
 
     float3 SumOfEachEdgeNormal = float3(0.0, 0.0, 0.0);
-    float3 DebugEdgeNormal = float3(0.0, 0.0, 0.0);
+
+	float3 RightEdge = float3(0.0, 0.0, 0.0);
+	float3 LowerEdge = float3(0.0, 0.0, 0.0);
+	float3 LeftEdge = float3(0.0, 0.0, 0.0);
+	float3 UpperEdge = float3(0.0, 0.0, 0.0);
 
 	if (ColumnIndex < NumColumn)
     {
@@ -46,23 +49,7 @@ void MainCS(uint2 DispatchThreadId : SV_DispatchThreadID)
 		RightVertexPos.y = InPositionVertexBuffer[4 * RightVertexIndex + 1];
 		RightVertexPos.z = InPositionVertexBuffer[4 * RightVertexIndex + 2];
 
-		float RightEdgeLength = max(length(RightVertexPos - CurrVertexPos), SMALL_NUMBER); // to avoid 0 division
-        float3 RightEdgeAxis = (RightVertexPos - CurrVertexPos) / RightEdgeLength;
-
-		float3 RightEdgeNormal;
-
-		float ProjectionToZAxis = dot(ZAxis, RightEdgeAxis);
-		if (ProjectionToZAxis < SMALL_NUMBER)
-		{
-			// ほぼエッジ方向がZ軸方向のときはnomalize()に0ベクトルを入れないようにノーマルをY軸とする
-			RightEdgeNormal = YAxis;
-		}
-		else
-		{
-			RightEdgeNormal = normalize(ZAxis - dot(ZAxis, RightEdgeAxis) * RightEdgeAxis);
-		}
-
-        SumOfEachEdgeNormal += RightEdgeNormal;
+		RightEdge = RightVertexPos - CurrVertexPos;
     }
 
 	if (RowIndex < NumRow)
@@ -73,23 +60,7 @@ void MainCS(uint2 DispatchThreadId : SV_DispatchThreadID)
 		LowerVertexPos.y = InPositionVertexBuffer[4 * LowerVertexIndex + 1];
 		LowerVertexPos.z = InPositionVertexBuffer[4 * LowerVertexIndex + 2];
 
-		float LowerEdgeLength = max(length(LowerVertexPos - CurrVertexPos), SMALL_NUMBER); // to avoid 0 division
-        float3 LowerEdgeAxis = (LowerVertexPos - CurrVertexPos) / LowerEdgeLength;
-
-		float3 LowerEdgeNormal;
-
-		float ProjectionToZAxis = dot(ZAxis, LowerEdgeAxis);
-		if (ProjectionToZAxis > 1.0 - SMALL_NUMBER)
-		{
-			// ほぼエッジ方向がZ軸方向のときはnomalize()に0ベクトルを入れないようにノーマルをY軸とする
-			LowerEdgeNormal = YAxis;
-		}
-		else
-		{
-			LowerEdgeNormal = normalize(ZAxis - dot(ZAxis, LowerEdgeAxis) * LowerEdgeAxis);
-		}
-
-        SumOfEachEdgeNormal += LowerEdgeNormal;
+		LowerEdge = LowerVertexPos - CurrVertexPos;
     }
 
 	if (ColumnIndex > 0)
@@ -100,23 +71,7 @@ void MainCS(uint2 DispatchThreadId : SV_DispatchThreadID)
 		LeftVertexPos.y = InPositionVertexBuffer[4 * LeftVertexIndex + 1];
 		LeftVertexPos.z = InPositionVertexBuffer[4 * LeftVertexIndex + 2];
 
-		float LeftEdgeLength = max(length(LeftVertexPos - CurrVertexPos), SMALL_NUMBER); // to avoid 0 division
-        float3 LeftEdgeAxis = (LeftVertexPos - CurrVertexPos) / LeftEdgeLength;
-
-		float3 LeftEdgeNormal;
-
-		float ProjectionToZAxis = dot(ZAxis, LeftEdgeAxis);
-		if (ProjectionToZAxis < SMALL_NUMBER)
-		{
-			// ほぼエッジ方向がZ軸方向のときはnomalize()に0ベクトルを入れないようにノーマルをY軸とする
-			LeftEdgeNormal = YAxis;
-		}
-		else
-		{
-			LeftEdgeNormal = normalize(ZAxis - dot(ZAxis, LeftEdgeAxis) * LeftEdgeAxis);
-		}
-
-        SumOfEachEdgeNormal += LeftEdgeNormal;
+		LeftEdge = LeftVertexPos - CurrVertexPos;
     }
 
 	if (RowIndex > 0)
@@ -127,29 +82,42 @@ void MainCS(uint2 DispatchThreadId : SV_DispatchThreadID)
 		UpperVertexPos.y = InPositionVertexBuffer[4 * UpperVertexIndex + 1];
 		UpperVertexPos.z = InPositionVertexBuffer[4 * UpperVertexIndex + 2];
 
-		float UpperEdgeLength = max(length(UpperVertexPos - CurrVertexPos), SMALL_NUMBER); // to avoid 0 division
-        float3 UpperEdgeAxis = (UpperVertexPos - CurrVertexPos) / UpperEdgeLength;
+		UpperEdge = UpperVertexPos - CurrVertexPos;
+    }
 
-		float3 UpperEdgeNormal;
+	if (ColumnIndex < NumColumn && RowIndex < NumRow)
+    {
+		float3 LowerRightPolygonNormal = cross(RightEdge, LowerEdge); // 左手系
+		LowerRightPolygonNormal = normalize(LowerRightPolygonNormal);
+        SumOfEachEdgeNormal += LowerRightPolygonNormal;
+	}
 
-		float ProjectionToZAxis = dot(ZAxis, UpperEdgeAxis);
-		if (ProjectionToZAxis < SMALL_NUMBER)
-		{
-			// ほぼエッジ方向がZ軸方向のときはnomalize()に0ベクトルを入れないようにノーマルをY軸とする
-			UpperEdgeNormal = YAxis;
-		}
-		else
-		{
-			UpperEdgeNormal = normalize(ZAxis - dot(ZAxis, UpperEdgeAxis) * UpperEdgeAxis);
-		}
+	if (RowIndex < NumRow && ColumnIndex > 0)
+    {
+		float3 LowerLeftPolygonNormal = cross(LowerEdge, LeftEdge); // 左手系
+		LowerLeftPolygonNormal = normalize(LowerLeftPolygonNormal);
+        SumOfEachEdgeNormal += LowerLeftPolygonNormal ;
+    }
 
-        SumOfEachEdgeNormal += UpperEdgeNormal;
+	if (ColumnIndex > 0 && RowIndex > 0)
+    {
+		float3 UpperLeftPolygonNormal = cross(LeftEdge, UpperEdge); // 左手系
+		UpperLeftPolygonNormal = normalize(UpperLeftPolygonNormal);
+        SumOfEachEdgeNormal += UpperLeftPolygonNormal ;
+    }
+
+	if (RowIndex > 0 && ColumnIndex < NumColumn)
+    {
+		float3 UpperRightPolygonNormal = cross(UpperEdge, RightEdge); // 左手系
+		UpperRightPolygonNormal = normalize(UpperRightPolygonNormal);
+        SumOfEachEdgeNormal += UpperRightPolygonNormal ;
     }
 
 	// TagentZ cannot be zero at the grid mesh which have one tile at least.
     float3 TangentZ = normalize(SumOfEachEdgeNormal);
 
     float3 XAxis = float3(1.0, 0.0, 0.0);
+	//TODO:TangentZがXAxisに平行なケースは考慮していない
 	// NewTangent should not bet zero vector at no zero tile width grid mesh. So it can be normalized.
     float3 TangentX = normalize(XAxis - dot(XAxis, TangentZ) * TangentZ);
 
