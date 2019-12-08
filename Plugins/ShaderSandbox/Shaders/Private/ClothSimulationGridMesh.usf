@@ -64,9 +64,9 @@ void SolveDistanceConstraint(uint2 DispatchThreadId : SV_DispatchThreadID)
 	uint ColumnIndex = VertexIndex % (NumColumn + 1);
 
     float3 CurrVertexPos;
-    CurrVertexPos.x = OutPositionVertexBuffer[4 * VertexIndex];
-    CurrVertexPos.y = OutPositionVertexBuffer[4 * VertexIndex + 1];
-    CurrVertexPos.z = OutPositionVertexBuffer[4 * VertexIndex + 2];
+	CurrVertexPos.x = OutPositionVertexBuffer[4 * VertexIndex];
+	CurrVertexPos.y = OutPositionVertexBuffer[4 * VertexIndex + 1];
+	CurrVertexPos.z = OutPositionVertexBuffer[4 * VertexIndex + 2];
 
 	float CurrVertexInvMass = OutPositionVertexBuffer[4 * VertexIndex + 3];
 
@@ -88,8 +88,8 @@ void SolveDistanceConstraint(uint2 DispatchThreadId : SV_DispatchThreadID)
 
 			float3 RightEdgeAxis = (RightVertexPos - CurrVertexPos) / RightEdgeLength;
 
-			CurrVertexPos += CurrVertexInvMass / (CurrVertexInvMass + RightVertexInvMass) * Diff * RightEdgeAxis * 0.4; // Stiffnessはとりあえず0.2で
-			RightVertexPos -= RightVertexInvMass / (CurrVertexInvMass + RightVertexInvMass) * Diff * RightEdgeAxis * 0.4; // Stiffnessはとりあえず0.2で
+			CurrVertexPos += CurrVertexInvMass / (CurrVertexInvMass + RightVertexInvMass) * Diff * RightEdgeAxis * 0.2; // Stiffnessはとりあえず0.2で
+			RightVertexPos -= RightVertexInvMass / (CurrVertexInvMass + RightVertexInvMass) * Diff * RightEdgeAxis * 0.2; // Stiffnessはとりあえず0.2で
 
 			OutPositionVertexBuffer[4 * RightVertexIndex] = RightVertexPos.x;
 			OutPositionVertexBuffer[4 * RightVertexIndex + 1] = RightVertexPos.y;
@@ -97,6 +97,7 @@ void SolveDistanceConstraint(uint2 DispatchThreadId : SV_DispatchThreadID)
 		}
     }
 
+	//TODO:本来は距離コンストレイント解決はループが必要だが、重心を考慮せずに必ずRowIndexが小さい方に引き付けるという前提を置いてループを一回にする
 	if (RowIndex < NumRow)
     {
 		uint LowerVertexIndex = VertexIndex + NumColumn + 1;
@@ -113,8 +114,7 @@ void SolveDistanceConstraint(uint2 DispatchThreadId : SV_DispatchThreadID)
 
 			float3 LowerEdgeAxis = (LowerVertexPos - CurrVertexPos) / LowerEdgeLength;
 
-			CurrVertexPos += CurrVertexInvMass / (CurrVertexInvMass + LowerVertexInvMass) * Diff * LowerEdgeAxis * 0.4; // Stiffnessはとりあえず0.2で
-			LowerVertexPos -= LowerVertexInvMass / (CurrVertexInvMass + LowerVertexInvMass) * Diff * LowerEdgeAxis * 0.4; // Stiffnessはとりあえず0.2で
+			LowerVertexPos -= Diff * LowerEdgeAxis * 0.2; // Stiffnessはとりあえず0.2で
 
 			OutPositionVertexBuffer[4 * LowerVertexIndex] = LowerVertexPos.x;
 			OutPositionVertexBuffer[4 * LowerVertexIndex + 1] = LowerVertexPos.y;

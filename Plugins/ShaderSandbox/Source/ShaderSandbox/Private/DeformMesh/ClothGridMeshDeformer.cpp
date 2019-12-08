@@ -109,6 +109,7 @@ void ClothSimulationGridMesh(FRHICommandListImmediate& RHICmdList, const FGridCl
 	ClothSimDistanceConstraintParams->GridHeight = GridClothParams.GridHeight;
 	ClothSimDistanceConstraintParams->OutPositionVertexBuffer = PositionVertexBufferUAV;
 
+	//TODO:本来は距離コンストレイント解決はループが必要だが、重心を考慮せずに必ずRowIndexが小さい方に引き付けるという前提を置いてループを一回にする
 	FComputeShaderUtils::AddPass(
 		GraphBuilder,
 		RDG_EVENT_NAME("ClothSimulationSolveDistanceConstraint"),
@@ -116,7 +117,6 @@ void ClothSimulationGridMesh(FRHICommandListImmediate& RHICmdList, const FGridCl
 		ClothSimDistanceConstraintParams,
 		FIntVector(GridClothParams.NumVertex, 1, 1) // TODO:とりあえず、ここはマルチスレッドをしない
 	);
-
 
 	TShaderMapRef<FClothGridMeshTangentCS> GridMeshTangentCS(ShaderMap);
 
