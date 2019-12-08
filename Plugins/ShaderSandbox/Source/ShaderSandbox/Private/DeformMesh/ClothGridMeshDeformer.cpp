@@ -34,7 +34,7 @@ class FClothSimulationSolveDistanceConstraintCS : public FGlobalShader
 	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
 		SHADER_PARAMETER(uint32, NumRow)
 		SHADER_PARAMETER(uint32, NumColumn)
-		SHADER_PARAMETER(uint32, NumVertex)
+		SHADER_PARAMETER(uint32, VertexIdx)
 		SHADER_PARAMETER(float, GridWidth)
 		SHADER_PARAMETER(float, GridHeight)
 		SHADER_PARAMETER_UAV(RWBuffer<float>, OutPositionVertexBuffer)
@@ -99,24 +99,28 @@ void ClothSimulationGridMesh(FRHICommandListImmediate& RHICmdList, const FGridCl
 	);
 
 
-	TShaderMapRef<FClothSimulationSolveDistanceConstraintCS> ClothSimSolveDistanceConstraintCS(ShaderMap);
+	// TODO:マルチスレッドで実行されるために、依存性の解決をできてないという問題があるので、とりあえずは頂点ごとにシーケンシャルに実行しておく
+	for (uint32 i = 0; i < GridClothParams.NumVertex; i++)
+	{
+		TShaderMapRef<FClothSimulationSolveDistanceConstraintCS> ClothSimSolveDistanceConstraintCS(ShaderMap);
 
-	FClothSimulationSolveDistanceConstraintCS::FParameters* ClothSimDistanceConstraintParams = GraphBuilder.AllocParameters<FClothSimulationSolveDistanceConstraintCS::FParameters>();
-	ClothSimDistanceConstraintParams->NumRow = GridClothParams.NumRow;
-	ClothSimDistanceConstraintParams->NumColumn = GridClothParams.NumColumn;
-	ClothSimDistanceConstraintParams->NumVertex = GridClothParams.NumVertex;
-	ClothSimDistanceConstraintParams->GridWidth = GridClothParams.GridWidth;
-	ClothSimDistanceConstraintParams->GridHeight = GridClothParams.GridHeight;
-	ClothSimDistanceConstraintParams->OutPositionVertexBuffer = PositionVertexBufferUAV;
+		FClothSimulationSolveDistanceConstraintCS::FParameters* ClothSimDistanceConstraintParams = GraphBuilder.AllocParameters<FClothSimulationSolveDistanceConstraintCS::FParameters>();
+		ClothSimDistanceConstraintParams->NumRow = GridClothParams.NumRow;
+		ClothSimDistanceConstraintParams->NumColumn = GridClothParams.NumColumn;
+		ClothSimDistanceConstraintParams->VertexIdx = i;
+		ClothSimDistanceConstraintParams->GridWidth = GridClothParams.GridWidth;
+		ClothSimDistanceConstraintParams->GridHeight = GridClothParams.GridHeight;
+		ClothSimDistanceConstraintParams->OutPositionVertexBuffer = PositionVertexBufferUAV;
 
-	//TODO:本来は距離コンストレイント解決はループが必要だが、重心を考慮せずに必ずRowIndexが小さい方に引き付けるという前提を置いてループを一回にする
-	FComputeShaderUtils::AddPass(
-		GraphBuilder,
-		RDG_EVENT_NAME("ClothSimulationSolveDistanceConstraint"),
-		*ClothSimSolveDistanceConstraintCS,
-		ClothSimDistanceConstraintParams,
-		FIntVector(GridClothParams.NumVertex, 1, 1) // TODO:とりあえず、ここはマルチスレッドをしない
-	);
+		//TODO:本来は距離コンストレイント解決はループが必要だが、重心を考慮せずに必ずRowIndexが小さい方に引き付けるという前提を置いてループを一回にする
+		FComputeShaderUtils::AddPass(
+			GraphBuilder,
+			RDG_EVENT_NAME("ClothSimulationSolveDistanceConstraint"),
+			*ClothSimSolveDistanceConstraintCS,
+			ClothSimDistanceConstraintParams,
+			FIntVector(1, 1, 1) // TODO:とりあえず、ここはマルチスレッドをしない
+		);
+	}
 
 	TShaderMapRef<FClothGridMeshTangentCS> GridMeshTangentCS(ShaderMap);
 
