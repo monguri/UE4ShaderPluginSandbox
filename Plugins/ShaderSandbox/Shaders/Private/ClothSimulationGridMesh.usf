@@ -7,6 +7,8 @@ uint VertexIdx;
 float GridWidth;
 float GridHeight;
 float SquareDeltaTime;
+float Stiffness;
+float Damping;
 
 Buffer<float> InAccelerationVertexBuffer;
 RWBuffer<float> OutPrevPositionVertexBuffer;
@@ -38,7 +40,7 @@ void Interate(uint2 DispatchThreadId : SV_DispatchThreadID)
 	{
 		// ‚Æ‚è‚ ‚¦‚¸Damping‚Í0.1‚É‚µ‚Ä0.9‚ð‚©‚¯‚é
 		float3 Acceleration = float3(InAccelerationVertexBuffer[3 * VertexIndex + 0], InAccelerationVertexBuffer[3 * VertexIndex + 1], InAccelerationVertexBuffer[3 * VertexIndex + 2]);
-		NextPos = CurrPos + (CurrPos - PrevPos) * 0.6 + Acceleration * SquareDeltaTime;
+		NextPos = CurrPos + (CurrPos - PrevPos) * (1.0 - Damping) + Acceleration * SquareDeltaTime;
 	}
 
 	OutPositionVertexBuffer[4 * VertexIndex + 0] = NextPos.x;
@@ -91,8 +93,8 @@ void SolveDistanceConstraint(uint2 DispatchThreadId : SV_DispatchThreadID)
 
 			float3 RightEdgeAxis = (RightVertexPos - CurrVertexPos) / RightEdgeLength;
 
-			CurrVertexPos += CurrVertexInvMass / (CurrVertexInvMass + RightVertexInvMass) * Diff * RightEdgeAxis * 0.2; // Stiffness‚Í‚Æ‚è‚ ‚¦‚¸0.2‚Å
-			RightVertexPos -= RightVertexInvMass / (CurrVertexInvMass + RightVertexInvMass) * Diff * RightEdgeAxis * 0.2; // Stiffness‚Í‚Æ‚è‚ ‚¦‚¸0.2‚Å
+			CurrVertexPos += CurrVertexInvMass / (CurrVertexInvMass + RightVertexInvMass) * Diff * RightEdgeAxis * Stiffness;
+			RightVertexPos -= RightVertexInvMass / (CurrVertexInvMass + RightVertexInvMass) * Diff * RightEdgeAxis * Stiffness;
 
 			OutPositionVertexBuffer[4 * RightVertexIndex] = RightVertexPos.x;
 			OutPositionVertexBuffer[4 * RightVertexIndex + 1] = RightVertexPos.y;
@@ -117,7 +119,7 @@ void SolveDistanceConstraint(uint2 DispatchThreadId : SV_DispatchThreadID)
 
 			float3 LowerEdgeAxis = (LowerVertexPos - CurrVertexPos) / LowerEdgeLength;
 
-			LowerVertexPos -= Diff * LowerEdgeAxis * 0.2; // Stiffness‚Í‚Æ‚è‚ ‚¦‚¸0.2‚Å
+			LowerVertexPos -= Diff * LowerEdgeAxis * Stiffness;
 
 			OutPositionVertexBuffer[4 * LowerVertexIndex] = LowerVertexPos.x;
 			OutPositionVertexBuffer[4 * LowerVertexIndex + 1] = LowerVertexPos.y;

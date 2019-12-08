@@ -12,6 +12,7 @@ class FClothSimulationIntegrationCS : public FGlobalShader
 	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
 		SHADER_PARAMETER(uint32, NumVertex)
 		SHADER_PARAMETER(float, SquareDeltaTime)
+		SHADER_PARAMETER(float, Damping)
 		SHADER_PARAMETER_SRV(Buffer<float>, InAccelerationVertexBuffer)
 		SHADER_PARAMETER_UAV(RWBuffer<float>, OutPrevPositionVertexBuffer)
 		SHADER_PARAMETER_UAV(RWBuffer<float>, OutPositionVertexBuffer)
@@ -37,6 +38,7 @@ class FClothSimulationSolveDistanceConstraintCS : public FGlobalShader
 		SHADER_PARAMETER(uint32, VertexIdx)
 		SHADER_PARAMETER(float, GridWidth)
 		SHADER_PARAMETER(float, GridHeight)
+		SHADER_PARAMETER(float, Stiffness)
 		SHADER_PARAMETER_UAV(RWBuffer<float>, OutPositionVertexBuffer)
 	END_SHADER_PARAMETER_STRUCT()
 
@@ -86,6 +88,7 @@ void ClothSimulationGridMesh(FRHICommandListImmediate& RHICmdList, const FGridCl
 	FClothSimulationIntegrationCS::FParameters* ClothSimIntegrateParams = GraphBuilder.AllocParameters<FClothSimulationIntegrationCS::FParameters>();
 	ClothSimIntegrateParams->NumVertex = GridClothParams.NumVertex;
 	ClothSimIntegrateParams->SquareDeltaTime = GridClothParams.DeltaTime * GridClothParams.DeltaTime;
+	ClothSimIntegrateParams->Damping = GridClothParams.Damping;
 	ClothSimIntegrateParams->InAccelerationVertexBuffer = AccelerationVertexBufferSRV;
 	ClothSimIntegrateParams->OutPrevPositionVertexBuffer = PrevPositionVertexBufferUAV;
 	ClothSimIntegrateParams->OutPositionVertexBuffer = PositionVertexBufferUAV;
@@ -110,6 +113,7 @@ void ClothSimulationGridMesh(FRHICommandListImmediate& RHICmdList, const FGridCl
 		ClothSimDistanceConstraintParams->VertexIdx = i;
 		ClothSimDistanceConstraintParams->GridWidth = GridClothParams.GridWidth;
 		ClothSimDistanceConstraintParams->GridHeight = GridClothParams.GridHeight;
+		ClothSimDistanceConstraintParams->Stiffness = GridClothParams.Stiffness;
 		ClothSimDistanceConstraintParams->OutPositionVertexBuffer = PositionVertexBufferUAV;
 
 		//TODO:本来は距離コンストレイント解決はループが必要だが、重心を考慮せずに必ずRowIndexが小さい方に引き付けるという前提を置いてループを一回にする

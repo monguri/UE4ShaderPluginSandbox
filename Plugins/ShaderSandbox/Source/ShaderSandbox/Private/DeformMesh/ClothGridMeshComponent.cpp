@@ -255,6 +255,8 @@ public:
 		Params.GridWidth = Component->GetGridWidth();
 		Params.GridHeight = Component->GetGridHeight();
 		Params.DeltaTime = Component->GetDeltaTime();
+		Params.Stiffness = Component->GetStiffness();
+		Params.Damping = Component->GetDamping();
 
 		ENQUEUE_RENDER_COMMAND(ClothSimulationGridMeshCommand)(
 			[this, Params](FRHICommandListImmediate& RHICmdList)
@@ -276,7 +278,7 @@ private:
 
 //////////////////////////////////////////////////////////////////////////
 
-void UClothGridMeshComponent::InitClothSettings(int32 NumRow, int32 NumColumn, float GridWidth, float GridHeight)
+void UClothGridMeshComponent::InitClothSettings(int32 NumRow, int32 NumColumn, float GridWidth, float GridHeight, float Stiffness, float Damping)
 {
 	_NumRow = NumRow;
 	_NumColumn = NumColumn;
@@ -285,6 +287,8 @@ void UClothGridMeshComponent::InitClothSettings(int32 NumRow, int32 NumColumn, f
 	_Vertices.Reset((NumRow + 1) * (NumColumn + 1));
 	_Indices.Reset(NumRow * NumColumn * 2 * 3); // ひとつのグリッドには3つのTriangle、6つの頂点インデックス指定がある
 	_Accelerations.Reset((NumRow + 1) * (NumColumn + 1));
+	_Stiffness = Stiffness;
+	_Damping = Damping;
 
 	//TODO:とりあえずy=0の一行目のみInvMass=0に
 	for (int32 x = 0; x < NumColumn + 1; x++)
