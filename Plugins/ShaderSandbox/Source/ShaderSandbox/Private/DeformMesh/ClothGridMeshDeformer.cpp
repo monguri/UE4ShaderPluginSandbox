@@ -35,7 +35,7 @@ class FClothSimulationSolveDistanceConstraintCS : public FGlobalShader
 	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
 		SHADER_PARAMETER(uint32, NumRow)
 		SHADER_PARAMETER(uint32, NumColumn)
-		SHADER_PARAMETER(uint32, VertexIdx)
+		SHADER_PARAMETER(uint32, NumVertex)
 		SHADER_PARAMETER(float, GridWidth)
 		SHADER_PARAMETER(float, GridHeight)
 		SHADER_PARAMETER(float, Stiffness)
@@ -79,9 +79,6 @@ void ClothSimulationGridMesh(FRHICommandListImmediate& RHICmdList, const FGridCl
 
 	TShaderMap<FGlobalShaderType>* ShaderMap = GetGlobalShaderMap(ERHIFeatureLevel::SM5);
 
-	const uint32 DispatchCount = FMath::DivideAndRoundUp(GridClothParams.NumVertex, (uint32)32);
-	check(DispatchCount <= 65535);
-
 
 	TShaderMapRef<FClothSimulationIntegrationCS> ClothSimIntegrationCS(ShaderMap);
 
@@ -93,38 +90,37 @@ void ClothSimulationGridMesh(FRHICommandListImmediate& RHICmdList, const FGridCl
 	ClothSimIntegrateParams->OutPrevPositionVertexBuffer = PrevPositionVertexBufferUAV;
 	ClothSimIntegrateParams->OutPositionVertexBuffer = PositionVertexBufferUAV;
 
+	//TODO: とりあえず今はこの関数呼び出しがメッシュ一個なので1 Dispatch
 	FComputeShaderUtils::AddPass(
 		GraphBuilder,
 		RDG_EVENT_NAME("ClothSimulationIntegration"),
 		*ClothSimIntegrationCS,
 		ClothSimIntegrateParams,
-		FIntVector(DispatchCount, 1, 1)
+		FIntVector(1, 1, 1)
 	);
 
 
-	// TODO:マルチスレッドで実行されるために、依存性の解決をできてないという問題があるので、とりあえずは頂点ごとにシーケンシャルに実行しておく
-	for (uint32 i = 0; i < GridClothParams.NumVertex; i++)
-	{
-		TShaderMapRef<FClothSimulationSolveDistanceConstraintCS> ClothSimSolveDistanceConstraintCS(ShaderMap);
+	TShaderMapRef<FClothSimulationSolveDistanceConstraintCS> ClothSimSolveDistanceConstraintCS(ShaderMap);
 
-		FClothSimulationSolveDistanceConstraintCS::FParameters* ClothSimDistanceConstraintParams = GraphBuilder.AllocParameters<FClothSimulationSolveDistanceConstraintCS::FParameters>();
-		ClothSimDistanceConstraintParams->NumRow = GridClothParams.NumRow;
-		ClothSimDistanceConstraintParams->NumColumn = GridClothParams.NumColumn;
-		ClothSimDistanceConstraintParams->VertexIdx = i;
-		ClothSimDistanceConstraintParams->GridWidth = GridClothParams.GridWidth;
-		ClothSimDistanceConstraintParams->GridHeight = GridClothParams.GridHeight;
-		ClothSimDistanceConstraintParams->Stiffness = GridClothParams.Stiffness;
-		ClothSimDistanceConstraintParams->OutPositionVertexBuffer = PositionVertexBufferUAV;
+	FClothSimulationSolveDistanceConstraintCS::FParameters* ClothSimDistanceConstraintParams = GraphBuilder.AllocParameters<FClothSimulationSolveDistanceConstraintCS::FParameters>();
+	ClothSimDistanceConstraintParams->NumRow = GridClothParams.NumRow;
+	ClothSimDistanceConstraintParams->NumColumn = GridClothParams.NumColumn;
+	ClothSimDistanceConstraintParams->NumVertex = GridClothParams.NumVertex;
+	ClothSimDistanceConstraintParams->GridWidth = GridClothParams.GridWidth;
+	ClothSimDistanceConstraintParams->GridHeight = GridClothParams.GridHeight;
+	ClothSimDistanceConstraintParams->Stiffness = GridClothParams.Stiffness;
+	ClothSimDistanceConstraintParams->OutPositionVertexBuffer = PositionVertexBufferUAV;
 
-		//TODO:本来は距離コンストレイント解決はループが必要だが、重心を考慮せずに必ずRowIndexが小さい方に引き付けるという前提を置いてループを一回にする
-		FComputeShaderUtils::AddPass(
-			GraphBuilder,
-			RDG_EVENT_NAME("ClothSimulationSolveDistanceConstraint"),
-			*ClothSimSolveDistanceConstraintCS,
-			ClothSimDistanceConstraintParams,
-			FIntVector(1, 1, 1) // TODO:とりあえず、ここはマルチスレッドをしない
-		);
-	}
+	//TODO: とりあえず今はこの関数呼び出しがメッシュ一個なので1 Dispatch
+	//TODO:本来は距離コンストレイント解決はループが必要だが、重心を考慮せずに必ずRowIndexが小さい方に引き付けるという前提を置いてループを一回にする
+	FComputeShaderUtils::AddPass(
+		GraphBuilder,
+		RDG_EVENT_NAME("ClothSimulationSolveDistanceConstraint"),
+		*ClothSimSolveDistanceConstraintCS,
+		ClothSimDistanceConstraintParams,
+		FIntVector(1, 1, 1)
+	);
+
 
 	TShaderMapRef<FClothGridMeshTangentCS> GridMeshTangentCS(ShaderMap);
 
@@ -135,6 +131,9 @@ void ClothSimulationGridMesh(FRHICommandListImmediate& RHICmdList, const FGridCl
 	GridMeshTangentParams->InPositionVertexBuffer = PositionVertexBufferUAV;
 	GridMeshTangentParams->OutTangentVertexBuffer = TangentVertexBufferUAV;
 
+	const uint32 DispatchCount = FMath::DivideAndRoundUp(GridClothParams.NumVertex, (uint32)32);
+	check(DispatchCount <= 65535);
+
 	FComputeShaderUtils::AddPass(
 		GraphBuilder,
 		RDG_EVENT_NAME("GridMeshTangent"),
@@ -142,6 +141,7 @@ void ClothSimulationGridMesh(FRHICommandListImmediate& RHICmdList, const FGridCl
 		GridMeshTangentParams,
 		FIntVector(DispatchCount, 1, 1)
 	);
+
 
 	GraphBuilder.Execute();
 }
