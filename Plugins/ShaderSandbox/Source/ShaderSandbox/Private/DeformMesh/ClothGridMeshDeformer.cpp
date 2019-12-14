@@ -79,47 +79,52 @@ void ClothSimulationGridMesh(FRHICommandListImmediate& RHICmdList, const FGridCl
 
 	TShaderMap<FGlobalShaderType>* ShaderMap = GetGlobalShaderMap(ERHIFeatureLevel::SM5);
 
-
 	TShaderMapRef<FClothSimulationIntegrationCS> ClothSimIntegrationCS(ShaderMap);
-
-	FClothSimulationIntegrationCS::FParameters* ClothSimIntegrateParams = GraphBuilder.AllocParameters<FClothSimulationIntegrationCS::FParameters>();
-	ClothSimIntegrateParams->NumVertex = GridClothParams.NumVertex;
-	ClothSimIntegrateParams->SquareDeltaTime = GridClothParams.DeltaTime * GridClothParams.DeltaTime;
-	ClothSimIntegrateParams->Damping = GridClothParams.Damping;
-	ClothSimIntegrateParams->InAccelerationVertexBuffer = AccelerationVertexBufferSRV;
-	ClothSimIntegrateParams->OutPrevPositionVertexBuffer = PrevPositionVertexBufferUAV;
-	ClothSimIntegrateParams->OutPositionVertexBuffer = PositionVertexBufferUAV;
-
-	//TODO: とりあえず今はこの関数呼び出しがメッシュ一個なので1 Dispatch
-	FComputeShaderUtils::AddPass(
-		GraphBuilder,
-		RDG_EVENT_NAME("ClothSimulationIntegration"),
-		*ClothSimIntegrationCS,
-		ClothSimIntegrateParams,
-		FIntVector(1, 1, 1)
-	);
-
-
 	TShaderMapRef<FClothSimulationSolveDistanceConstraintCS> ClothSimSolveDistanceConstraintCS(ShaderMap);
 
-	FClothSimulationSolveDistanceConstraintCS::FParameters* ClothSimDistanceConstraintParams = GraphBuilder.AllocParameters<FClothSimulationSolveDistanceConstraintCS::FParameters>();
-	ClothSimDistanceConstraintParams->NumRow = GridClothParams.NumRow;
-	ClothSimDistanceConstraintParams->NumColumn = GridClothParams.NumColumn;
-	ClothSimDistanceConstraintParams->NumVertex = GridClothParams.NumVertex;
-	ClothSimDistanceConstraintParams->GridWidth = GridClothParams.GridWidth;
-	ClothSimDistanceConstraintParams->GridHeight = GridClothParams.GridHeight;
-	ClothSimDistanceConstraintParams->Stiffness = GridClothParams.Stiffness;
-	ClothSimDistanceConstraintParams->OutPositionVertexBuffer = PositionVertexBufferUAV;
+	float DeltaTimePerIterate = GridClothParams.DeltaTime / GridClothParams.NumIteration;
+	float SquareDeltaTime = DeltaTimePerIterate * DeltaTimePerIterate;
 
-	//TODO: とりあえず今はこの関数呼び出しがメッシュ一個なので1 Dispatch
-	//TODO:本来は距離コンストレイント解決はループが必要だが、重心を考慮せずに必ずRowIndexが小さい方に引き付けるという前提を置いてループを一回にする
-	FComputeShaderUtils::AddPass(
-		GraphBuilder,
-		RDG_EVENT_NAME("ClothSimulationSolveDistanceConstraint"),
-		*ClothSimSolveDistanceConstraintCS,
-		ClothSimDistanceConstraintParams,
-		FIntVector(1, 1, 1)
-	);
+	// TODO:Stiffness、Dampingの効果がNumIterationやフレームレートに依存してしまっているのでどうにかせねば
+
+	for (uint32 IterCount = 0; IterCount < GridClothParams.NumIteration; IterCount++)
+	{
+		FClothSimulationIntegrationCS::FParameters* ClothSimIntegrateParams = GraphBuilder.AllocParameters<FClothSimulationIntegrationCS::FParameters>();
+		ClothSimIntegrateParams->NumVertex = GridClothParams.NumVertex;
+		ClothSimIntegrateParams->SquareDeltaTime = SquareDeltaTime;
+		ClothSimIntegrateParams->Damping = GridClothParams.Damping;
+		ClothSimIntegrateParams->InAccelerationVertexBuffer = AccelerationVertexBufferSRV;
+		ClothSimIntegrateParams->OutPrevPositionVertexBuffer = PrevPositionVertexBufferUAV;
+		ClothSimIntegrateParams->OutPositionVertexBuffer = PositionVertexBufferUAV;
+
+		//TODO: とりあえず今はこの関数呼び出しがメッシュ一個なので1 Dispatch
+		FComputeShaderUtils::AddPass(
+			GraphBuilder,
+			RDG_EVENT_NAME("ClothSimulationIntegration"),
+			*ClothSimIntegrationCS,
+			ClothSimIntegrateParams,
+			FIntVector(1, 1, 1)
+		);
+
+		FClothSimulationSolveDistanceConstraintCS::FParameters* ClothSimDistanceConstraintParams = GraphBuilder.AllocParameters<FClothSimulationSolveDistanceConstraintCS::FParameters>();
+		ClothSimDistanceConstraintParams->NumRow = GridClothParams.NumRow;
+		ClothSimDistanceConstraintParams->NumColumn = GridClothParams.NumColumn;
+		ClothSimDistanceConstraintParams->NumVertex = GridClothParams.NumVertex;
+		ClothSimDistanceConstraintParams->GridWidth = GridClothParams.GridWidth;
+		ClothSimDistanceConstraintParams->GridHeight = GridClothParams.GridHeight;
+		ClothSimDistanceConstraintParams->Stiffness = GridClothParams.Stiffness;
+		ClothSimDistanceConstraintParams->OutPositionVertexBuffer = PositionVertexBufferUAV;
+
+		//TODO: とりあえず今はこの関数呼び出しがメッシュ一個なので1 Dispatch
+		//TODO:本来は距離コンストレイント解決はループが必要だが、重心を考慮せずに必ずRowIndexが小さい方に引き付けるという前提を置いてループを一回にする
+		FComputeShaderUtils::AddPass(
+			GraphBuilder,
+			RDG_EVENT_NAME("ClothSimulationSolveDistanceConstraint"),
+			*ClothSimSolveDistanceConstraintCS,
+			ClothSimDistanceConstraintParams,
+			FIntVector(1, 1, 1)
+		);
+	}
 
 
 	TShaderMapRef<FClothGridMeshTangentCS> GridMeshTangentCS(ShaderMap);

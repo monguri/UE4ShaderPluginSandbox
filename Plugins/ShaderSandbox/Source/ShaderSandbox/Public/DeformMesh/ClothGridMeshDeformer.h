@@ -15,6 +15,7 @@ struct FGridClothParameters
 	float DeltaTime;
 	float Stiffness;
 	float Damping;
+	uint32 NumIteration;
 };
 
 void ClothSimulationGridMesh(FRHICommandListImmediate& RHICmdList, const FGridClothParameters& GridClothParams, class FRHIUnorderedAccessView* PositionVertexBufferUAV, class FRHIUnorderedAccessView* TangentVertexBufferUAV, class FRHIUnorderedAccessView* PrevPositionVertexBufferUAV, class FRHIShaderResourceView* AccelerationVertexBufferSRV);
