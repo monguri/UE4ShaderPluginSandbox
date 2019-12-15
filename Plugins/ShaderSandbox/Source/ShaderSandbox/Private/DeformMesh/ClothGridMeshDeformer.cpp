@@ -51,6 +51,27 @@ public:
 
 IMPLEMENT_GLOBAL_SHADER(FClothSimulationSolveDistanceConstraintCS, "/Plugin/ShaderSandbox/Private/ClothSimulationGridMesh.usf", "SolveDistanceConstraint", SF_Compute);
 
+class FClothSimulationSolveCollisionCS : public FGlobalShader
+{
+	DECLARE_GLOBAL_SHADER(FClothSimulationSolveCollisionCS);
+	SHADER_USE_PARAMETER_STRUCT(FClothSimulationSolveCollisionCS, FGlobalShader);
+
+	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
+		SHADER_PARAMETER(uint32, NumVertex)
+		SHADER_PARAMETER(FVector, SphereCenter)
+		SHADER_PARAMETER(float, SphereRadius)
+		SHADER_PARAMETER_UAV(RWBuffer<float>, OutPositionVertexBuffer)
+	END_SHADER_PARAMETER_STRUCT()
+
+public:
+	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters)
+	{
+		return IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
+	}
+};
+
+IMPLEMENT_GLOBAL_SHADER(FClothSimulationSolveCollisionCS, "/Plugin/ShaderSandbox/Private/ClothSimulationGridMesh.usf", "SolveCollision", SF_Compute);
+
 class FClothGridMeshTangentCS : public FGlobalShader
 {
 	DECLARE_GLOBAL_SHADER(FClothGridMeshTangentCS);
@@ -81,6 +102,7 @@ void ClothSimulationGridMesh(FRHICommandListImmediate& RHICmdList, const FGridCl
 
 	TShaderMapRef<FClothSimulationIntegrationCS> ClothSimIntegrationCS(ShaderMap);
 	TShaderMapRef<FClothSimulationSolveDistanceConstraintCS> ClothSimSolveDistanceConstraintCS(ShaderMap);
+	TShaderMapRef<FClothSimulationSolveCollisionCS> ClothSimSolveCollisionCS(ShaderMap);
 
 	float DeltaTimePerIterate = GridClothParams.DeltaTime / GridClothParams.NumIteration;
 	float SquareDeltaTime = DeltaTimePerIterate * DeltaTimePerIterate;
@@ -116,12 +138,26 @@ void ClothSimulationGridMesh(FRHICommandListImmediate& RHICmdList, const FGridCl
 		ClothSimDistanceConstraintParams->OutPositionVertexBuffer = PositionVertexBufferUAV;
 
 		//TODO: とりあえず今はこの関数呼び出しがメッシュ一個なので1 Dispatch
-		//TODO:本来は距離コンストレイント解決はループが必要だが、重心を考慮せずに必ずRowIndexが小さい方に引き付けるという前提を置いてループを一回にする
 		FComputeShaderUtils::AddPass(
 			GraphBuilder,
 			RDG_EVENT_NAME("ClothSimulationSolveDistanceConstraint"),
 			*ClothSimSolveDistanceConstraintCS,
 			ClothSimDistanceConstraintParams,
+			FIntVector(1, 1, 1)
+		);
+
+		FClothSimulationSolveCollisionCS::FParameters* ClothSimCollisionParams = GraphBuilder.AllocParameters<FClothSimulationSolveCollisionCS::FParameters>();
+		ClothSimCollisionParams->NumVertex = GridClothParams.NumVertex;
+		ClothSimCollisionParams->SphereCenter = GridClothParams.SphereCenter;
+		ClothSimCollisionParams->SphereRadius = GridClothParams.SphereRadius;
+		ClothSimCollisionParams->OutPositionVertexBuffer = PositionVertexBufferUAV;
+
+		//TODO: とりあえず今はこの関数呼び出しがメッシュ一個なので1 Dispatch
+		FComputeShaderUtils::AddPass(
+			GraphBuilder,
+			RDG_EVENT_NAME("ClothSimulationSolveCollision"),
+			*ClothSimSolveCollisionCS,
+			ClothSimCollisionParams,
 			FIntVector(1, 1, 1)
 		);
 	}

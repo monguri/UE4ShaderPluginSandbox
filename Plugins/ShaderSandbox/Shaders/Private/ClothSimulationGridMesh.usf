@@ -8,6 +8,8 @@ float GridHeight;
 float SquareDeltaTime;
 float Stiffness;
 float Damping;
+float3 SphereCenter;
+float SphereRadius;
 
 Buffer<float> InAccelerationVertexBuffer;
 RWBuffer<float> OutPrevPositionVertexBuffer;
@@ -115,6 +117,30 @@ void SolveDistanceConstraint(uint2 DispatchThreadId : SV_DispatchThreadID)
 				OutPositionVertexBuffer[4 * LowerVertIdx + 1] = LowerVertexPos.y;
 				OutPositionVertexBuffer[4 * LowerVertIdx + 2] = LowerVertexPos.z;
 			}
+		}
+
+		OutPositionVertexBuffer[4 * VertIdx] = CurrVertexPos.x;
+		OutPositionVertexBuffer[4 * VertIdx + 1] = CurrVertexPos.y;
+		OutPositionVertexBuffer[4 * VertIdx + 2] = CurrVertexPos.z;
+	}
+}
+
+[numthreads(1, 1, 1)]
+void SolveCollision(uint2 DispatchThreadId : SV_DispatchThreadID)
+{
+	float SquareSphereRadius = SphereRadius * SphereRadius;
+
+	for (uint VertIdx = 0; VertIdx < NumVertex; VertIdx++)
+	{
+		float3 CurrVertexPos;
+		CurrVertexPos.x = OutPositionVertexBuffer[4 * VertIdx];
+		CurrVertexPos.y = OutPositionVertexBuffer[4 * VertIdx + 1];
+		CurrVertexPos.z = OutPositionVertexBuffer[4 * VertIdx + 2];
+
+		// ‚ß‚è‚±‚ñ‚Å‚¢‚ê‚Î”¼Œa•ûŒü‚É‰Ÿ‚µo‚·
+		if (dot(CurrVertexPos - SphereCenter, CurrVertexPos - SphereCenter) < SquareSphereRadius)
+		{
+			CurrVertexPos = SphereCenter + normalize(CurrVertexPos - SphereCenter) * SphereRadius;
 		}
 
 		OutPositionVertexBuffer[4 * VertIdx] = CurrVertexPos.x;

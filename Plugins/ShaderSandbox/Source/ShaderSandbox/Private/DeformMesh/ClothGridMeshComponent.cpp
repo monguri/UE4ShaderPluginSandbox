@@ -258,6 +258,8 @@ public:
 		Params.Stiffness = Component->GetStiffness();
 		Params.Damping = Component->GetDamping();
 		Params.NumIteration = Component->GetNumIteration();
+		Params.SphereCenter = Component->GetSphereCenter();
+		Params.SphereRadius = Component->GetSphereRadius();
 
 		ENQUEUE_RENDER_COMMAND(ClothSimulationGridMeshCommand)(
 			[this, Params](FRHICommandListImmediate& RHICmdList)
@@ -279,7 +281,7 @@ private:
 
 //////////////////////////////////////////////////////////////////////////
 
-void UClothGridMeshComponent::InitClothSettings(int32 NumRow, int32 NumColumn, float GridWidth, float GridHeight, float Stiffness, float Damping, int32 NumIteration)
+void UClothGridMeshComponent::InitClothSettings(int32 NumRow, int32 NumColumn, float GridWidth, float GridHeight, float Stiffness, float Damping, int32 NumIteration, FVector SphereCenter, float SphereRadius)
 {
 	_NumRow = NumRow;
 	_NumColumn = NumColumn;
@@ -291,6 +293,8 @@ void UClothGridMeshComponent::InitClothSettings(int32 NumRow, int32 NumColumn, f
 	_Stiffness = Stiffness;
 	_Damping = Damping;
 	_NumIteration = NumIteration;
+	_SphereCenter = SphereCenter;
+	_SphereRadius = SphereRadius;
 
 	//TODO:Ç∆ÇËÇ†Ç¶Ç∏y=0ÇÃàÍçsñ⁄ÇÃÇ›InvMass=0Ç…
 	for (int32 x = 0; x < NumColumn + 1; x++)
