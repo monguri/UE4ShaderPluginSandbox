@@ -92,7 +92,6 @@ void SolveDistanceConstraint(uint2 DispatchThreadId : SV_DispatchThreadID)
 			}
 		}
 
-		//TODO:本来は距離コンストレイント解決はループが必要だが、重心を考慮せずに必ずRowIndexが小さい方に引き付けるという前提を置いてループを一回にする
 		if (RowIndex < NumRow)
 		{
 			uint LowerVertIdx = VertIdx + NumColumn + 1;
@@ -109,16 +108,14 @@ void SolveDistanceConstraint(uint2 DispatchThreadId : SV_DispatchThreadID)
 
 				float3 LowerEdgeAxis = (LowerVertexPos - CurrVertexPos) / LowerEdgeLength;
 
-				LowerVertexPos -= Diff * LowerEdgeAxis * Stiffness;
+				CurrVertexPos += CurrVertexInvMass / (CurrVertexInvMass + LowerVertexInvMass) * Diff * LowerEdgeAxis * Stiffness;
+				LowerVertexPos -= LowerVertexInvMass / (CurrVertexInvMass + LowerVertexInvMass) * Diff * LowerEdgeAxis * Stiffness;
 
 				OutPositionVertexBuffer[4 * LowerVertIdx] = LowerVertexPos.x;
 				OutPositionVertexBuffer[4 * LowerVertIdx + 1] = LowerVertexPos.y;
 				OutPositionVertexBuffer[4 * LowerVertIdx + 2] = LowerVertexPos.z;
 			}
 		}
-		// TODO:こういう固定点のある距離コンストレイントは、下から上にやらないと固定点周辺の距離が維持されない
-		// また、CSでメモリを共有しているからちゃんと書き込みをブロックしないとダメだぞ
-		// コンストレイント解決は順序を整理しないとマルチスレッドでは実行できない
 
 		OutPositionVertexBuffer[4 * VertIdx] = CurrVertexPos.x;
 		OutPositionVertexBuffer[4 * VertIdx + 1] = CurrVertexPos.y;
