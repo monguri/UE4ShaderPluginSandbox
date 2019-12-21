@@ -23,6 +23,7 @@ struct FGridClothParameters
 	float DeltaTime;
 	float Stiffness;
 	float Damping;
+	float VertexRadius;
 	uint32 NumIteration;
 	TArray<FSphereCollisionParameters> SphereCollisionParams;
 };

@@ -8,6 +8,7 @@ float GridHeight;
 float SquareDeltaTime;
 float Stiffness;
 float Damping;
+float VertexRadius;
 uint NumSphereCollision;
 float4 SphereCenterAndRadiusArray[16];
 
@@ -133,7 +134,8 @@ void SolveCollision(uint2 DispatchThreadId : SV_DispatchThreadID)
 	{
 		float4 SphereCenterAndRadius = SphereCenterAndRadiusArray[CollisionIdx];
 		float3 SphereCenter = SphereCenterAndRadius.xyz;
-		float SphereRadius = SphereCenterAndRadius.w;
+		// 計算をシンプルにするために頂点の半径は0にしてコリジョン側の半径に頂点半径をプラスして扱う
+		float SphereRadius = SphereCenterAndRadius.w + VertexRadius;
 		float SquareSphereRadius = SphereRadius * SphereRadius;
 
 		for (uint VertIdx = 0; VertIdx < NumVertex; VertIdx++)

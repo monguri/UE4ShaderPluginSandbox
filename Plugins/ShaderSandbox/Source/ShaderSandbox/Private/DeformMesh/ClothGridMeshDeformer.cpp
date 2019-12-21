@@ -62,6 +62,7 @@ public:
 	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
 		SHADER_PARAMETER(uint32, NumVertex)
 		SHADER_PARAMETER(uint32, NumSphereCollision)
+		SHADER_PARAMETER(float, VertexRadius)
 		SHADER_PARAMETER_ARRAY(FVector4, SphereCenterAndRadiusArray, [MAX_SPHERE_COLLISION])
 		SHADER_PARAMETER_UAV(RWBuffer<float>, OutPositionVertexBuffer)
 	END_SHADER_PARAMETER_STRUCT()
@@ -151,6 +152,7 @@ void ClothSimulationGridMesh(FRHICommandListImmediate& RHICmdList, const FGridCl
 
 		FClothSimulationSolveCollisionCS::FParameters* ClothSimCollisionParams = GraphBuilder.AllocParameters<FClothSimulationSolveCollisionCS::FParameters>();
 		ClothSimCollisionParams->NumVertex = GridClothParams.NumVertex;
+		ClothSimCollisionParams->VertexRadius = GridClothParams.VertexRadius;
 		ClothSimCollisionParams->NumSphereCollision = GridClothParams.SphereCollisionParams.Num();
 		for (uint32 i = 0; i < FClothSimulationSolveCollisionCS::MAX_SPHERE_COLLISION; i++)
 		{

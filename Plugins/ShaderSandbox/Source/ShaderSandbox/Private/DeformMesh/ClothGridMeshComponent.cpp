@@ -259,6 +259,7 @@ public:
 		Params.DeltaTime = Component->GetDeltaTime();
 		Params.Stiffness = Component->GetStiffness();
 		Params.Damping = Component->GetDamping();
+		Params.VertexRadius = Component->GetVertexRadius();
 		Params.NumIteration = Component->GetNumIteration();
 
 		TArray<FSphereCollisionParameters> SphereCollisionParams;
@@ -291,7 +292,7 @@ private:
 
 //////////////////////////////////////////////////////////////////////////
 
-void UClothGridMeshComponent::InitClothSettings(int32 NumRow, int32 NumColumn, float GridWidth, float GridHeight, float Stiffness, float Damping, int32 NumIteration)
+void UClothGridMeshComponent::InitClothSettings(int32 NumRow, int32 NumColumn, float GridWidth, float GridHeight, float Stiffness, float Damping, float VertexRadius, int32 NumIteration)
 {
 	_NumRow = NumRow;
 	_NumColumn = NumColumn;
@@ -302,6 +303,7 @@ void UClothGridMeshComponent::InitClothSettings(int32 NumRow, int32 NumColumn, f
 	_Accelerations.Reset((NumRow + 1) * (NumColumn + 1));
 	_Stiffness = Stiffness;
 	_Damping = Damping;
+	_VertexRadius = VertexRadius;
 	_NumIteration = NumIteration;
 
 	//TODO:Ç∆ÇËÇ†Ç¶Ç∏y=0ÇÃàÍçsñ⁄ÇÃÇ›InvMass=0Ç…
