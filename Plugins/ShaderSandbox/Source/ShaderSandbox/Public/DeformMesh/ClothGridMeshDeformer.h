@@ -5,6 +5,14 @@
 #include "Engine/EngineTypes.h"
 #include "RHICommandList.h"
 
+struct FSphereCollisionParameters
+{
+	FVector RelativeCenter;
+	float Radius;
+
+	FSphereCollisionParameters(const FVector& RelativeCenterVec, float RadiusVal) : RelativeCenter(RelativeCenterVec), Radius(RadiusVal) {}
+};
+
 struct FGridClothParameters
 {
 	uint32 NumRow;
@@ -16,8 +24,7 @@ struct FGridClothParameters
 	float Stiffness;
 	float Damping;
 	uint32 NumIteration;
-	FVector SphereCenter;
-	float SphereRadius;
+	TArray<FSphereCollisionParameters> SphereCollisionParams;
 };
 
 void ClothSimulationGridMesh(FRHICommandListImmediate& RHICmdList, const FGridClothParameters& GridClothParams, class FRHIUnorderedAccessView* PositionVertexBufferUAV, class FRHIUnorderedAccessView* TangentVertexBufferUAV, class FRHIUnorderedAccessView* PrevPositionVertexBufferUAV, class FRHIShaderResourceView* AccelerationVertexBufferSRV);

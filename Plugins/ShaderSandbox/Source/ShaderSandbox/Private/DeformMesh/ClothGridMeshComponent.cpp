@@ -15,6 +15,8 @@
 #include "ClothVertexBuffers.h"
 #include "ClothGridMeshDeformer.h"
 #include "RayTracingInstance.h"
+#include "DeformMesh/ClothManager.h"
+#include "DeformMesh/SphereCollisionComponent.h"
 
 //TODO:FDeformGridMeshSceneProxyとソースコードの共通化ができないか
 
@@ -246,7 +248,7 @@ public:
 	}
 #endif
 
-	void EnqueClothGridMeshRenderCommand(UClothGridMeshComponent* Component) const
+	void EnqueClothGridMeshRenderCommand(UClothGridMeshComponent* Component, const TArray<USphereCollisionComponent*>& SphereCollisions) const
 	{
 		FGridClothParameters Params;
 		Params.NumRow = Component->GetNumRow();
@@ -258,8 +260,16 @@ public:
 		Params.Stiffness = Component->GetStiffness();
 		Params.Damping = Component->GetDamping();
 		Params.NumIteration = Component->GetNumIteration();
-		Params.SphereCenter = Component->GetSphereCenter();
-		Params.SphereRadius = Component->GetSphereRadius();
+
+		TArray<FSphereCollisionParameters> SphereCollisionParams;
+		SphereCollisionParams.Reserve(SphereCollisions.Num());
+
+		for (const USphereCollisionComponent* SphereCollision : SphereCollisions)
+		{
+			const FVector& RelativeCenter = Component->GetComponentTransform().InverseTransformPosition(SphereCollision->GetComponentLocation());
+			SphereCollisionParams.Emplace(RelativeCenter, SphereCollision->GetRadius());
+		}
+		Params.SphereCollisionParams = SphereCollisionParams;
 
 		ENQUEUE_RENDER_COMMAND(ClothSimulationGridMeshCommand)(
 			[this, Params](FRHICommandListImmediate& RHICmdList)
@@ -281,7 +291,7 @@ private:
 
 //////////////////////////////////////////////////////////////////////////
 
-void UClothGridMeshComponent::InitClothSettings(int32 NumRow, int32 NumColumn, float GridWidth, float GridHeight, float Stiffness, float Damping, int32 NumIteration, FVector SphereCenter, float SphereRadius)
+void UClothGridMeshComponent::InitClothSettings(int32 NumRow, int32 NumColumn, float GridWidth, float GridHeight, float Stiffness, float Damping, int32 NumIteration)
 {
 	_NumRow = NumRow;
 	_NumColumn = NumColumn;
@@ -293,8 +303,6 @@ void UClothGridMeshComponent::InitClothSettings(int32 NumRow, int32 NumColumn, f
 	_Stiffness = Stiffness;
 	_Damping = Damping;
 	_NumIteration = NumIteration;
-	_SphereCenter = SphereCenter;
-	_SphereRadius = SphereRadius;
 
 	//TODO:とりあえずy=0の一行目のみInvMass=0に
 	for (int32 x = 0; x < NumColumn + 1; x++)
@@ -353,8 +361,13 @@ void UClothGridMeshComponent::SendRenderDynamicData_Concurrent()
 	//SCOPE_CYCLE_COUNTER(STAT_ClothGridMeshCompUpdate);
 	Super::SendRenderDynamicData_Concurrent();
 
-	if (SceneProxy != nullptr)
+	AClothManager* ClothManager = AClothManager::GetInstance();
+
+	if (SceneProxy != nullptr && ClothManager != nullptr)
 	{
-		((const FClothGridMeshSceneProxy*)SceneProxy)->EnqueClothGridMeshRenderCommand(this);
+		TArray<class USphereCollisionComponent*> SphereCollisions;
+		ClothManager->GetSphereCollisions(SphereCollisions);
+
+		((const FClothGridMeshSceneProxy*)SceneProxy)->EnqueClothGridMeshRenderCommand(this, SphereCollisions);
 	}
 }

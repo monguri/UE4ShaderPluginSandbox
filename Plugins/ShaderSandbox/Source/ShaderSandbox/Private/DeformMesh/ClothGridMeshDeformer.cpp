@@ -53,13 +53,16 @@ IMPLEMENT_GLOBAL_SHADER(FClothSimulationSolveDistanceConstraintCS, "/Plugin/Shad
 
 class FClothSimulationSolveCollisionCS : public FGlobalShader
 {
+public:
+	static const uint32 MAX_SPHERE_COLLISION = 16;
+
 	DECLARE_GLOBAL_SHADER(FClothSimulationSolveCollisionCS);
 	SHADER_USE_PARAMETER_STRUCT(FClothSimulationSolveCollisionCS, FGlobalShader);
 
 	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
 		SHADER_PARAMETER(uint32, NumVertex)
-		SHADER_PARAMETER(FVector, SphereCenter)
-		SHADER_PARAMETER(float, SphereRadius)
+		SHADER_PARAMETER(uint32, NumSphereCollision)
+		SHADER_PARAMETER_ARRAY(FVector4, SphereCenterAndRadiusArray, [MAX_SPHERE_COLLISION])
 		SHADER_PARAMETER_UAV(RWBuffer<float>, OutPositionVertexBuffer)
 	END_SHADER_PARAMETER_STRUCT()
 
@@ -148,8 +151,18 @@ void ClothSimulationGridMesh(FRHICommandListImmediate& RHICmdList, const FGridCl
 
 		FClothSimulationSolveCollisionCS::FParameters* ClothSimCollisionParams = GraphBuilder.AllocParameters<FClothSimulationSolveCollisionCS::FParameters>();
 		ClothSimCollisionParams->NumVertex = GridClothParams.NumVertex;
-		ClothSimCollisionParams->SphereCenter = GridClothParams.SphereCenter;
-		ClothSimCollisionParams->SphereRadius = GridClothParams.SphereRadius;
+		ClothSimCollisionParams->NumSphereCollision = GridClothParams.SphereCollisionParams.Num();
+		for (uint32 i = 0; i < FClothSimulationSolveCollisionCS::MAX_SPHERE_COLLISION; i++)
+		{
+			if (i < ClothSimCollisionParams->NumSphereCollision)
+			{
+				ClothSimCollisionParams->SphereCenterAndRadiusArray[i] = FVector4(GridClothParams.SphereCollisionParams[i].RelativeCenter, GridClothParams.SphereCollisionParams[i].Radius);
+			}
+			else
+			{
+				ClothSimCollisionParams->SphereCenterAndRadiusArray[i] = FVector4(0.0f, 0.0f, 0.0f, 0.0f);
+			}
+		}
 		ClothSimCollisionParams->OutPositionVertexBuffer = PositionVertexBufferUAV;
 
 		//TODO: Ç∆ÇËÇ†Ç¶Ç∏ç°ÇÕÇ±ÇÃä÷êîåƒÇ—èoÇµÇ™ÉÅÉbÉVÉÖàÍå¬Ç»ÇÃÇ≈1 Dispatch

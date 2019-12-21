@@ -8,8 +8,8 @@ float GridHeight;
 float SquareDeltaTime;
 float Stiffness;
 float Damping;
-float3 SphereCenter;
-float SphereRadius;
+uint NumSphereCollision;
+float4 SphereCenterAndRadiusArray[16];
 
 Buffer<float> InAccelerationVertexBuffer;
 RWBuffer<float> OutPrevPositionVertexBuffer;
@@ -128,23 +128,30 @@ void SolveDistanceConstraint(uint2 DispatchThreadId : SV_DispatchThreadID)
 [numthreads(1, 1, 1)]
 void SolveCollision(uint2 DispatchThreadId : SV_DispatchThreadID)
 {
-	float SquareSphereRadius = SphereRadius * SphereRadius;
-
-	for (uint VertIdx = 0; VertIdx < NumVertex; VertIdx++)
+	// TODO:複数のコリジョンが重なっていることによるめりこみ押し出しの競合についてはとりあえず考えない
+	for (uint CollisionIdx = 0; CollisionIdx < NumSphereCollision; CollisionIdx++)
 	{
-		float3 CurrVertexPos;
-		CurrVertexPos.x = OutPositionVertexBuffer[4 * VertIdx];
-		CurrVertexPos.y = OutPositionVertexBuffer[4 * VertIdx + 1];
-		CurrVertexPos.z = OutPositionVertexBuffer[4 * VertIdx + 2];
+		float4 SphereCenterAndRadius = SphereCenterAndRadiusArray[CollisionIdx];
+		float3 SphereCenter = SphereCenterAndRadius.xyz;
+		float SphereRadius = SphereCenterAndRadius.w;
+		float SquareSphereRadius = SphereRadius * SphereRadius;
 
-		// めりこんでいれば半径方向に押し出す
-		if (dot(CurrVertexPos - SphereCenter, CurrVertexPos - SphereCenter) < SquareSphereRadius)
+		for (uint VertIdx = 0; VertIdx < NumVertex; VertIdx++)
 		{
-			CurrVertexPos = SphereCenter + normalize(CurrVertexPos - SphereCenter) * SphereRadius;
-		}
+			float3 CurrVertexPos;
+			CurrVertexPos.x = OutPositionVertexBuffer[4 * VertIdx];
+			CurrVertexPos.y = OutPositionVertexBuffer[4 * VertIdx + 1];
+			CurrVertexPos.z = OutPositionVertexBuffer[4 * VertIdx + 2];
 
-		OutPositionVertexBuffer[4 * VertIdx] = CurrVertexPos.x;
-		OutPositionVertexBuffer[4 * VertIdx + 1] = CurrVertexPos.y;
-		OutPositionVertexBuffer[4 * VertIdx + 2] = CurrVertexPos.z;
+			// めりこんでいれば半径方向に押し出す
+			if (dot(CurrVertexPos - SphereCenter, CurrVertexPos - SphereCenter) < SquareSphereRadius)
+			{
+				CurrVertexPos = SphereCenter + normalize(CurrVertexPos - SphereCenter) * SphereRadius;
+			}
+
+			OutPositionVertexBuffer[4 * VertIdx] = CurrVertexPos.x;
+			OutPositionVertexBuffer[4 * VertIdx + 1] = CurrVertexPos.y;
+			OutPositionVertexBuffer[4 * VertIdx + 2] = CurrVertexPos.z;
+		}
 	}
 }
