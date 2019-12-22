@@ -15,6 +15,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category="Components|ClothGridMesh")
 	void InitClothSettings(int32 NumRow, int32 NumColumn, float GridWidth, float GridHeight, float Stiffness, float Damping, float VertexRadius, int32 NumIteration);
 
+	/** Ignore veclocity discontiuity just next frame. */
+	UFUNCTION(BlueprintCallable, Category="Components|ClothGridMesh")
+	void IgnoreVelocityDiscontinuityNextFrame();
+
 	//~ Begin UPrimitiveComponent Interface.
 	virtual FPrimitiveSceneProxy* CreateSceneProxy() override;
 	//~ End UPrimitiveComponent Interface.
@@ -31,6 +35,8 @@ protected:
 
 private:
 	static const FVector GRAVITY;
+
+	bool _IgnoreVelocityDiscontinuityNextFrame = false;
 
 	TArray<FVector> _Accelerations;
 	float _Stiffness;

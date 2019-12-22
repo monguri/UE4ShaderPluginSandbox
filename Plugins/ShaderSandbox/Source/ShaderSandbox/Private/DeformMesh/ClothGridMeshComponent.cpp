@@ -356,6 +356,11 @@ void UClothGridMeshComponent::InitClothSettings(int32 NumRow, int32 NumColumn, f
 	UpdateBounds();
 }
 
+void UClothGridMeshComponent::IgnoreVelocityDiscontinuityNextFrame()
+{
+	_IgnoreVelocityDiscontinuityNextFrame = true;
+}
+
 FPrimitiveSceneProxy* UClothGridMeshComponent::CreateSceneProxy()
 {
 	FPrimitiveSceneProxy* Proxy = NULL;
@@ -389,8 +394,15 @@ void UClothGridMeshComponent::UpdateParamsFromCurrentLocation()
 {
 	_PrevLinearVelocity = _CurLinearVelocity;
 	const FVector& CurLocation = GetComponentLocation();
-	_CurLinearVelocity = (CurLocation - _PrevLocation) / GetDeltaTime();
+
+	if (!_IgnoreVelocityDiscontinuityNextFrame)
+	{
+		_CurLinearVelocity = (CurLocation - _PrevLocation) / GetDeltaTime();
+	}
+
 	_PrevLocation = CurLocation;
+
+	_IgnoreVelocityDiscontinuityNextFrame = false;
 
 	float IterDeltaTime = GetDeltaTime() / _NumIteration;
 
