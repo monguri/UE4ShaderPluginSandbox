@@ -99,7 +99,7 @@ public:
 
 IMPLEMENT_GLOBAL_SHADER(FClothGridMeshTangentCS, "/Plugin/ShaderSandbox/Private/GridMeshTangent.usf", "MainCS", SF_Compute);
 
-void ClothSimulationGridMesh(FRHICommandListImmediate& RHICmdList, const FGridClothParameters& GridClothParams, class FRHIUnorderedAccessView* PositionVertexBufferUAV, class FRHIUnorderedAccessView* TangentVertexBufferUAV, class FRHIUnorderedAccessView* PrevPositionVertexBufferUAV, class FRHIShaderResourceView* AccelerationVertexBufferSRV)
+void ClothSimulationGridMesh(FRHICommandListImmediate& RHICmdList, const FGridClothParameters& GridClothParams)
 {
 	FRDGBuilder GraphBuilder(RHICmdList);
 
@@ -121,9 +121,9 @@ void ClothSimulationGridMesh(FRHICommandListImmediate& RHICmdList, const FGridCl
 		ClothSimIntegrateParams->SquareDeltaTime = SquareDeltaTime;
 		ClothSimIntegrateParams->Damping = GridClothParams.Damping;
 		ClothSimIntegrateParams->PreviousInertia = GridClothParams.PreviousInertia;
-		ClothSimIntegrateParams->InAccelerationVertexBuffer = AccelerationVertexBufferSRV;
-		ClothSimIntegrateParams->OutPrevPositionVertexBuffer = PrevPositionVertexBufferUAV;
-		ClothSimIntegrateParams->OutPositionVertexBuffer = PositionVertexBufferUAV;
+		ClothSimIntegrateParams->InAccelerationVertexBuffer = GridClothParams.AccelerationVertexBufferSRV;
+		ClothSimIntegrateParams->OutPrevPositionVertexBuffer = GridClothParams.PrevPositionVertexBufferUAV;
+		ClothSimIntegrateParams->OutPositionVertexBuffer = GridClothParams.PositionVertexBufferUAV;
 
 		//TODO: とりあえず今はこの関数呼び出しがメッシュ一個なので1 Dispatch
 		FComputeShaderUtils::AddPass(
@@ -141,7 +141,7 @@ void ClothSimulationGridMesh(FRHICommandListImmediate& RHICmdList, const FGridCl
 		ClothSimDistanceConstraintParams->GridWidth = GridClothParams.GridWidth;
 		ClothSimDistanceConstraintParams->GridHeight = GridClothParams.GridHeight;
 		ClothSimDistanceConstraintParams->Stiffness = GridClothParams.Stiffness;
-		ClothSimDistanceConstraintParams->OutPositionVertexBuffer = PositionVertexBufferUAV;
+		ClothSimDistanceConstraintParams->OutPositionVertexBuffer = GridClothParams.PositionVertexBufferUAV;
 
 		//TODO: とりあえず今はこの関数呼び出しがメッシュ一個なので1 Dispatch
 		FComputeShaderUtils::AddPass(
@@ -167,7 +167,7 @@ void ClothSimulationGridMesh(FRHICommandListImmediate& RHICmdList, const FGridCl
 				ClothSimCollisionParams->SphereCenterAndRadiusArray[i] = FVector4(0.0f, 0.0f, 0.0f, 0.0f);
 			}
 		}
-		ClothSimCollisionParams->OutPositionVertexBuffer = PositionVertexBufferUAV;
+		ClothSimCollisionParams->OutPositionVertexBuffer = GridClothParams.PositionVertexBufferUAV;
 
 		//TODO: とりあえず今はこの関数呼び出しがメッシュ一個なので1 Dispatch
 		FComputeShaderUtils::AddPass(
@@ -186,8 +186,8 @@ void ClothSimulationGridMesh(FRHICommandListImmediate& RHICmdList, const FGridCl
 	GridMeshTangentParams->NumRow = GridClothParams.NumRow;
 	GridMeshTangentParams->NumColumn = GridClothParams.NumColumn;
 	GridMeshTangentParams->NumVertex = GridClothParams.NumVertex;
-	GridMeshTangentParams->InPositionVertexBuffer = PositionVertexBufferUAV;
-	GridMeshTangentParams->OutTangentVertexBuffer = TangentVertexBufferUAV;
+	GridMeshTangentParams->InPositionVertexBuffer = GridClothParams.PositionVertexBufferUAV;
+	GridMeshTangentParams->OutTangentVertexBuffer = GridClothParams.TangentVertexBufferUAV;
 
 	const uint32 DispatchCount = FMath::DivideAndRoundUp(GridClothParams.NumVertex, (uint32)32);
 	check(DispatchCount <= 65535);

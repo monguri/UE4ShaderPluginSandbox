@@ -263,6 +263,13 @@ public:
 		Params.VertexRadius = Component->GetVertexRadius();
 		Params.NumIteration = Component->GetNumIteration();
 
+		VertexBuffers.SetAccelerations(Component->GetAccelerations());
+
+		Params.PositionVertexBufferUAV = VertexBuffers.PositionVertexBuffer.GetUAV();
+		Params.TangentVertexBufferUAV = VertexBuffers.ComputableMeshVertexBuffer.GetTangentsUAV();
+		Params.PrevPositionVertexBufferUAV = VertexBuffers.PrevPositionVertexBuffer.GetUAV();
+		Params.AccelerationVertexBufferSRV = VertexBuffers.AcceralationVertexBuffer.GetSRV();
+
 		TArray<FSphereCollisionParameters> SphereCollisionParams;
 		SphereCollisionParams.Reserve(SphereCollisions.Num());
 
@@ -273,12 +280,10 @@ public:
 		}
 		Params.SphereCollisionParams = SphereCollisionParams;
 
-		VertexBuffers.SetAccelerations(Component->GetAccelerations());
-
 		ENQUEUE_RENDER_COMMAND(ClothSimulationGridMeshCommand)(
-			[this, Params](FRHICommandListImmediate& RHICmdList)
+			[Params](FRHICommandListImmediate& RHICmdList)
 			{
-				ClothSimulationGridMesh(RHICmdList, Params, VertexBuffers.PositionVertexBuffer.GetUAV(), VertexBuffers.ComputableMeshVertexBuffer.GetTangentsUAV(), VertexBuffers.PrevPositionVertexBuffer.GetUAV(), VertexBuffers.AcceralationVertexBuffer.GetSRV());
+				ClothSimulationGridMesh(RHICmdList, Params);
 			}
 		);
 	}

@@ -26,7 +26,13 @@ struct FGridClothParameters
 	FVector PreviousInertia;
 	float VertexRadius;
 	uint32 NumIteration;
+
+	class FRHIUnorderedAccessView* PositionVertexBufferUAV;
+	class FRHIUnorderedAccessView* TangentVertexBufferUAV;
+	class FRHIUnorderedAccessView* PrevPositionVertexBufferUAV;
+	class FRHIShaderResourceView* AccelerationVertexBufferSRV;
+
 	TArray<FSphereCollisionParameters> SphereCollisionParams;
 };
 
-void ClothSimulationGridMesh(FRHICommandListImmediate& RHICmdList, const FGridClothParameters& GridClothParams, class FRHIUnorderedAccessView* PositionVertexBufferUAV, class FRHIUnorderedAccessView* TangentVertexBufferUAV, class FRHIUnorderedAccessView* PrevPositionVertexBufferUAV, class FRHIShaderResourceView* AccelerationVertexBufferSRV);
+void ClothSimulationGridMesh(FRHICommandListImmediate& RHICmdList, const FGridClothParameters& GridClothParams);

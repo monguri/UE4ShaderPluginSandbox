@@ -75,5 +75,6 @@ void UDeformableGridMeshComponent::TickComponent(float DeltaTime, enum ELevelTic
 		_AccumulatedTime = 0.0f;
 	}
 
+	// –ˆƒtƒŒ[ƒ€SendRenderDynamicData_Concurrent()‚ªŒÄ‚Î‚ê‚é‚æ‚¤‚É‚·‚é
 	MarkRenderDynamicDataDirty();
 }
