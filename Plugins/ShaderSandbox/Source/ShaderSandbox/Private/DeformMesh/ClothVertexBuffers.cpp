@@ -18,6 +18,7 @@ void FClothVertexBuffers::InitFromClothVertexAttributes(FLocalVertexFactory* Ver
 	check(NumTexCoords < MAX_STATIC_TEXCOORDS && NumTexCoords > 0);
 	check(LightMapIndex < NumTexCoords);
 	check(Vertices.Num() == InvMasses.Num());
+	check(Vertices.Num() == Accelerations.Num());
 
 	if (Vertices.Num())
 	{
@@ -63,7 +64,7 @@ void FClothVertexBuffers::InitFromClothVertexAttributes(FLocalVertexFactory* Ver
 	}
 
 	FClothVertexBuffers* Self = this;
-	ENQUEUE_RENDER_COMMAND(StaticMeshVertexBuffersLegacyInit)(
+	ENQUEUE_RENDER_COMMAND(InitClothVertexBuffers)(
 		[VertexFactory, Self, LightMapIndex](FRHICommandListImmediate& RHICmdList)
 		{
 			InitOrUpdateResourceMacroCloth(&Self->PositionVertexBuffer);
@@ -82,6 +83,21 @@ void FClothVertexBuffers::InitFromClothVertexAttributes(FLocalVertexFactory* Ver
 			VertexFactory->SetData(Data);
 
 			InitOrUpdateResourceMacroCloth(VertexFactory);
+		});
+}
+
+void FClothVertexBuffers::SetAccelerations(const TArray<FVector>& Accelerations)
+{
+	for (int32 i = 0; i < Accelerations.Num(); i++)
+	{
+		AcceralationVertexBuffer.VertexPosition(i) = Accelerations[i];
+	}
+
+	FClothVertexBuffers* Self = this;
+	ENQUEUE_RENDER_COMMAND(UpdateClothAccelerationVertexBuffers)(
+		[Self](FRHICommandListImmediate& RHICmdList)
+		{
+			InitOrUpdateResourceMacroCloth(&Self->AcceralationVertexBuffer);
 		});
 }
 

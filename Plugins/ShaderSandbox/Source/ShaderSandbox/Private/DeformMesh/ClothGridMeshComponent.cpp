@@ -248,7 +248,7 @@ public:
 	}
 #endif
 
-	void EnqueClothGridMeshRenderCommand(UClothGridMeshComponent* Component, const TArray<USphereCollisionComponent*>& SphereCollisions) const
+	void EnqueClothGridMeshRenderCommand(UClothGridMeshComponent* Component, const TArray<USphereCollisionComponent*>& SphereCollisions)
 	{
 		FGridClothParameters Params;
 		Params.NumRow = Component->GetNumRow();
@@ -272,6 +272,8 @@ public:
 		}
 		Params.SphereCollisionParams = SphereCollisionParams;
 
+		VertexBuffers.SetAccelerations(Component->GetAccelerations());
+
 		ENQUEUE_RENDER_COMMAND(ClothSimulationGridMeshCommand)(
 			[this, Params](FRHICommandListImmediate& RHICmdList)
 			{
@@ -291,6 +293,7 @@ private:
 };
 
 //////////////////////////////////////////////////////////////////////////
+const FVector UClothGridMeshComponent::GRAVITY = FVector(0.0f, 0.0f, -980.0f);
 
 void UClothGridMeshComponent::InitClothSettings(int32 NumRow, int32 NumColumn, float GridWidth, float GridHeight, float Stiffness, float Damping, float VertexRadius, int32 NumIteration)
 {
@@ -326,7 +329,7 @@ void UClothGridMeshComponent::InitClothSettings(int32 NumRow, int32 NumColumn, f
 	{
 		for (int32 x = 0; x < NumColumn + 1; x++)
 		{
-			_Accelerations.Emplace(0.0f, 0.0f, -980.0f);
+			_Accelerations.Emplace(UClothGridMeshComponent::GRAVITY);
 		}
 	}
 
@@ -370,6 +373,12 @@ void UClothGridMeshComponent::SendRenderDynamicData_Concurrent()
 		TArray<class USphereCollisionComponent*> SphereCollisions;
 		ClothManager->GetSphereCollisions(SphereCollisions);
 
-		((const FClothGridMeshSceneProxy*)SceneProxy)->EnqueClothGridMeshRenderCommand(this, SphereCollisions);
+		for (uint32 i = 0; i < (_NumRow + 1) * (_NumColumn + 1); i++)
+		{
+			_Accelerations[i] = UClothGridMeshComponent::GRAVITY;
+		}
+
+		((FClothGridMeshSceneProxy*)SceneProxy)->EnqueClothGridMeshRenderCommand(this, SphereCollisions);
 	}
 }
+

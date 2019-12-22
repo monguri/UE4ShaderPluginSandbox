@@ -29,6 +29,8 @@ protected:
 	virtual void SendRenderDynamicData_Concurrent() override;
 
 private:
+	static const FVector GRAVITY;
+
 	TArray<FVector> _Accelerations;
 	float _Stiffness;
 	float _Damping;

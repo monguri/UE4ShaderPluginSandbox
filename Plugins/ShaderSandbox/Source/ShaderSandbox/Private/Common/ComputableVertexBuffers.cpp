@@ -586,7 +586,7 @@ void FComputableVertexBuffers::InitFromDynamicVertex(FLocalVertexFactory* Vertex
 	}
 
 	FComputableVertexBuffers* Self = this;
-	ENQUEUE_RENDER_COMMAND(StaticMeshVertexBuffersLegacyInit)(
+	ENQUEUE_RENDER_COMMAND(InitComputableVertexBuffers)(
 		[VertexFactory, Self, LightMapIndex](FRHICommandListImmediate& RHICmdList)
 		{
 			InitOrUpdateResourceMacro(&Self->PositionVertexBuffer);
