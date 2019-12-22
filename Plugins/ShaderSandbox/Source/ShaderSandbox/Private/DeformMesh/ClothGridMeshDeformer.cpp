@@ -13,6 +13,7 @@ class FClothSimulationIntegrationCS : public FGlobalShader
 		SHADER_PARAMETER(uint32, NumVertex)
 		SHADER_PARAMETER(float, SquareDeltaTime)
 		SHADER_PARAMETER(float, Damping)
+		SHADER_PARAMETER(FVector, PreviousInertia)
 		SHADER_PARAMETER_SRV(Buffer<float>, InAccelerationVertexBuffer)
 		SHADER_PARAMETER_UAV(RWBuffer<float>, OutPrevPositionVertexBuffer)
 		SHADER_PARAMETER_UAV(RWBuffer<float>, OutPositionVertexBuffer)
@@ -119,6 +120,7 @@ void ClothSimulationGridMesh(FRHICommandListImmediate& RHICmdList, const FGridCl
 		ClothSimIntegrateParams->NumVertex = GridClothParams.NumVertex;
 		ClothSimIntegrateParams->SquareDeltaTime = SquareDeltaTime;
 		ClothSimIntegrateParams->Damping = GridClothParams.Damping;
+		ClothSimIntegrateParams->PreviousInertia = GridClothParams.PreviousInertia;
 		ClothSimIntegrateParams->InAccelerationVertexBuffer = AccelerationVertexBufferSRV;
 		ClothSimIntegrateParams->OutPrevPositionVertexBuffer = PrevPositionVertexBufferUAV;
 		ClothSimIntegrateParams->OutPositionVertexBuffer = PositionVertexBufferUAV;

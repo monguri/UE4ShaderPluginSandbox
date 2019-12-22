@@ -259,6 +259,7 @@ public:
 		Params.DeltaTime = Component->GetDeltaTime();
 		Params.Stiffness = Component->GetStiffness();
 		Params.Damping = Component->GetDamping();
+		Params.PreviousInertia = Component->GetPreviousInertia();
 		Params.VertexRadius = Component->GetVertexRadius();
 		Params.NumIteration = Component->GetNumIteration();
 
@@ -308,6 +309,10 @@ void UClothGridMeshComponent::InitClothSettings(int32 NumRow, int32 NumColumn, f
 	_Damping = Damping;
 	_VertexRadius = VertexRadius;
 	_NumIteration = NumIteration;
+
+	_PrevLocation = GetComponentLocation();
+	_CurLinearVelocity = FVector::ZeroVector;
+	_PrevLinearVelocity = FVector::ZeroVector;
 
 	//TODO:とりあえずy=0の一行目のみInvMass=0に
 	for (int32 x = 0; x < NumColumn + 1; x++)
@@ -373,12 +378,30 @@ void UClothGridMeshComponent::SendRenderDynamicData_Concurrent()
 		TArray<class USphereCollisionComponent*> SphereCollisions;
 		ClothManager->GetSphereCollisions(SphereCollisions);
 
-		for (uint32 i = 0; i < (_NumRow + 1) * (_NumColumn + 1); i++)
-		{
-			_Accelerations[i] = UClothGridMeshComponent::GRAVITY;
-		}
+		// 現在位置から加速度などのパラメータを更新する
+		UpdateParamsFromCurrentLocation();
 
 		((FClothGridMeshSceneProxy*)SceneProxy)->EnqueClothGridMeshRenderCommand(this, SphereCollisions);
 	}
 }
 
+void UClothGridMeshComponent::UpdateParamsFromCurrentLocation()
+{
+	_PrevLinearVelocity = _CurLinearVelocity;
+	const FVector& CurLocation = GetComponentLocation();
+	_CurLinearVelocity = (CurLocation - _PrevLocation) / GetDeltaTime();
+	_PrevLocation = CurLocation;
+
+	float IterDeltaTime = GetDeltaTime() / _NumIteration;
+
+	// このアルファ値の計算はNvClothのものを使っている。なぜこの式なのかは不明。
+	float LinearAlpha = 0.5f * (_NumIteration + 1) / _NumIteration;
+
+	const FVector& CurInertia = IterDeltaTime * (_PrevLinearVelocity - _CurLinearVelocity) * LinearAlpha;
+	_PreviousInertia = IterDeltaTime * (_PrevLinearVelocity - _CurLinearVelocity) * (1.0f - LinearAlpha);
+
+	for (uint32 i = 0; i < (_NumRow + 1) * (_NumColumn + 1); i++)
+	{
+		_Accelerations[i] = CurInertia + UClothGridMeshComponent::GRAVITY;
+	}
+}

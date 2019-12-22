@@ -8,6 +8,7 @@ float GridHeight;
 float SquareDeltaTime;
 float Stiffness;
 float Damping;
+float3 PreviousInertia;
 float VertexRadius;
 uint NumSphereCollision;
 float4 SphereCenterAndRadiusArray[16];
@@ -33,12 +34,14 @@ void Interate(uint2 DispatchThreadId : SV_DispatchThreadID)
 		if (CurrInvMass < SMALL_NUMBER)
 		{
 			NextPos = CurrPos;
+			// CurrPos‚Í•Ï‚¦‚È‚¢
 		}
 		else
 		{
 			// ‚Æ‚è‚ ‚¦‚¸Damping‚Í0.1‚É‚µ‚Ä0.9‚ð‚©‚¯‚é
-			float3 Acceleration = float3(InAccelerationVertexBuffer[3 * VertIdx + 0], InAccelerationVertexBuffer[3 * VertIdx + 1], InAccelerationVertexBuffer[3 * VertIdx + 2]);
+			float3 Acceleration = float3(-InAccelerationVertexBuffer[3 * VertIdx + 0], -InAccelerationVertexBuffer[3 * VertIdx + 1], InAccelerationVertexBuffer[3 * VertIdx + 2]); // TODO:‚È‚ºX‚ÆY‚Ì•„†‚ð”½“]‚·‚×‚«‚©‚Í—‰ð‚Å‚«‚Ä‚¢‚È‚¢
 			NextPos = CurrPos + (CurrPos - PrevPos) * (1.0 - Damping) + Acceleration * SquareDeltaTime;
+			CurrPos = CurrPos + float3(-PreviousInertia.x, -PreviousInertia.y, PreviousInertia.z); // TODO:‚È‚ºX‚ÆY‚Ì•„†‚ð”½“]‚·‚×‚«‚©‚Í—‰ð‚Å‚«‚Ä‚¢‚È‚¢
 		}
 
 		OutPositionVertexBuffer[4 * VertIdx + 0] = NextPos.x;

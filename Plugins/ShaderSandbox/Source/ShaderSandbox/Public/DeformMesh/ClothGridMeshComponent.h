@@ -22,6 +22,7 @@ public:
 	const TArray<FVector>& GetAccelerations() const { return _Accelerations; }
 	float GetStiffness() const { return _Stiffness; }
 	float GetDamping() const { return _Damping; }
+	FVector GetPreviousInertia() const { return _PreviousInertia; }
 	float GetVertexRadius() const { return _VertexRadius; }
 	int32 GetNumIteration() const { return _NumIteration; }
 
@@ -34,6 +35,17 @@ private:
 	TArray<FVector> _Accelerations;
 	float _Stiffness;
 	float _Damping;
+	FVector _PreviousInertia;
 	float _VertexRadius;
 	int32 _NumIteration;
+
+	// variables to cache previous frame world location to calculate linear velocities.
+	FVector _PrevLocation;
+
+	// variables to cache linear velocities every frame to calculate accelerations and previous frame inertia.
+	FVector _CurLinearVelocity;
+	FVector _PrevLinearVelocity;
+
+	void UpdateParamsFromCurrentLocation();
 };
+
