@@ -19,6 +19,8 @@ public:
 	UFUNCTION(BlueprintCallable, Category="Components|ClothGridMesh")
 	void IgnoreVelocityDiscontinuityNextFrame();
 
+	virtual ~UClothGridMeshComponent();
+
 	//~ Begin UPrimitiveComponent Interface.
 	virtual FPrimitiveSceneProxy* CreateSceneProxy() override;
 	//~ End UPrimitiveComponent Interface.
@@ -31,7 +33,10 @@ public:
 	int32 GetNumIteration() const { return _NumIteration; }
 
 protected:
+	//~ Begin UActorComponent Interface
+	virtual void OnRegister() override;
 	virtual void SendRenderDynamicData_Concurrent() override;
+	//~ End UActorComponent Interface
 
 private:
 	static const FVector GRAVITY;

@@ -31,7 +31,6 @@ struct FGridClothParameters
 	class FRHIUnorderedAccessView* TangentVertexBufferUAV;
 	class FRHIUnorderedAccessView* PrevPositionVertexBufferUAV;
 	class FRHIShaderResourceView* AccelerationVertexBufferSRV;
-
 	TArray<FSphereCollisionParameters> SphereCollisionParams;
 };
 

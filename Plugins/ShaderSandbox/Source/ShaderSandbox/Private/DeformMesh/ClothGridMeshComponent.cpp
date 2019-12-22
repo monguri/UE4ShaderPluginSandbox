@@ -301,6 +301,30 @@ private:
 //////////////////////////////////////////////////////////////////////////
 const FVector UClothGridMeshComponent::GRAVITY = FVector(0.0f, 0.0f, -980.0f);
 
+UClothGridMeshComponent::~UClothGridMeshComponent()
+{
+	AClothManager* Manager = AClothManager::GetInstance();
+	if (Manager != nullptr)
+	{
+		Manager->UnregisterClothMesh(this);
+	}
+}
+
+void UClothGridMeshComponent::OnRegister()
+{
+	Super::OnRegister();
+
+	AClothManager* Manager = AClothManager::GetInstance();
+	if (Manager == nullptr)
+	{
+		UE_LOG(LogTemp, Error, TEXT("UClothGridMeshComponent::OnRegister() There is no AClothManager. So failed to register this cloth mesh."));
+	}
+	else
+	{
+		Manager->RegisterClothMesh(this);
+	}
+}
+
 void UClothGridMeshComponent::InitClothSettings(int32 NumRow, int32 NumColumn, float GridWidth, float GridHeight, float Stiffness, float Damping, float VertexRadius, int32 NumIteration)
 {
 	_NumRow = NumRow;
@@ -385,13 +409,10 @@ void UClothGridMeshComponent::SendRenderDynamicData_Concurrent()
 
 	if (SceneProxy != nullptr && ClothManager != nullptr)
 	{
-		TArray<class USphereCollisionComponent*> SphereCollisions;
-		ClothManager->GetSphereCollisions(SphereCollisions);
-
 		// 現在位置から加速度などのパラメータを更新する
 		UpdateParamsFromCurrentLocation();
 
-		((FClothGridMeshSceneProxy*)SceneProxy)->EnqueClothGridMeshRenderCommand(this, SphereCollisions);
+		((FClothGridMeshSceneProxy*)SceneProxy)->EnqueClothGridMeshRenderCommand(this, ClothManager->GetSphereCollisions());
 	}
 }
 
