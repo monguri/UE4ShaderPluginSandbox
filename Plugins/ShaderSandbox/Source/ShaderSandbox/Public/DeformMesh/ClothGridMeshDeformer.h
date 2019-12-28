@@ -34,4 +34,4 @@ struct FGridClothParameters
 	TArray<FSphereCollisionParameters> SphereCollisionParams;
 };
 
-void ClothSimulationGridMesh(FRHICommandListImmediate& RHICmdList, const FGridClothParameters& GridClothParams);
+void SimulateGridMeshClothes(FRHICommandListImmediate& RHICmdList, TArray<FGridClothParameters> Clothes);

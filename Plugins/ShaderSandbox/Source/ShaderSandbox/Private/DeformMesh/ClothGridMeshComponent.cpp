@@ -248,8 +248,11 @@ public:
 	}
 #endif
 
-	void EnqueClothGridMeshRenderCommand(UClothGridMeshComponent* Component, const TArray<USphereCollisionComponent*>& SphereCollisions)
+	void EnqueClothGridMeshRenderCommand(UClothGridMeshComponent* Component)
 	{
+		AClothManager* ClothManager = AClothManager::GetInstance();
+		check(ClothManager != nullptr);
+
 		FGridClothParameters Params;
 		Params.NumRow = Component->GetNumRow();
 		Params.NumColumn = Component->GetNumColumn();
@@ -270,6 +273,8 @@ public:
 		Params.PrevPositionVertexBufferUAV = VertexBuffers.PrevPositionVertexBuffer.GetUAV();
 		Params.AccelerationVertexBufferSRV = VertexBuffers.AcceralationVertexBuffer.GetSRV();
 
+		TArray<class USphereCollisionComponent*> SphereCollisions = ClothManager->GetSphereCollisions();
+
 		TArray<FSphereCollisionParameters> SphereCollisionParams;
 		SphereCollisionParams.Reserve(SphereCollisions.Num());
 
@@ -280,12 +285,7 @@ public:
 		}
 		Params.SphereCollisionParams = SphereCollisionParams;
 
-		ENQUEUE_RENDER_COMMAND(ClothSimulationGridMeshCommand)(
-			[Params](FRHICommandListImmediate& RHICmdList)
-			{
-				ClothSimulationGridMesh(RHICmdList, Params);
-			}
-		);
+		ClothManager->EnqueueSimulateClothTask(Params);
 	}
 
 private:
@@ -407,12 +407,12 @@ void UClothGridMeshComponent::SendRenderDynamicData_Concurrent()
 
 	AClothManager* ClothManager = AClothManager::GetInstance();
 
-	if (SceneProxy != nullptr && ClothManager != nullptr)
+	if (SceneProxy != nullptr && ClothManager != nullptr) // ClothManagerは早期retrunのために取得しているだけ
 	{
 		// 現在位置から加速度などのパラメータを更新する
 		UpdateParamsFromCurrentLocation();
 
-		((FClothGridMeshSceneProxy*)SceneProxy)->EnqueClothGridMeshRenderCommand(this, ClothManager->GetSphereCollisions());
+		((FClothGridMeshSceneProxy*)SceneProxy)->EnqueClothGridMeshRenderCommand(this);
 	}
 }
 

@@ -99,7 +99,7 @@ public:
 
 IMPLEMENT_GLOBAL_SHADER(FClothGridMeshTangentCS, "/Plugin/ShaderSandbox/Private/GridMeshTangent.usf", "MainCS", SF_Compute);
 
-void ClothSimulationGridMesh(FRHICommandListImmediate& RHICmdList, const FGridClothParameters& GridClothParams)
+void SimulateGridMeshClothes(FRHICommandListImmediate& RHICmdList, TArray<FGridClothParameters> Clothes)
 {
 	FRDGBuilder GraphBuilder(RHICmdList);
 
@@ -109,97 +109,99 @@ void ClothSimulationGridMesh(FRHICommandListImmediate& RHICmdList, const FGridCl
 	TShaderMapRef<FClothSimulationSolveDistanceConstraintCS> ClothSimSolveDistanceConstraintCS(ShaderMap);
 	TShaderMapRef<FClothSimulationSolveCollisionCS> ClothSimSolveCollisionCS(ShaderMap);
 
-	float DeltaTimePerIterate = GridClothParams.DeltaTime / GridClothParams.NumIteration;
-	float SquareDeltaTime = DeltaTimePerIterate * DeltaTimePerIterate;
-
 	// TODO:Stiffness、Dampingの効果がNumIterationやフレームレートに依存してしまっているのでどうにかせねば
 
-	for (uint32 IterCount = 0; IterCount < GridClothParams.NumIteration; IterCount++)
+	for (const FGridClothParameters& GridClothParams : Clothes)
 	{
-		FClothSimulationIntegrationCS::FParameters* ClothSimIntegrateParams = GraphBuilder.AllocParameters<FClothSimulationIntegrationCS::FParameters>();
-		ClothSimIntegrateParams->NumVertex = GridClothParams.NumVertex;
-		ClothSimIntegrateParams->SquareDeltaTime = SquareDeltaTime;
-		ClothSimIntegrateParams->Damping = GridClothParams.Damping;
-		ClothSimIntegrateParams->PreviousInertia = GridClothParams.PreviousInertia;
-		ClothSimIntegrateParams->InAccelerationVertexBuffer = GridClothParams.AccelerationVertexBufferSRV;
-		ClothSimIntegrateParams->OutPrevPositionVertexBuffer = GridClothParams.PrevPositionVertexBufferUAV;
-		ClothSimIntegrateParams->OutPositionVertexBuffer = GridClothParams.PositionVertexBufferUAV;
+		float DeltaTimePerIterate = GridClothParams.DeltaTime / GridClothParams.NumIteration;
+		float SquareDeltaTime = DeltaTimePerIterate * DeltaTimePerIterate;
 
-		//TODO: とりあえず今はこの関数呼び出しがメッシュ一個なので1 Dispatch
-		FComputeShaderUtils::AddPass(
-			GraphBuilder,
-			RDG_EVENT_NAME("ClothSimulationIntegration"),
-			*ClothSimIntegrationCS,
-			ClothSimIntegrateParams,
-			FIntVector(1, 1, 1)
-		);
-
-		FClothSimulationSolveDistanceConstraintCS::FParameters* ClothSimDistanceConstraintParams = GraphBuilder.AllocParameters<FClothSimulationSolveDistanceConstraintCS::FParameters>();
-		ClothSimDistanceConstraintParams->NumRow = GridClothParams.NumRow;
-		ClothSimDistanceConstraintParams->NumColumn = GridClothParams.NumColumn;
-		ClothSimDistanceConstraintParams->NumVertex = GridClothParams.NumVertex;
-		ClothSimDistanceConstraintParams->GridWidth = GridClothParams.GridWidth;
-		ClothSimDistanceConstraintParams->GridHeight = GridClothParams.GridHeight;
-		ClothSimDistanceConstraintParams->Stiffness = GridClothParams.Stiffness;
-		ClothSimDistanceConstraintParams->OutPositionVertexBuffer = GridClothParams.PositionVertexBufferUAV;
-
-		//TODO: とりあえず今はこの関数呼び出しがメッシュ一個なので1 Dispatch
-		FComputeShaderUtils::AddPass(
-			GraphBuilder,
-			RDG_EVENT_NAME("ClothSimulationSolveDistanceConstraint"),
-			*ClothSimSolveDistanceConstraintCS,
-			ClothSimDistanceConstraintParams,
-			FIntVector(1, 1, 1)
-		);
-
-		FClothSimulationSolveCollisionCS::FParameters* ClothSimCollisionParams = GraphBuilder.AllocParameters<FClothSimulationSolveCollisionCS::FParameters>();
-		ClothSimCollisionParams->NumVertex = GridClothParams.NumVertex;
-		ClothSimCollisionParams->VertexRadius = GridClothParams.VertexRadius;
-		ClothSimCollisionParams->NumSphereCollision = GridClothParams.SphereCollisionParams.Num();
-		for (uint32 i = 0; i < FClothSimulationSolveCollisionCS::MAX_SPHERE_COLLISION; i++)
+		for (uint32 IterCount = 0; IterCount < GridClothParams.NumIteration; IterCount++)
 		{
-			if (i < ClothSimCollisionParams->NumSphereCollision)
-			{
-				ClothSimCollisionParams->SphereCenterAndRadiusArray[i] = FVector4(GridClothParams.SphereCollisionParams[i].RelativeCenter, GridClothParams.SphereCollisionParams[i].Radius);
-			}
-			else
-			{
-				ClothSimCollisionParams->SphereCenterAndRadiusArray[i] = FVector4(0.0f, 0.0f, 0.0f, 0.0f);
-			}
-		}
-		ClothSimCollisionParams->OutPositionVertexBuffer = GridClothParams.PositionVertexBufferUAV;
+			FClothSimulationIntegrationCS::FParameters* ClothSimIntegrateParams = GraphBuilder.AllocParameters<FClothSimulationIntegrationCS::FParameters>();
+			ClothSimIntegrateParams->NumVertex = GridClothParams.NumVertex;
+			ClothSimIntegrateParams->SquareDeltaTime = SquareDeltaTime;
+			ClothSimIntegrateParams->Damping = GridClothParams.Damping;
+			ClothSimIntegrateParams->PreviousInertia = GridClothParams.PreviousInertia;
+			ClothSimIntegrateParams->InAccelerationVertexBuffer = GridClothParams.AccelerationVertexBufferSRV;
+			ClothSimIntegrateParams->OutPrevPositionVertexBuffer = GridClothParams.PrevPositionVertexBufferUAV;
+			ClothSimIntegrateParams->OutPositionVertexBuffer = GridClothParams.PositionVertexBufferUAV;
 
-		//TODO: とりあえず今はこの関数呼び出しがメッシュ一個なので1 Dispatch
+			//TODO: とりあえず今はこの関数呼び出しがメッシュ一個なので1 Dispatch
+			FComputeShaderUtils::AddPass(
+				GraphBuilder,
+				RDG_EVENT_NAME("ClothSimulationIntegration"),
+				*ClothSimIntegrationCS,
+				ClothSimIntegrateParams,
+				FIntVector(1, 1, 1)
+			);
+
+			FClothSimulationSolveDistanceConstraintCS::FParameters* ClothSimDistanceConstraintParams = GraphBuilder.AllocParameters<FClothSimulationSolveDistanceConstraintCS::FParameters>();
+			ClothSimDistanceConstraintParams->NumRow = GridClothParams.NumRow;
+			ClothSimDistanceConstraintParams->NumColumn = GridClothParams.NumColumn;
+			ClothSimDistanceConstraintParams->NumVertex = GridClothParams.NumVertex;
+			ClothSimDistanceConstraintParams->GridWidth = GridClothParams.GridWidth;
+			ClothSimDistanceConstraintParams->GridHeight = GridClothParams.GridHeight;
+			ClothSimDistanceConstraintParams->Stiffness = GridClothParams.Stiffness;
+			ClothSimDistanceConstraintParams->OutPositionVertexBuffer = GridClothParams.PositionVertexBufferUAV;
+
+			//TODO: とりあえず今はこの関数呼び出しがメッシュ一個なので1 Dispatch
+			FComputeShaderUtils::AddPass(
+				GraphBuilder,
+				RDG_EVENT_NAME("ClothSimulationSolveDistanceConstraint"),
+				*ClothSimSolveDistanceConstraintCS,
+				ClothSimDistanceConstraintParams,
+				FIntVector(1, 1, 1)
+			);
+
+			FClothSimulationSolveCollisionCS::FParameters* ClothSimCollisionParams = GraphBuilder.AllocParameters<FClothSimulationSolveCollisionCS::FParameters>();
+			ClothSimCollisionParams->NumVertex = GridClothParams.NumVertex;
+			ClothSimCollisionParams->VertexRadius = GridClothParams.VertexRadius;
+			ClothSimCollisionParams->NumSphereCollision = GridClothParams.SphereCollisionParams.Num();
+			for (uint32 i = 0; i < FClothSimulationSolveCollisionCS::MAX_SPHERE_COLLISION; i++)
+			{
+				if (i < ClothSimCollisionParams->NumSphereCollision)
+				{
+					ClothSimCollisionParams->SphereCenterAndRadiusArray[i] = FVector4(GridClothParams.SphereCollisionParams[i].RelativeCenter, GridClothParams.SphereCollisionParams[i].Radius);
+				}
+				else
+				{
+					ClothSimCollisionParams->SphereCenterAndRadiusArray[i] = FVector4(0.0f, 0.0f, 0.0f, 0.0f);
+				}
+			}
+			ClothSimCollisionParams->OutPositionVertexBuffer = GridClothParams.PositionVertexBufferUAV;
+
+			//TODO: とりあえず今はこの関数呼び出しがメッシュ一個なので1 Dispatch
+			FComputeShaderUtils::AddPass(
+				GraphBuilder,
+				RDG_EVENT_NAME("ClothSimulationSolveCollision"),
+				*ClothSimSolveCollisionCS,
+				ClothSimCollisionParams,
+				FIntVector(1, 1, 1)
+			);
+		}
+
+
+		TShaderMapRef<FClothGridMeshTangentCS> GridMeshTangentCS(ShaderMap);
+
+		FClothGridMeshTangentCS::FParameters* GridMeshTangentParams = GraphBuilder.AllocParameters<FClothGridMeshTangentCS::FParameters>();
+		GridMeshTangentParams->NumRow = GridClothParams.NumRow;
+		GridMeshTangentParams->NumColumn = GridClothParams.NumColumn;
+		GridMeshTangentParams->NumVertex = GridClothParams.NumVertex;
+		GridMeshTangentParams->InPositionVertexBuffer = GridClothParams.PositionVertexBufferUAV;
+		GridMeshTangentParams->OutTangentVertexBuffer = GridClothParams.TangentVertexBufferUAV;
+
+		const uint32 DispatchCount = FMath::DivideAndRoundUp(GridClothParams.NumVertex, (uint32)32);
+		check(DispatchCount <= 65535);
+
 		FComputeShaderUtils::AddPass(
 			GraphBuilder,
-			RDG_EVENT_NAME("ClothSimulationSolveCollision"),
-			*ClothSimSolveCollisionCS,
-			ClothSimCollisionParams,
-			FIntVector(1, 1, 1)
+			RDG_EVENT_NAME("GridMeshTangent"),
+			*GridMeshTangentCS,
+			GridMeshTangentParams,
+			FIntVector(DispatchCount, 1, 1)
 		);
 	}
-
-
-	TShaderMapRef<FClothGridMeshTangentCS> GridMeshTangentCS(ShaderMap);
-
-	FClothGridMeshTangentCS::FParameters* GridMeshTangentParams = GraphBuilder.AllocParameters<FClothGridMeshTangentCS::FParameters>();
-	GridMeshTangentParams->NumRow = GridClothParams.NumRow;
-	GridMeshTangentParams->NumColumn = GridClothParams.NumColumn;
-	GridMeshTangentParams->NumVertex = GridClothParams.NumVertex;
-	GridMeshTangentParams->InPositionVertexBuffer = GridClothParams.PositionVertexBufferUAV;
-	GridMeshTangentParams->OutTangentVertexBuffer = GridClothParams.TangentVertexBufferUAV;
-
-	const uint32 DispatchCount = FMath::DivideAndRoundUp(GridClothParams.NumVertex, (uint32)32);
-	check(DispatchCount <= 65535);
-
-	FComputeShaderUtils::AddPass(
-		GraphBuilder,
-		RDG_EVENT_NAME("GridMeshTangent"),
-		*GridMeshTangentCS,
-		GridMeshTangentParams,
-		FIntVector(DispatchCount, 1, 1)
-	);
-
 
 	GraphBuilder.Execute();
 }

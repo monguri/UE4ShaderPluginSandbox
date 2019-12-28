@@ -41,3 +41,22 @@ void AClothManager::UnregisterSphereCollision(USphereCollisionComponent* SphereC
 	SphereCollisions.Remove(SphereCollision);
 }
 
+void AClothManager::EnqueueSimulateClothTask(const FGridClothParameters& Task)
+{
+	SimulateClothTaskQueue.Add(Task);
+
+	if (SimulateClothTaskQueue.Num() >= ClothMeshes.Num())
+	{
+		// ENQUEUE_RENDER_COMMANDの中のレンダーコマンドキューの処理はいつ実行されるかわからないのでこの時点でのクロスタスクキューを使うならコピーが必要
+		TArray<FGridClothParameters> CopiedQueue = SimulateClothTaskQueue;
+		SimulateClothTaskQueue.Reset();
+
+		ENQUEUE_RENDER_COMMAND(SimulateGridMeshClothes)(
+			[CopiedQueue](FRHICommandListImmediate& RHICmdList)
+			{
+				SimulateGridMeshClothes(RHICmdList, CopiedQueue);
+			}
+		);
+	}
+}
+
