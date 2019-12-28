@@ -36,9 +36,6 @@ struct FGridClothParameters
 
 struct FClothGridMeshDeformer
 {
-	static const uint32 MAX_SPHERE_COLLISION = 16;
-	static const uint32 MAX_CLOTH_MESH = 16;
-
 	void EnqueueDeformTask(const FGridClothParameters& Param);
 	void FlushDeformTaskQueue(FRHICommandListImmediate& RHICmdList);
 

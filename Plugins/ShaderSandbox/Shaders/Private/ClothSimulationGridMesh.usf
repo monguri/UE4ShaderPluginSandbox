@@ -1,48 +1,36 @@
 #include "/Engine/Public/Platform.ush"
 
-uint NumClothMesh;
-uint NumRow[16];
-uint NumColumn[16];
-uint NumVertex[16];
-float GridWidth[16];
-float GridHeight[16];
+uint NumRow;
+uint NumColumn;
+uint NumVertex;
+float GridWidth;
+float GridHeight;
 float SquareDeltaTime;
-float Stiffness[16];
-float Damping[16];
-float3 PreviousInertia[16];
-float VertexRadius[16];
+float Stiffness;
+float Damping;
+float3 PreviousInertia;
+float VertexRadius;
 uint NumSphereCollision;
 float4 SphereCenterAndRadiusArray[16];
 
-Buffer<float> InAccelerationVertexBuffer[16];
-RWBuffer<float> OutPrevPositionVertexBuffer[16];
-RWBuffer<float> OutPositionVertexBuffer[16];
+Buffer<float> InAccelerationVertexBuffer;
+RWBuffer<float> OutPrevPositionVertexBuffer;
+RWBuffer<float> OutPositionVertexBuffer;
 
 [numthreads(1, 1, 1)]
-void Interate(uint GroupId : SV_GroupID, uint2 DispatchThreadId : SV_DispatchThreadID)
+void Interate(uint2 DispatchThreadId : SV_DispatchThreadID)
 {
-	if (GroupId >= NumClothMesh)
-	{
-		return;
-	}
-
 	const float SMALL_NUMBER = 0.0001;
 
-	//for (uint VertIdx = 0; VertIdx < NumVertex[GroupId]; VertIdx++)
-	for (uint VertIdx = 0; VertIdx < 10000; VertIdx++)
+	for (uint VertIdx = 0; VertIdx < NumVertex; VertIdx++)
 	{
-		if (VertIdx >= NumVertex[GroupId])
-		{
-			break;
-		}
-
-		float3 CurrPos = float3(OutPositionVertexBuffer[GroupId][4 * VertIdx + 0], OutPositionVertexBuffer[GroupId][4 * VertIdx + 1], OutPositionVertexBuffer[GroupId][4 * VertIdx + 2]);
-		float3 PrevPos = float3(OutPrevPositionVertexBuffer[GroupId][4 * VertIdx + 0], OutPrevPositionVertexBuffer[GroupId][4 * VertIdx + 1], OutPrevPositionVertexBuffer[GroupId][4 * VertIdx + 2]);
+		float3 CurrPos = float3(OutPositionVertexBuffer[4 * VertIdx + 0], OutPositionVertexBuffer[4 * VertIdx + 1], OutPositionVertexBuffer[4 * VertIdx + 2]);
+		float3 PrevPos = float3(OutPrevPositionVertexBuffer[4 * VertIdx + 0], OutPrevPositionVertexBuffer[4 * VertIdx + 1], OutPrevPositionVertexBuffer[4 * VertIdx + 2]);
 
 		float3 NextPos;
 
-		// 質量は動的に変わることはないという前提を置いている
-		float CurrInvMass = OutPositionVertexBuffer[GroupId][4 * VertIdx + 3];
+		// 質量は変わらないという前提を置いている
+		float CurrInvMass = OutPositionVertexBuffer[4 * VertIdx + 3];
 		if (CurrInvMass < SMALL_NUMBER)
 		{
 			NextPos = CurrPos;
@@ -50,138 +38,115 @@ void Interate(uint GroupId : SV_GroupID, uint2 DispatchThreadId : SV_DispatchThr
 		}
 		else
 		{
-			float3 Acceleration = float3(-InAccelerationVertexBuffer[GroupId][3 * VertIdx + 0], -InAccelerationVertexBuffer[GroupId][3 * VertIdx + 1], InAccelerationVertexBuffer[GroupId][3 * VertIdx + 2]); // TODO:なぜXとYの符号を反転すべきかは理解できていない
-			NextPos = CurrPos + (CurrPos - PrevPos) * (1.0 - Damping[GroupId]) + Acceleration * SquareDeltaTime;
-			CurrPos = CurrPos + float3(-PreviousInertia[GroupId].x, -PreviousInertia[GroupId].y, PreviousInertia[GroupId].z); // TODO:なぜXとYの符号を反転すべきかは理解できていない
+			// とりあえずDampingは0.1にして0.9をかける
+			float3 Acceleration = float3(-InAccelerationVertexBuffer[3 * VertIdx + 0], -InAccelerationVertexBuffer[3 * VertIdx + 1], InAccelerationVertexBuffer[3 * VertIdx + 2]); // TODO:なぜXとYの符号を反転すべきかは理解できていない
+			NextPos = CurrPos + (CurrPos - PrevPos) * (1.0 - Damping) + Acceleration * SquareDeltaTime;
+			CurrPos = CurrPos + float3(-PreviousInertia.x, -PreviousInertia.y, PreviousInertia.z); // TODO:なぜXとYの符号を反転すべきかは理解できていない
 		}
 
-		OutPositionVertexBuffer[GroupId][4 * VertIdx + 0] = NextPos.x;
-		OutPositionVertexBuffer[GroupId][4 * VertIdx + 1] = NextPos.y;
-		OutPositionVertexBuffer[GroupId][4 * VertIdx + 2] = NextPos.z;
+		OutPositionVertexBuffer[4 * VertIdx + 0] = NextPos.x;
+		OutPositionVertexBuffer[4 * VertIdx + 1] = NextPos.y;
+		OutPositionVertexBuffer[4 * VertIdx + 2] = NextPos.z;
 
-		OutPrevPositionVertexBuffer[GroupId][4 * VertIdx + 0] = CurrPos.x;
-		OutPrevPositionVertexBuffer[GroupId][4 * VertIdx + 1] = CurrPos.y;
-		OutPrevPositionVertexBuffer[GroupId][4 * VertIdx + 2] = CurrPos.z;
+		OutPrevPositionVertexBuffer[4 * VertIdx + 0] = CurrPos.x;
+		OutPrevPositionVertexBuffer[4 * VertIdx + 1] = CurrPos.y;
+		OutPrevPositionVertexBuffer[4 * VertIdx + 2] = CurrPos.z;
 	}
 }
 
 [numthreads(1, 1, 1)]
-void SolveDistanceConstraint(uint GroupId : SV_GroupID, uint2 DispatchThreadId : SV_DispatchThreadID)
+void SolveDistanceConstraint(uint2 DispatchThreadId : SV_DispatchThreadID)
 {
-	if (GroupId >= NumClothMesh)
-	{
-		return;
-	}
-
 	const float SMALL_NUMBER = 0.0001;
 
-	//for (uint VertIdx = 0; VertIdx < NumVertex[GroupId]; VertIdx++)
-	//{
-	for (uint VertIdx = 0; VertIdx < 10000; VertIdx++)
+	for (uint VertIdx = 0; VertIdx < NumVertex; VertIdx++)
 	{
-		if (VertIdx >= NumVertex[GroupId])
-		{
-			break;
-		}
-
-		uint RowIndex = VertIdx / (NumColumn[GroupId] + 1);
-		uint ColumnIndex = VertIdx % (NumColumn[GroupId] + 1);
+		uint RowIndex = VertIdx / (NumColumn + 1);
+		uint ColumnIndex = VertIdx % (NumColumn + 1);
 
 		float3 CurrVertexPos;
-		CurrVertexPos.x = OutPositionVertexBuffer[GroupId][4 * VertIdx];
-		CurrVertexPos.y = OutPositionVertexBuffer[GroupId][4 * VertIdx + 1];
-		CurrVertexPos.z = OutPositionVertexBuffer[GroupId][4 * VertIdx + 2];
+		CurrVertexPos.x = OutPositionVertexBuffer[4 * VertIdx];
+		CurrVertexPos.y = OutPositionVertexBuffer[4 * VertIdx + 1];
+		CurrVertexPos.z = OutPositionVertexBuffer[4 * VertIdx + 2];
 
-		float CurrVertexInvMass = OutPositionVertexBuffer[GroupId][4 * VertIdx + 3];
+		float CurrVertexInvMass = OutPositionVertexBuffer[4 * VertIdx + 3];
 
 		// グリッドなので右方向の隣頂点と下方向の隣頂点との間のみ考慮するようにしていれば重複なくコンストレイントを処理できる
 
-		if (ColumnIndex < NumColumn[GroupId])
+		if (ColumnIndex < NumColumn)
 		{
 			uint RightVertIdx = VertIdx + 1;
-			float RightVertexInvMass = OutPositionVertexBuffer[GroupId][4 * RightVertIdx + 3];
+			float RightVertexInvMass = OutPositionVertexBuffer[4 * RightVertIdx + 3];
 			if (CurrVertexInvMass > SMALL_NUMBER || RightVertexInvMass > SMALL_NUMBER)
 			{
 				float3 RightVertexPos;
-				RightVertexPos.x = OutPositionVertexBuffer[GroupId][4 * RightVertIdx];
-				RightVertexPos.y = OutPositionVertexBuffer[GroupId][4 * RightVertIdx + 1];
-				RightVertexPos.z = OutPositionVertexBuffer[GroupId][4 * RightVertIdx + 2];
+				RightVertexPos.x = OutPositionVertexBuffer[4 * RightVertIdx];
+				RightVertexPos.y = OutPositionVertexBuffer[4 * RightVertIdx + 1];
+				RightVertexPos.z = OutPositionVertexBuffer[4 * RightVertIdx + 2];
 
 				float RightEdgeLength = max(length(RightVertexPos - CurrVertexPos), SMALL_NUMBER); // to avoid 0 division
-				float Diff = RightEdgeLength - GridWidth[GroupId];
+				float Diff = RightEdgeLength - GridWidth;
 
 				float3 RightEdgeAxis = (RightVertexPos - CurrVertexPos) / RightEdgeLength;
 
-				CurrVertexPos += CurrVertexInvMass / (CurrVertexInvMass + RightVertexInvMass) * Diff * RightEdgeAxis * Stiffness[GroupId];
-				RightVertexPos -= RightVertexInvMass / (CurrVertexInvMass + RightVertexInvMass) * Diff * RightEdgeAxis * Stiffness[GroupId];
+				CurrVertexPos += CurrVertexInvMass / (CurrVertexInvMass + RightVertexInvMass) * Diff * RightEdgeAxis * Stiffness;
+				RightVertexPos -= RightVertexInvMass / (CurrVertexInvMass + RightVertexInvMass) * Diff * RightEdgeAxis * Stiffness;
 
-				OutPositionVertexBuffer[GroupId][4 * RightVertIdx] = RightVertexPos.x;
-				OutPositionVertexBuffer[GroupId][4 * RightVertIdx + 1] = RightVertexPos.y;
-				OutPositionVertexBuffer[GroupId][4 * RightVertIdx + 2] = RightVertexPos.z;
+				OutPositionVertexBuffer[4 * RightVertIdx] = RightVertexPos.x;
+				OutPositionVertexBuffer[4 * RightVertIdx + 1] = RightVertexPos.y;
+				OutPositionVertexBuffer[4 * RightVertIdx + 2] = RightVertexPos.z;
 			}
 		}
 
-		if (RowIndex < NumRow[GroupId])
+		if (RowIndex < NumRow)
 		{
-			uint LowerVertIdx = VertIdx + NumColumn[GroupId] + 1;
-			float LowerVertexInvMass = OutPositionVertexBuffer[GroupId][4 * LowerVertIdx + 3];
+			uint LowerVertIdx = VertIdx + NumColumn + 1;
+			float LowerVertexInvMass = OutPositionVertexBuffer[4 * LowerVertIdx + 3];
 			if (CurrVertexInvMass > SMALL_NUMBER || LowerVertexInvMass > SMALL_NUMBER)
 			{
 				float3 LowerVertexPos;
-				LowerVertexPos.x = OutPositionVertexBuffer[GroupId][4 * LowerVertIdx];
-				LowerVertexPos.y = OutPositionVertexBuffer[GroupId][4 * LowerVertIdx + 1];
-				LowerVertexPos.z = OutPositionVertexBuffer[GroupId][4 * LowerVertIdx + 2];
+				LowerVertexPos.x = OutPositionVertexBuffer[4 * LowerVertIdx];
+				LowerVertexPos.y = OutPositionVertexBuffer[4 * LowerVertIdx + 1];
+				LowerVertexPos.z = OutPositionVertexBuffer[4 * LowerVertIdx + 2];
 
 				float LowerEdgeLength = max(length(LowerVertexPos - CurrVertexPos), SMALL_NUMBER); // to avoid 0 division
-				float Diff = LowerEdgeLength - GridHeight[GroupId];
+				float Diff = LowerEdgeLength - GridHeight;
 
 				float3 LowerEdgeAxis = (LowerVertexPos - CurrVertexPos) / LowerEdgeLength;
 
-				CurrVertexPos += CurrVertexInvMass / (CurrVertexInvMass + LowerVertexInvMass) * Diff * LowerEdgeAxis * Stiffness[GroupId];
-				LowerVertexPos -= LowerVertexInvMass / (CurrVertexInvMass + LowerVertexInvMass) * Diff * LowerEdgeAxis * Stiffness[GroupId];
+				CurrVertexPos += CurrVertexInvMass / (CurrVertexInvMass + LowerVertexInvMass) * Diff * LowerEdgeAxis * Stiffness;
+				LowerVertexPos -= LowerVertexInvMass / (CurrVertexInvMass + LowerVertexInvMass) * Diff * LowerEdgeAxis * Stiffness;
 
-				OutPositionVertexBuffer[GroupId][4 * LowerVertIdx] = LowerVertexPos.x;
-				OutPositionVertexBuffer[GroupId][4 * LowerVertIdx + 1] = LowerVertexPos.y;
-				OutPositionVertexBuffer[GroupId][4 * LowerVertIdx + 2] = LowerVertexPos.z;
+				OutPositionVertexBuffer[4 * LowerVertIdx] = LowerVertexPos.x;
+				OutPositionVertexBuffer[4 * LowerVertIdx + 1] = LowerVertexPos.y;
+				OutPositionVertexBuffer[4 * LowerVertIdx + 2] = LowerVertexPos.z;
 			}
 		}
 
-		OutPositionVertexBuffer[GroupId][4 * VertIdx] = CurrVertexPos.x;
-		OutPositionVertexBuffer[GroupId][4 * VertIdx + 1] = CurrVertexPos.y;
-		OutPositionVertexBuffer[GroupId][4 * VertIdx + 2] = CurrVertexPos.z;
+		OutPositionVertexBuffer[4 * VertIdx] = CurrVertexPos.x;
+		OutPositionVertexBuffer[4 * VertIdx + 1] = CurrVertexPos.y;
+		OutPositionVertexBuffer[4 * VertIdx + 2] = CurrVertexPos.z;
 	}
 }
 
 [numthreads(1, 1, 1)]
-void SolveCollision(uint GroupId : SV_GroupID, uint2 DispatchThreadId : SV_DispatchThreadID)
+void SolveCollision(uint2 DispatchThreadId : SV_DispatchThreadID)
 {
-	if (GroupId >= NumClothMesh)
-	{
-		return;
-	}
-
 	// TODO:複数のコリジョンが重なっていることによるめりこみ押し出しの競合についてはとりあえず考えない
 	for (uint CollisionIdx = 0; CollisionIdx < NumSphereCollision; CollisionIdx++)
 	{
-		float4 SphereCenterAndRadius = SphereCenterAndRadiusArray[GroupId][CollisionIdx];
+		float4 SphereCenterAndRadius = SphereCenterAndRadiusArray[CollisionIdx];
 		float3 SphereCenter = SphereCenterAndRadius.xyz;
 		// 計算をシンプルにするために頂点の半径は0にしてコリジョン側の半径に頂点半径をプラスして扱う
-		float SphereRadius = SphereCenterAndRadius.w + VertexRadius[GroupId];
+		float SphereRadius = SphereCenterAndRadius.w + VertexRadius;
 		float SquareSphereRadius = SphereRadius * SphereRadius;
 
-		//for (uint VertIdx = 0; VertIdx < NumVertex[GroupId]; VertIdx++)
-		//{
-		for (uint VertIdx = 0; VertIdx < 10000; VertIdx++)
+		for (uint VertIdx = 0; VertIdx < NumVertex; VertIdx++)
 		{
-			if (VertIdx >= NumVertex[GroupId])
-			{
-				break;
-			}
-
 			float3 CurrVertexPos;
-			CurrVertexPos.x = OutPositionVertexBuffer[GroupId][4 * VertIdx];
-			CurrVertexPos.y = OutPositionVertexBuffer[GroupId][4 * VertIdx + 1];
-			CurrVertexPos.z = OutPositionVertexBuffer[GroupId][4 * VertIdx + 2];
+			CurrVertexPos.x = OutPositionVertexBuffer[4 * VertIdx];
+			CurrVertexPos.y = OutPositionVertexBuffer[4 * VertIdx + 1];
+			CurrVertexPos.z = OutPositionVertexBuffer[4 * VertIdx + 2];
 
 			// めりこんでいれば半径方向に押し出す
 			if (dot(CurrVertexPos - SphereCenter, CurrVertexPos - SphereCenter) < SquareSphereRadius)
@@ -189,10 +154,9 @@ void SolveCollision(uint GroupId : SV_GroupID, uint2 DispatchThreadId : SV_Dispa
 				CurrVertexPos = SphereCenter + normalize(CurrVertexPos - SphereCenter) * SphereRadius;
 			}
 
-			OutPositionVertexBuffer[GroupId][4 * VertIdx] = CurrVertexPos.x;
-			OutPositionVertexBuffer[GroupId][4 * VertIdx + 1] = CurrVertexPos.y;
-			OutPositionVertexBuffer[GroupId][4 * VertIdx + 2] = CurrVertexPos.z;
+			OutPositionVertexBuffer[4 * VertIdx] = CurrVertexPos.x;
+			OutPositionVertexBuffer[4 * VertIdx + 1] = CurrVertexPos.y;
+			OutPositionVertexBuffer[4 * VertIdx + 2] = CurrVertexPos.z;
 		}
 	}
 }
-
