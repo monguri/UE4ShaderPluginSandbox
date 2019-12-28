@@ -34,4 +34,11 @@ struct FGridClothParameters
 	TArray<FSphereCollisionParameters> SphereCollisionParams;
 };
 
-void SimulateGridMeshClothes(FRHICommandListImmediate& RHICmdList, TArray<FGridClothParameters> Clothes);
+struct FClothGridMeshDeformer
+{
+	void EnqueueDeformTask(const FGridClothParameters& Param);
+	void FlushDeformTaskQueue(FRHICommandListImmediate& RHICmdList);
+
+	TArray<FGridClothParameters> DeformTaskQueue;
+};
+

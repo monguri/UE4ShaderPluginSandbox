@@ -43,20 +43,27 @@ void AClothManager::UnregisterSphereCollision(USphereCollisionComponent* SphereC
 
 void AClothManager::EnqueueSimulateClothTask(const FGridClothParameters& Task)
 {
-	SimulateClothTaskQueue.Add(Task);
+	AClothManager* Self = this;
 
-	if (SimulateClothTaskQueue.Num() >= ClothMeshes.Num())
+	NumTask++;
+
+	ENQUEUE_RENDER_COMMAND(EnqueueClothGridMeshDeformTask)(
+		[Self, Task](FRHICommandListImmediate& RHICmdList)
+		{
+			Self->VertexDeformer.EnqueueDeformTask(Task);
+		}
+	);
+
+	if ((int32)NumTask >= ClothMeshes.Num())
 	{
-		// ENQUEUE_RENDER_COMMANDの中のレンダーコマンドキューの処理はいつ実行されるかわからないのでこの時点でのクロスタスクキューを使うならコピーが必要
-		TArray<FGridClothParameters> CopiedQueue = SimulateClothTaskQueue;
-		SimulateClothTaskQueue.Reset();
-
-		ENQUEUE_RENDER_COMMAND(SimulateGridMeshClothes)(
-			[CopiedQueue](FRHICommandListImmediate& RHICmdList)
+		ENQUEUE_RENDER_COMMAND(FlushClothGridMeshDeformTask)(
+			[Self, Task](FRHICommandListImmediate& RHICmdList)
 			{
-				SimulateGridMeshClothes(RHICmdList, CopiedQueue);
+				Self->VertexDeformer.FlushDeformTaskQueue(RHICmdList);
 			}
 		);
+
+		NumTask = 0;
 	}
 }
 

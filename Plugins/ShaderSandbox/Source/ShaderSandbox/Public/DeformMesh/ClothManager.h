@@ -28,9 +28,10 @@ public:
 	void EnqueueSimulateClothTask(const FGridClothParameters& Task);
 
 private:
+	int32 NumTask = 0;
 	TArray<class UClothGridMeshComponent*> ClothMeshes;
 	TArray<class USphereCollisionComponent*> SphereCollisions;
-	TArray<FGridClothParameters> SimulateClothTaskQueue;
+	FClothGridMeshDeformer VertexDeformer;
 };
 
 // global singleton instance

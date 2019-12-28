@@ -99,7 +99,12 @@ public:
 
 IMPLEMENT_GLOBAL_SHADER(FClothGridMeshTangentCS, "/Plugin/ShaderSandbox/Private/GridMeshTangent.usf", "MainCS", SF_Compute);
 
-void SimulateGridMeshClothes(FRHICommandListImmediate& RHICmdList, TArray<FGridClothParameters> Clothes)
+void FClothGridMeshDeformer::EnqueueDeformTask(const FGridClothParameters& Param)
+{
+	DeformTaskQueue.Add(Param);
+}
+
+void FClothGridMeshDeformer::FlushDeformTaskQueue(FRHICommandListImmediate& RHICmdList)
 {
 	FRDGBuilder GraphBuilder(RHICmdList);
 
@@ -111,7 +116,7 @@ void SimulateGridMeshClothes(FRHICommandListImmediate& RHICmdList, TArray<FGridC
 
 	// TODO:Stiffness、Dampingの効果がNumIterationやフレームレートに依存してしまっているのでどうにかせねば
 
-	for (const FGridClothParameters& GridClothParams : Clothes)
+	for (const FGridClothParameters& GridClothParams : DeformTaskQueue)
 	{
 		float DeltaTimePerIterate = GridClothParams.DeltaTime / GridClothParams.NumIteration;
 		float SquareDeltaTime = DeltaTimePerIterate * DeltaTimePerIterate;
@@ -204,5 +209,7 @@ void SimulateGridMeshClothes(FRHICommandListImmediate& RHICmdList, TArray<FGridC
 	}
 
 	GraphBuilder.Execute();
+
+	DeformTaskQueue.Reset();
 }
 
