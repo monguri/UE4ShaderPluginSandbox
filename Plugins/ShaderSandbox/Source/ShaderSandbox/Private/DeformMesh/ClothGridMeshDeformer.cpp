@@ -37,7 +37,7 @@ class FClothSimulationApplyWindCS : public FGlobalShader
 		SHADER_PARAMETER(uint32, NumRow)
 		SHADER_PARAMETER(uint32, NumColumn)
 		SHADER_PARAMETER(FVector, WindVelocity)
-		SHADER_PARAMETER(float, Density)
+		SHADER_PARAMETER(float, FluidDensity)
 		SHADER_PARAMETER(float, DeltaTime)
 		SHADER_PARAMETER_UAV(RWBuffer<float>, OutPrevPositionVertexBuffer)
 		SHADER_PARAMETER_UAV(RWBuffer<float>, OutPositionVertexBuffer)
@@ -167,13 +167,13 @@ void FClothGridMeshDeformer::FlushDeformTaskQueue(FRHICommandListImmediate& RHIC
 				FIntVector(1, 1, 1)
 			);
 
-			if (GridClothParams.Density > 0.0f) // Densityが0のときは空気抵抗力は与えない
+			if (GridClothParams.FluidDensity > 0.0f) // FluidDensityが0のときは空気抵抗力は与えない
 			{
 				FClothSimulationApplyWindCS::FParameters* ClothSimApplyWindParams = GraphBuilder.AllocParameters<FClothSimulationApplyWindCS::FParameters>();
 				ClothSimApplyWindParams->NumRow = GridClothParams.NumRow;
 				ClothSimApplyWindParams->NumColumn = GridClothParams.NumColumn;
 				ClothSimApplyWindParams->WindVelocity = WindVelocity;
-				ClothSimApplyWindParams->Density = GridClothParams.Density / (100.0f * 100.0f * 100.0f); // シェーダの計算がMKS単位系基準なのでそれに入れるDensityはすごく小さくせねばならずユーザが入力しにくいので、MKS単位系で入れさせておいてここでスケールする
+				ClothSimApplyWindParams->FluidDensity = GridClothParams.FluidDensity / (100.0f * 100.0f * 100.0f); // シェーダの計算がMKS単位系基準なのでそれに入れるFluidDensityはすごく小さくせねばならずユーザが入力しにくいので、MKS単位系で入れさせておいてここでスケールする
 				ClothSimApplyWindParams->DeltaTime = DeltaTimePerIterate;
 				ClothSimApplyWindParams->OutPrevPositionVertexBuffer = GridClothParams.PrevPositionVertexBufferUAV;
 				ClothSimApplyWindParams->OutPositionVertexBuffer = GridClothParams.PositionVertexBufferUAV;

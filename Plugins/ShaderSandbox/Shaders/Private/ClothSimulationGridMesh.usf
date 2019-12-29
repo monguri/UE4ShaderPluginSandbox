@@ -10,7 +10,7 @@ float Stiffness;
 float Damping;
 float3 PreviousInertia;
 float3 WindVelocity;
-float Density;
+float FluidDensity;
 float DeltaTime;
 float VertexRadius;
 uint NumSphereCollision;
@@ -118,8 +118,8 @@ void ApplyWind(uint2 DispatchThreadId : SV_DispatchThreadID)
 
 				float3 LiftDir = cross(cross(DeltaDir, Normal), DeltaDir);
 
-				float3 LiftImplulse = LIFT_COEFFICIENT * Density * Area * Sin2 * LiftDir * DeltaLength * DeltaLength / DeltaTime;
-				float3 DragImplulse = DRAG_COEFFICIENT * Density * Area * abs(Cos) * DeltaDir * DeltaLength * DeltaLength / DeltaTime;
+				float3 LiftImplulse = LIFT_COEFFICIENT * FluidDensity * Area * Sin2 * LiftDir * DeltaLength * DeltaLength / DeltaTime;
+				float3 DragImplulse = DRAG_COEFFICIENT * FluidDensity * Area * abs(Cos) * DeltaDir * DeltaLength * DeltaLength / DeltaTime;
 
 				float3 NextLeftUpperVertPos;
 
@@ -200,8 +200,8 @@ void ApplyWind(uint2 DispatchThreadId : SV_DispatchThreadID)
 
 				float3 LiftDir = cross(cross(DeltaDir, Normal), DeltaDir);
 
-				float3 LiftImplulse = LIFT_COEFFICIENT * Density * Area * Sin2 * LiftDir * DeltaLength * DeltaLength / DeltaTime;
-				float3 DragImplulse = DRAG_COEFFICIENT * Density * Area * abs(Cos) * DeltaDir * DeltaLength * DeltaLength / DeltaTime;
+				float3 LiftImplulse = LIFT_COEFFICIENT * FluidDensity * Area * Sin2 * LiftDir * DeltaLength * DeltaLength / DeltaTime;
+				float3 DragImplulse = DRAG_COEFFICIENT * FluidDensity * Area * abs(Cos) * DeltaDir * DeltaLength * DeltaLength / DeltaTime;
 
 				float3 NextLeftUpperVertPos;
 

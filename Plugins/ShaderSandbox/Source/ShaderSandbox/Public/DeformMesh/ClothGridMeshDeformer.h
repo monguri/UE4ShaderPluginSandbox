@@ -24,7 +24,7 @@ struct FGridClothParameters
 	float Stiffness;
 	float Damping;
 	FVector WindVelocity;
-	float Density;
+	float FluidDensity;
 	FVector PreviousInertia;
 	float VertexRadius;
 	uint32 NumIteration;

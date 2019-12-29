@@ -263,7 +263,7 @@ public:
 		Params.Stiffness = Component->GetStiffness();
 		Params.Damping = Component->GetDamping();
 		Params.WindVelocity = ClothManager->WindVelocity;
-		Params.Density = Component->GetDensity();
+		Params.FluidDensity = Component->GetFluidDensity();
 		Params.PreviousInertia = Component->GetPreviousInertia();
 		Params.VertexRadius = Component->GetVertexRadius();
 		Params.NumIteration = Component->GetNumIteration();
@@ -327,7 +327,7 @@ void UClothGridMeshComponent::OnRegister()
 	}
 }
 
-void UClothGridMeshComponent::InitClothSettings(int32 NumRow, int32 NumColumn, float GridWidth, float GridHeight, float Stiffness, float Damping, float Density, float VertexRadius, int32 NumIteration)
+void UClothGridMeshComponent::InitClothSettings(int32 NumRow, int32 NumColumn, float GridWidth, float GridHeight, float Stiffness, float Damping, float FluidDensity, float VertexRadius, int32 NumIteration)
 {
 	_NumRow = NumRow;
 	_NumColumn = NumColumn;
@@ -338,7 +338,7 @@ void UClothGridMeshComponent::InitClothSettings(int32 NumRow, int32 NumColumn, f
 	_Accelerations.Reset((NumRow + 1) * (NumColumn + 1));
 	_Stiffness = Stiffness;
 	_Damping = Damping;
-	_Density = Density;
+	_FluidDensity = FluidDensity;
 	_VertexRadius = VertexRadius;
 	_NumIteration = NumIteration;
 
