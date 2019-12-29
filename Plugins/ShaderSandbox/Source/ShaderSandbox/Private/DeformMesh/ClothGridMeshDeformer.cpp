@@ -34,7 +34,8 @@ class FClothSimulationApplyWindCS : public FGlobalShader
 	SHADER_USE_PARAMETER_STRUCT(FClothSimulationApplyWindCS, FGlobalShader);
 
 	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
-		SHADER_PARAMETER(uint32, NumVertex)
+		SHADER_PARAMETER(uint32, NumRow)
+		SHADER_PARAMETER(uint32, NumColumn)
 		SHADER_PARAMETER(FVector, WindVelocity)
 		SHADER_PARAMETER(float, Density)
 		SHADER_PARAMETER(float, DeltaTime)
@@ -144,6 +145,7 @@ void FClothGridMeshDeformer::FlushDeformTaskQueue(FRHICommandListImmediate& RHIC
 	{
 		float DeltaTimePerIterate = GridClothParams.DeltaTime / GridClothParams.NumIteration;
 		float SquareDeltaTime = DeltaTimePerIterate * DeltaTimePerIterate;
+		const FVector& WindVelocity = GridClothParams.WindVelocity * FMath::FRandRange(0.0f, 2.0f); //毎フレーム、風力にランダムなゆらぎをつける
 
 		for (uint32 IterCount = 0; IterCount < GridClothParams.NumIteration; IterCount++)
 		{
@@ -165,22 +167,26 @@ void FClothGridMeshDeformer::FlushDeformTaskQueue(FRHICommandListImmediate& RHIC
 				FIntVector(1, 1, 1)
 			);
 
-			FClothSimulationApplyWindCS::FParameters* ClothSimApplyWindParams = GraphBuilder.AllocParameters<FClothSimulationApplyWindCS::FParameters>();
-			ClothSimApplyWindParams->NumVertex = GridClothParams.NumVertex;
-			ClothSimApplyWindParams->WindVelocity = GridClothParams.WindVelocity;
-			ClothSimApplyWindParams->Density = GridClothParams.Density;
-			ClothSimApplyWindParams->DeltaTime = DeltaTimePerIterate;
-			ClothSimApplyWindParams->OutPrevPositionVertexBuffer = GridClothParams.PrevPositionVertexBufferUAV;
-			ClothSimApplyWindParams->OutPositionVertexBuffer = GridClothParams.PositionVertexBufferUAV;
+			if (GridClothParams.Density > 0.0f) // Densityが0のときは空気抵抗力は与えない
+			{
+				FClothSimulationApplyWindCS::FParameters* ClothSimApplyWindParams = GraphBuilder.AllocParameters<FClothSimulationApplyWindCS::FParameters>();
+				ClothSimApplyWindParams->NumRow = GridClothParams.NumRow;
+				ClothSimApplyWindParams->NumColumn = GridClothParams.NumColumn;
+				ClothSimApplyWindParams->WindVelocity = WindVelocity;
+				ClothSimApplyWindParams->Density = GridClothParams.Density / (100.0f * 100.0f * 100.0f); // シェーダの計算がMKS単位系基準なのでそれに入れるDensityはすごく小さくせねばならずユーザが入力しにくいので、MKS単位系で入れさせておいてここでスケールする
+				ClothSimApplyWindParams->DeltaTime = DeltaTimePerIterate;
+				ClothSimApplyWindParams->OutPrevPositionVertexBuffer = GridClothParams.PrevPositionVertexBufferUAV;
+				ClothSimApplyWindParams->OutPositionVertexBuffer = GridClothParams.PositionVertexBufferUAV;
 
-			//TODO: とりあえず今はこの関数呼び出しがメッシュ一個なので1 Dispatch
-			FComputeShaderUtils::AddPass(
-				GraphBuilder,
-				RDG_EVENT_NAME("ClothSimulationApplyWind"),
-				*ClothSimApplyWindCS,
-				ClothSimApplyWindParams,
-				FIntVector(1, 1, 1)
-			);
+				//TODO: とりあえず今はこの関数呼び出しがメッシュ一個なので1 Dispatch
+				FComputeShaderUtils::AddPass(
+					GraphBuilder,
+					RDG_EVENT_NAME("ClothSimulationApplyWind"),
+					*ClothSimApplyWindCS,
+					ClothSimApplyWindParams,
+					FIntVector(1, 1, 1)
+				);
+			}
 
 			FClothSimulationSolveDistanceConstraintCS::FParameters* ClothSimDistanceConstraintParams = GraphBuilder.AllocParameters<FClothSimulationSolveDistanceConstraintCS::FParameters>();
 			ClothSimDistanceConstraintParams->NumRow = GridClothParams.NumRow;
