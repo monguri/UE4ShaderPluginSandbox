@@ -23,7 +23,7 @@ RWBuffer<float> OutPositionVertexBuffer;
 [numthreads(1, 1, 1)]
 void Interate(uint2 DispatchThreadId : SV_DispatchThreadID)
 {
-	const float SMALL_NUMBER = 0.0001;
+	const float SMALL_NUMBER = 0.0001f;
 
 	for (uint VertIdx = 0; VertIdx < NumVertex; VertIdx++)
 	{
@@ -43,7 +43,7 @@ void Interate(uint2 DispatchThreadId : SV_DispatchThreadID)
 		{
 			// とりあえずDampingは0.1にして0.9をかける
 			float3 Acceleration = float3(-InAccelerationVertexBuffer[3 * VertIdx + 0], -InAccelerationVertexBuffer[3 * VertIdx + 1], InAccelerationVertexBuffer[3 * VertIdx + 2]); // TODO:なぜXとYの符号を反転すべきかは理解できていない
-			NextPos = CurrPos + (CurrPos - PrevPos) * (1.0 - Damping) + Acceleration * SquareDeltaTime;
+			NextPos = CurrPos + (CurrPos - PrevPos) * (1.0f - Damping) + Acceleration * SquareDeltaTime;
 			CurrPos = CurrPos + float3(-PreviousInertia.x, -PreviousInertia.y, PreviousInertia.z); // TODO:なぜXとYの符号を反転すべきかは理解できていない
 		}
 
@@ -60,13 +60,205 @@ void Interate(uint2 DispatchThreadId : SV_DispatchThreadID)
 [numthreads(1, 1, 1)]
 void ApplyWind(uint2 DispatchThreadId : SV_DispatchThreadID)
 {
-	// TODO:impl
+	const float SMALL_NUMBER = 0.0001f;
+	const float LIFT_COEFFICIENT = 0.2f / 100.0f; // 式がMKS単位系なので100で割る
+	const float DRAG_COEFFICIENT = 0.2f / 100.0f; // 式がMKS単位系なので100で割る
+
+	// グリッドのトライアングル単位で処理するのでセルでループする
+	for (uint RowIndex = 0; RowIndex < NumRow; RowIndex++)
+	{
+		for (uint ColumnIndex = 0; ColumnIndex < NumColumn; ColumnIndex++)
+		{
+			uint LeftUpperVertIdx = RowIndex * (NumColumn + 1) + ColumnIndex;
+			uint RightUpperVertIdx = LeftUpperVertIdx + 1;
+			uint LeftLowerVertIdx = LeftUpperVertIdx + NumColumn + 1;
+			uint RightLowerVertIdx = LeftLowerVertIdx + 1;
+
+			float3 CurrLeftUpperVertPos = float3(OutPositionVertexBuffer[4 * LeftUpperVertIdx + 0], OutPositionVertexBuffer[4 * LeftUpperVertIdx + 1], OutPositionVertexBuffer[4 * LeftUpperVertIdx + 2]);
+			float3 CurrRightUpperVertPos = float3(OutPositionVertexBuffer[4 * RightUpperVertIdx + 0], OutPositionVertexBuffer[4 * RightUpperVertIdx + 1], OutPositionVertexBuffer[4 * RightUpperVertIdx + 2]);
+			float3 CurrLeftLowerVertPos = float3(OutPositionVertexBuffer[4 * LeftLowerVertIdx + 0], OutPositionVertexBuffer[4 * LeftLowerVertIdx + 1], OutPositionVertexBuffer[4 * LeftLowerVertIdx + 2]);
+			float3 CurrRightLowerVertPos = float3(OutPositionVertexBuffer[4 * RightLowerVertIdx + 0], OutPositionVertexBuffer[4 * RightLowerVertIdx + 1], OutPositionVertexBuffer[4 * RightLowerVertIdx + 2]);
+
+			float3 PrevLeftUpperVertPos = float3(OutPrevPositionVertexBuffer[4 * LeftUpperVertIdx + 0], OutPrevPositionVertexBuffer[4 * LeftUpperVertIdx + 1], OutPrevPositionVertexBuffer[4 * LeftUpperVertIdx + 2]);
+			float3 PrevRightUpperVertPos = float3(OutPrevPositionVertexBuffer[4 * RightUpperVertIdx + 0], OutPrevPositionVertexBuffer[4 * RightUpperVertIdx + 1], OutPrevPositionVertexBuffer[4 * RightUpperVertIdx + 2]);
+			float3 PrevLeftLowerVertPos = float3(OutPrevPositionVertexBuffer[4 * LeftLowerVertIdx + 0], OutPrevPositionVertexBuffer[4 * LeftLowerVertIdx + 1], OutPrevPositionVertexBuffer[4 * LeftLowerVertIdx + 2]);
+			float3 PrevRightLowerVertPos = float3(OutPrevPositionVertexBuffer[4 * RightLowerVertIdx + 0], OutPrevPositionVertexBuffer[4 * RightLowerVertIdx + 1], OutPrevPositionVertexBuffer[4 * RightLowerVertIdx + 2]);
+
+			float CurrLeftUpperVertInvMass = OutPositionVertexBuffer[4 * LeftUpperVertIdx + 3];
+			float CurrRightUpperVertInvMass = OutPositionVertexBuffer[4 * RightUpperVertIdx + 3];
+			float CurrLeftLowerVertInvMass = OutPositionVertexBuffer[4 * LeftLowerVertIdx + 3];
+			float CurrRightLowerVertInvMass = OutPositionVertexBuffer[4 * RightLowerVertIdx + 3];
+
+			// Right Upper Triangle
+			{
+				// CoGはCenterOfGravity。重心のこと。
+				float3 CurrCoG = (CurrLeftUpperVertPos + CurrRightUpperVertPos + CurrRightLowerVertPos) / 3.0f;
+				float3 PrevCoG = (PrevLeftUpperVertPos + PrevRightUpperVertPos + PrevRightLowerVertPos) / 3.0f;
+
+				float3 WindDelta = WindVelocity * DeltaTime;
+
+				// 環境の風および自分自身の移動で受ける空気抵抗の風を合わせたDeltaTimeでの移動量。
+				float3 Delta = -(CurrCoG - PrevCoG) + WindDelta;
+
+				// 正規化
+				float3 DeltaLength = length(Delta);
+				float3 DeltaDir = Delta / max(DeltaLength, SMALL_NUMBER);
+
+				float3 Normal = cross(CurrLeftUpperVertPos - CurrRightUpperVertPos, CurrRightLowerVertPos - CurrRightUpperVertPos);
+				float NormalLength = length(Normal);
+				// cross積の結果のベクトルの長さは平行四辺形の面積と同じになるので
+				float3 Area = NormalLength / 2;
+				Normal = Normal / NormalLength;
+
+				float Cos = dot(Normal, DeltaDir);
+				float Sin = sqrt(max(0.0f, 1.0f - Cos * Cos));
+				float Sin2 = Cos * Sin * 0.5f;
+
+				// Delta方向と、Delta-Normal平面内でDeltaに垂直な方向の2つの力積を計算する。前者をDrag、後者をLiftと呼ぶ。
+
+				float3 LiftDir = cross(cross(DeltaDir, Normal), DeltaDir);
+
+				float3 LiftImplulse = LIFT_COEFFICIENT * Density * Area * Sin2 * LiftDir * DeltaLength * DeltaLength / DeltaTime;
+				float3 DragImplulse = DRAG_COEFFICIENT * Density * Area * abs(Cos) * DeltaDir * DeltaLength * DeltaLength / DeltaTime;
+
+				float3 NextLeftUpperVertPos;
+
+				if (CurrLeftUpperVertInvMass < SMALL_NUMBER)
+				{
+					NextLeftUpperVertPos = CurrLeftUpperVertPos;
+					// CurrPosは変えない
+				}
+				else
+				{
+					NextLeftUpperVertPos = CurrLeftUpperVertPos + LiftImplulse + DragImplulse;
+				}
+
+				OutPositionVertexBuffer[4 * LeftUpperVertIdx + 0] = NextLeftUpperVertPos.x;
+				OutPositionVertexBuffer[4 * LeftUpperVertIdx + 1] = NextLeftUpperVertPos.y;
+				OutPositionVertexBuffer[4 * LeftUpperVertIdx + 2] = NextLeftUpperVertPos.z;
+
+				float3 NextRightUpperVertPos;
+
+				if (CurrRightUpperVertInvMass < SMALL_NUMBER)
+				{
+					NextRightUpperVertPos = CurrRightUpperVertPos;
+					// CurrPosは変えない
+				}
+				else
+				{
+					NextRightUpperVertPos = CurrRightUpperVertPos + LiftImplulse + DragImplulse;
+				}
+
+				OutPositionVertexBuffer[4 * RightUpperVertIdx + 0] = NextRightUpperVertPos.x;
+				OutPositionVertexBuffer[4 * RightUpperVertIdx + 1] = NextRightUpperVertPos.y;
+				OutPositionVertexBuffer[4 * RightUpperVertIdx + 2] = NextRightUpperVertPos.z;
+
+				float3 NextRightLowerVertPos;
+
+				if (CurrRightLowerVertInvMass < SMALL_NUMBER)
+				{
+					NextRightLowerVertPos = CurrRightLowerVertPos;
+					// CurrPosは変えない
+				}
+				else
+				{
+					NextRightLowerVertPos = CurrRightLowerVertPos + LiftImplulse + DragImplulse;
+				}
+
+				OutPositionVertexBuffer[4 * RightLowerVertIdx + 0] = NextRightLowerVertPos.x;
+				OutPositionVertexBuffer[4 * RightLowerVertIdx + 1] = NextRightLowerVertPos.y;
+				OutPositionVertexBuffer[4 * RightLowerVertIdx + 2] = NextRightLowerVertPos.z;
+			}
+
+			// Left Lower Triangle
+			{
+				// CoGはCenterOfGravity。重心のこと。
+				float3 CurrCoG = (CurrLeftUpperVertPos + CurrLeftLowerVertPos + CurrRightLowerVertPos) / 3.0f;
+				float3 PrevCoG = (PrevLeftUpperVertPos + PrevLeftLowerVertPos + PrevRightLowerVertPos) / 3.0f;
+
+				float3 WindDelta = WindVelocity * DeltaTime;
+
+				// 環境の風および自分自身の移動で受ける空気抵抗の風を合わせたDeltaTimeでの移動量。
+				float3 Delta = -(CurrCoG - PrevCoG) + WindDelta;
+
+				// 正規化
+				float3 DeltaLength = length(Delta);
+				float3 DeltaDir = Delta / max(DeltaLength, SMALL_NUMBER);
+
+				// Right Upperブロックと同じ方向になるように負の符号をつけている
+				float3 Normal = -cross(CurrLeftUpperVertPos - CurrLeftLowerVertPos, CurrRightLowerVertPos - CurrLeftLowerVertPos);
+				float NormalLength = length(Normal);
+				// cross積の結果のベクトルの長さは平行四辺形の面積と同じになるので
+				float3 Area = NormalLength / 2;
+				Normal = Normal / NormalLength;
+
+				float Cos = dot(Normal, DeltaDir);
+				float Sin = sqrt(max(0.0f, 1.0f - Cos * Cos));
+				float Sin2 = Cos * Sin * 0.5f;
+
+				// Delta方向と、Delta-Normal平面内でDeltaに垂直な方向の2つの力積を計算する。前者をDrag、後者をLiftと呼ぶ。
+
+				float3 LiftDir = cross(cross(DeltaDir, Normal), DeltaDir);
+
+				float3 LiftImplulse = LIFT_COEFFICIENT * Density * Area * Sin2 * LiftDir * DeltaLength * DeltaLength / DeltaTime;
+				float3 DragImplulse = DRAG_COEFFICIENT * Density * Area * abs(Cos) * DeltaDir * DeltaLength * DeltaLength / DeltaTime;
+
+				float3 NextLeftUpperVertPos;
+
+				if (CurrLeftUpperVertInvMass < SMALL_NUMBER)
+				{
+					NextLeftUpperVertPos = CurrLeftUpperVertPos;
+					// CurrPosは変えない
+				}
+				else
+				{
+					NextLeftUpperVertPos = CurrLeftUpperVertPos + LiftImplulse + DragImplulse;
+				}
+
+				OutPositionVertexBuffer[4 * LeftUpperVertIdx + 0] = NextLeftUpperVertPos.x;
+				OutPositionVertexBuffer[4 * LeftUpperVertIdx + 1] = NextLeftUpperVertPos.y;
+				OutPositionVertexBuffer[4 * LeftUpperVertIdx + 2] = NextLeftUpperVertPos.z;
+
+				float3 NextLeftLowerVertPos;
+
+				if (CurrLeftLowerVertInvMass < SMALL_NUMBER)
+				{
+					NextLeftLowerVertPos = CurrLeftLowerVertPos;
+					// CurrPosは変えない
+				}
+				else
+				{
+					NextLeftLowerVertPos = CurrLeftLowerVertPos + LiftImplulse + DragImplulse;
+				}
+
+				OutPositionVertexBuffer[4 * LeftLowerVertIdx + 0] = NextLeftLowerVertPos.x;
+				OutPositionVertexBuffer[4 * LeftLowerVertIdx + 1] = NextLeftLowerVertPos.y;
+				OutPositionVertexBuffer[4 * LeftLowerVertIdx + 2] = NextLeftLowerVertPos.z;
+
+				float3 NextRightLowerVertPos;
+
+				if (CurrRightLowerVertInvMass < SMALL_NUMBER)
+				{
+					NextRightLowerVertPos = CurrRightLowerVertPos;
+					// CurrPosは変えない
+				}
+				else
+				{
+					NextRightLowerVertPos = CurrRightLowerVertPos + LiftImplulse + DragImplulse;
+				}
+
+				OutPositionVertexBuffer[4 * RightLowerVertIdx + 0] = NextRightLowerVertPos.x;
+				OutPositionVertexBuffer[4 * RightLowerVertIdx + 1] = NextRightLowerVertPos.y;
+				OutPositionVertexBuffer[4 * RightLowerVertIdx + 2] = NextRightLowerVertPos.z;
+			}
+		}
+	}
 }
 
 [numthreads(1, 1, 1)]
 void SolveDistanceConstraint(uint2 DispatchThreadId : SV_DispatchThreadID)
 {
-	const float SMALL_NUMBER = 0.0001;
+	const float SMALL_NUMBER = 0.0001f;
 
 	for (uint VertIdx = 0; VertIdx < NumVertex; VertIdx++)
 	{
