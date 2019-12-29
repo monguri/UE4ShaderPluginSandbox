@@ -20,6 +20,30 @@ Buffer<float> InAccelerationVertexBuffer;
 RWBuffer<float> OutPrevPositionVertexBuffer;
 RWBuffer<float> OutPositionVertexBuffer;
 
+float3 GetCurrentVBPosition(uint VertIdx)
+{
+	return float3(OutPositionVertexBuffer[4 * VertIdx + 0], OutPositionVertexBuffer[4 * VertIdx + 1], OutPositionVertexBuffer[4 * VertIdx + 2]);
+}
+
+float3 GetPreviousVBPosition(uint VertIdx)
+{
+	return float3(OutPrevPositionVertexBuffer[4 * VertIdx + 0], OutPrevPositionVertexBuffer[4 * VertIdx + 1], OutPrevPositionVertexBuffer[4 * VertIdx + 2]);
+}
+
+void SetCurrentVBPosition(uint VertIdx, float3 Pos)
+{
+	OutPositionVertexBuffer[4 * VertIdx + 0] = Pos.x;
+	OutPositionVertexBuffer[4 * VertIdx + 1] = Pos.y;
+	OutPositionVertexBuffer[4 * VertIdx + 2] = Pos.z;
+}
+
+void SetPreviousVBPosition(uint VertIdx, float3 Pos)
+{
+	OutPrevPositionVertexBuffer[4 * VertIdx + 0] = Pos.x;
+	OutPrevPositionVertexBuffer[4 * VertIdx + 1] = Pos.y;
+	OutPrevPositionVertexBuffer[4 * VertIdx + 2] = Pos.z;
+}
+
 [numthreads(1, 1, 1)]
 void Interate(uint2 DispatchThreadId : SV_DispatchThreadID)
 {
@@ -27,8 +51,8 @@ void Interate(uint2 DispatchThreadId : SV_DispatchThreadID)
 
 	for (uint VertIdx = 0; VertIdx < NumVertex; VertIdx++)
 	{
-		float3 CurrPos = float3(OutPositionVertexBuffer[4 * VertIdx + 0], OutPositionVertexBuffer[4 * VertIdx + 1], OutPositionVertexBuffer[4 * VertIdx + 2]);
-		float3 PrevPos = float3(OutPrevPositionVertexBuffer[4 * VertIdx + 0], OutPrevPositionVertexBuffer[4 * VertIdx + 1], OutPrevPositionVertexBuffer[4 * VertIdx + 2]);
+		float3 CurrPos = GetCurrentVBPosition(VertIdx);
+		float3 PrevPos = GetPreviousVBPosition(VertIdx);
 
 		float3 NextPos;
 
@@ -47,13 +71,8 @@ void Interate(uint2 DispatchThreadId : SV_DispatchThreadID)
 			CurrPos = CurrPos + float3(-PreviousInertia.x, -PreviousInertia.y, PreviousInertia.z); // TODO:なぜXとYの符号を反転すべきかは理解できていない
 		}
 
-		OutPositionVertexBuffer[4 * VertIdx + 0] = NextPos.x;
-		OutPositionVertexBuffer[4 * VertIdx + 1] = NextPos.y;
-		OutPositionVertexBuffer[4 * VertIdx + 2] = NextPos.z;
-
-		OutPrevPositionVertexBuffer[4 * VertIdx + 0] = CurrPos.x;
-		OutPrevPositionVertexBuffer[4 * VertIdx + 1] = CurrPos.y;
-		OutPrevPositionVertexBuffer[4 * VertIdx + 2] = CurrPos.z;
+		SetCurrentVBPosition(VertIdx, NextPos);
+		SetPreviousVBPosition(VertIdx, CurrPos);
 	}
 }
 
@@ -74,15 +93,15 @@ void ApplyWind(uint2 DispatchThreadId : SV_DispatchThreadID)
 			uint LeftLowerVertIdx = LeftUpperVertIdx + NumColumn + 1;
 			uint RightLowerVertIdx = LeftLowerVertIdx + 1;
 
-			float3 CurrLeftUpperVertPos = float3(OutPositionVertexBuffer[4 * LeftUpperVertIdx + 0], OutPositionVertexBuffer[4 * LeftUpperVertIdx + 1], OutPositionVertexBuffer[4 * LeftUpperVertIdx + 2]);
-			float3 CurrRightUpperVertPos = float3(OutPositionVertexBuffer[4 * RightUpperVertIdx + 0], OutPositionVertexBuffer[4 * RightUpperVertIdx + 1], OutPositionVertexBuffer[4 * RightUpperVertIdx + 2]);
-			float3 CurrLeftLowerVertPos = float3(OutPositionVertexBuffer[4 * LeftLowerVertIdx + 0], OutPositionVertexBuffer[4 * LeftLowerVertIdx + 1], OutPositionVertexBuffer[4 * LeftLowerVertIdx + 2]);
-			float3 CurrRightLowerVertPos = float3(OutPositionVertexBuffer[4 * RightLowerVertIdx + 0], OutPositionVertexBuffer[4 * RightLowerVertIdx + 1], OutPositionVertexBuffer[4 * RightLowerVertIdx + 2]);
+			float3 CurrLeftUpperVertPos = GetCurrentVBPosition(LeftUpperVertIdx);
+			float3 CurrRightUpperVertPos = GetCurrentVBPosition(RightUpperVertIdx);
+			float3 CurrLeftLowerVertPos = GetCurrentVBPosition(LeftLowerVertIdx);
+			float3 CurrRightLowerVertPos = GetCurrentVBPosition(RightLowerVertIdx);
 
-			float3 PrevLeftUpperVertPos = float3(OutPrevPositionVertexBuffer[4 * LeftUpperVertIdx + 0], OutPrevPositionVertexBuffer[4 * LeftUpperVertIdx + 1], OutPrevPositionVertexBuffer[4 * LeftUpperVertIdx + 2]);
-			float3 PrevRightUpperVertPos = float3(OutPrevPositionVertexBuffer[4 * RightUpperVertIdx + 0], OutPrevPositionVertexBuffer[4 * RightUpperVertIdx + 1], OutPrevPositionVertexBuffer[4 * RightUpperVertIdx + 2]);
-			float3 PrevLeftLowerVertPos = float3(OutPrevPositionVertexBuffer[4 * LeftLowerVertIdx + 0], OutPrevPositionVertexBuffer[4 * LeftLowerVertIdx + 1], OutPrevPositionVertexBuffer[4 * LeftLowerVertIdx + 2]);
-			float3 PrevRightLowerVertPos = float3(OutPrevPositionVertexBuffer[4 * RightLowerVertIdx + 0], OutPrevPositionVertexBuffer[4 * RightLowerVertIdx + 1], OutPrevPositionVertexBuffer[4 * RightLowerVertIdx + 2]);
+			float3 PrevLeftUpperVertPos = GetPreviousVBPosition(LeftUpperVertIdx);
+			float3 PrevRightUpperVertPos = GetPreviousVBPosition(RightUpperVertIdx);
+			float3 PrevLeftLowerVertPos = GetPreviousVBPosition(LeftLowerVertIdx);
+			float3 PrevRightLowerVertPos = GetPreviousVBPosition(RightLowerVertIdx);
 
 			float CurrLeftUpperVertInvMass = OutPositionVertexBuffer[4 * LeftUpperVertIdx + 3];
 			float CurrRightUpperVertInvMass = OutPositionVertexBuffer[4 * RightUpperVertIdx + 3];
@@ -133,9 +152,7 @@ void ApplyWind(uint2 DispatchThreadId : SV_DispatchThreadID)
 					NextLeftUpperVertPos = CurrLeftUpperVertPos + LiftImplulse + DragImplulse;
 				}
 
-				OutPositionVertexBuffer[4 * LeftUpperVertIdx + 0] = NextLeftUpperVertPos.x;
-				OutPositionVertexBuffer[4 * LeftUpperVertIdx + 1] = NextLeftUpperVertPos.y;
-				OutPositionVertexBuffer[4 * LeftUpperVertIdx + 2] = NextLeftUpperVertPos.z;
+				SetCurrentVBPosition(LeftUpperVertIdx, NextLeftUpperVertPos);
 
 				float3 NextRightUpperVertPos;
 
@@ -149,9 +166,7 @@ void ApplyWind(uint2 DispatchThreadId : SV_DispatchThreadID)
 					NextRightUpperVertPos = CurrRightUpperVertPos + LiftImplulse + DragImplulse;
 				}
 
-				OutPositionVertexBuffer[4 * RightUpperVertIdx + 0] = NextRightUpperVertPos.x;
-				OutPositionVertexBuffer[4 * RightUpperVertIdx + 1] = NextRightUpperVertPos.y;
-				OutPositionVertexBuffer[4 * RightUpperVertIdx + 2] = NextRightUpperVertPos.z;
+				SetCurrentVBPosition(RightUpperVertIdx, NextRightUpperVertPos);
 
 				float3 NextRightLowerVertPos;
 
@@ -165,9 +180,7 @@ void ApplyWind(uint2 DispatchThreadId : SV_DispatchThreadID)
 					NextRightLowerVertPos = CurrRightLowerVertPos + LiftImplulse + DragImplulse;
 				}
 
-				OutPositionVertexBuffer[4 * RightLowerVertIdx + 0] = NextRightLowerVertPos.x;
-				OutPositionVertexBuffer[4 * RightLowerVertIdx + 1] = NextRightLowerVertPos.y;
-				OutPositionVertexBuffer[4 * RightLowerVertIdx + 2] = NextRightLowerVertPos.z;
+				SetCurrentVBPosition(RightLowerVertIdx, NextRightLowerVertPos);
 			}
 
 			// Left Lower Triangle
@@ -215,9 +228,7 @@ void ApplyWind(uint2 DispatchThreadId : SV_DispatchThreadID)
 					NextLeftUpperVertPos = CurrLeftUpperVertPos + LiftImplulse + DragImplulse;
 				}
 
-				OutPositionVertexBuffer[4 * LeftUpperVertIdx + 0] = NextLeftUpperVertPos.x;
-				OutPositionVertexBuffer[4 * LeftUpperVertIdx + 1] = NextLeftUpperVertPos.y;
-				OutPositionVertexBuffer[4 * LeftUpperVertIdx + 2] = NextLeftUpperVertPos.z;
+				SetCurrentVBPosition(LeftUpperVertIdx, NextLeftUpperVertPos);
 
 				float3 NextLeftLowerVertPos;
 
@@ -231,9 +242,7 @@ void ApplyWind(uint2 DispatchThreadId : SV_DispatchThreadID)
 					NextLeftLowerVertPos = CurrLeftLowerVertPos + LiftImplulse + DragImplulse;
 				}
 
-				OutPositionVertexBuffer[4 * LeftLowerVertIdx + 0] = NextLeftLowerVertPos.x;
-				OutPositionVertexBuffer[4 * LeftLowerVertIdx + 1] = NextLeftLowerVertPos.y;
-				OutPositionVertexBuffer[4 * LeftLowerVertIdx + 2] = NextLeftLowerVertPos.z;
+				SetCurrentVBPosition(LeftLowerVertIdx, NextLeftLowerVertPos);
 
 				float3 NextRightLowerVertPos;
 
@@ -247,9 +256,7 @@ void ApplyWind(uint2 DispatchThreadId : SV_DispatchThreadID)
 					NextRightLowerVertPos = CurrRightLowerVertPos + LiftImplulse + DragImplulse;
 				}
 
-				OutPositionVertexBuffer[4 * RightLowerVertIdx + 0] = NextRightLowerVertPos.x;
-				OutPositionVertexBuffer[4 * RightLowerVertIdx + 1] = NextRightLowerVertPos.y;
-				OutPositionVertexBuffer[4 * RightLowerVertIdx + 2] = NextRightLowerVertPos.z;
+				SetCurrentVBPosition(RightLowerVertIdx, NextRightLowerVertPos);
 			}
 		}
 	}
@@ -265,11 +272,7 @@ void SolveDistanceConstraint(uint2 DispatchThreadId : SV_DispatchThreadID)
 		uint RowIndex = VertIdx / (NumColumn + 1);
 		uint ColumnIndex = VertIdx % (NumColumn + 1);
 
-		float3 CurrVertexPos;
-		CurrVertexPos.x = OutPositionVertexBuffer[4 * VertIdx];
-		CurrVertexPos.y = OutPositionVertexBuffer[4 * VertIdx + 1];
-		CurrVertexPos.z = OutPositionVertexBuffer[4 * VertIdx + 2];
-
+		float3 CurrVertexPos = GetCurrentVBPosition(VertIdx);
 		float CurrVertexInvMass = OutPositionVertexBuffer[4 * VertIdx + 3];
 
 		// グリッドなので右方向の隣頂点と下方向の隣頂点との間のみ考慮するようにしていれば重複なくコンストレイントを処理できる
@@ -280,10 +283,7 @@ void SolveDistanceConstraint(uint2 DispatchThreadId : SV_DispatchThreadID)
 			float RightVertexInvMass = OutPositionVertexBuffer[4 * RightVertIdx + 3];
 			if (CurrVertexInvMass > SMALL_NUMBER || RightVertexInvMass > SMALL_NUMBER)
 			{
-				float3 RightVertexPos;
-				RightVertexPos.x = OutPositionVertexBuffer[4 * RightVertIdx];
-				RightVertexPos.y = OutPositionVertexBuffer[4 * RightVertIdx + 1];
-				RightVertexPos.z = OutPositionVertexBuffer[4 * RightVertIdx + 2];
+				float3 RightVertexPos = GetCurrentVBPosition(RightVertIdx);
 
 				float RightEdgeLength = max(length(RightVertexPos - CurrVertexPos), SMALL_NUMBER); // to avoid 0 division
 				float Diff = RightEdgeLength - GridWidth;
@@ -293,9 +293,7 @@ void SolveDistanceConstraint(uint2 DispatchThreadId : SV_DispatchThreadID)
 				CurrVertexPos += CurrVertexInvMass / (CurrVertexInvMass + RightVertexInvMass) * Diff * RightEdgeAxis * Stiffness;
 				RightVertexPos -= RightVertexInvMass / (CurrVertexInvMass + RightVertexInvMass) * Diff * RightEdgeAxis * Stiffness;
 
-				OutPositionVertexBuffer[4 * RightVertIdx] = RightVertexPos.x;
-				OutPositionVertexBuffer[4 * RightVertIdx + 1] = RightVertexPos.y;
-				OutPositionVertexBuffer[4 * RightVertIdx + 2] = RightVertexPos.z;
+				SetCurrentVBPosition(RightVertIdx, RightVertexPos);
 			}
 		}
 
@@ -305,10 +303,7 @@ void SolveDistanceConstraint(uint2 DispatchThreadId : SV_DispatchThreadID)
 			float LowerVertexInvMass = OutPositionVertexBuffer[4 * LowerVertIdx + 3];
 			if (CurrVertexInvMass > SMALL_NUMBER || LowerVertexInvMass > SMALL_NUMBER)
 			{
-				float3 LowerVertexPos;
-				LowerVertexPos.x = OutPositionVertexBuffer[4 * LowerVertIdx];
-				LowerVertexPos.y = OutPositionVertexBuffer[4 * LowerVertIdx + 1];
-				LowerVertexPos.z = OutPositionVertexBuffer[4 * LowerVertIdx + 2];
+				float3 LowerVertexPos = GetCurrentVBPosition(LowerVertIdx);
 
 				float LowerEdgeLength = max(length(LowerVertexPos - CurrVertexPos), SMALL_NUMBER); // to avoid 0 division
 				float Diff = LowerEdgeLength - GridHeight;
@@ -318,15 +313,11 @@ void SolveDistanceConstraint(uint2 DispatchThreadId : SV_DispatchThreadID)
 				CurrVertexPos += CurrVertexInvMass / (CurrVertexInvMass + LowerVertexInvMass) * Diff * LowerEdgeAxis * Stiffness;
 				LowerVertexPos -= LowerVertexInvMass / (CurrVertexInvMass + LowerVertexInvMass) * Diff * LowerEdgeAxis * Stiffness;
 
-				OutPositionVertexBuffer[4 * LowerVertIdx] = LowerVertexPos.x;
-				OutPositionVertexBuffer[4 * LowerVertIdx + 1] = LowerVertexPos.y;
-				OutPositionVertexBuffer[4 * LowerVertIdx + 2] = LowerVertexPos.z;
+				SetCurrentVBPosition(LowerVertIdx, LowerVertexPos);
 			}
 		}
 
-		OutPositionVertexBuffer[4 * VertIdx] = CurrVertexPos.x;
-		OutPositionVertexBuffer[4 * VertIdx + 1] = CurrVertexPos.y;
-		OutPositionVertexBuffer[4 * VertIdx + 2] = CurrVertexPos.z;
+		SetCurrentVBPosition(VertIdx, CurrVertexPos);
 	}
 }
 
@@ -344,10 +335,7 @@ void SolveCollision(uint2 DispatchThreadId : SV_DispatchThreadID)
 
 		for (uint VertIdx = 0; VertIdx < NumVertex; VertIdx++)
 		{
-			float3 CurrVertexPos;
-			CurrVertexPos.x = OutPositionVertexBuffer[4 * VertIdx];
-			CurrVertexPos.y = OutPositionVertexBuffer[4 * VertIdx + 1];
-			CurrVertexPos.z = OutPositionVertexBuffer[4 * VertIdx + 2];
+			float3 CurrVertexPos = GetCurrentVBPosition(VertIdx);
 
 			// めりこんでいれば半径方向に押し出す
 			if (dot(CurrVertexPos - SphereCenter, CurrVertexPos - SphereCenter) < SquareSphereRadius)
@@ -355,9 +343,7 @@ void SolveCollision(uint2 DispatchThreadId : SV_DispatchThreadID)
 				CurrVertexPos = SphereCenter + normalize(CurrVertexPos - SphereCenter) * SphereRadius;
 			}
 
-			OutPositionVertexBuffer[4 * VertIdx] = CurrVertexPos.x;
-			OutPositionVertexBuffer[4 * VertIdx + 1] = CurrVertexPos.y;
-			OutPositionVertexBuffer[4 * VertIdx + 2] = CurrVertexPos.z;
+			SetCurrentVBPosition(VertIdx, CurrVertexPos);
 		}
 	}
 }
