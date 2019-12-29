@@ -28,6 +28,29 @@ public:
 
 IMPLEMENT_GLOBAL_SHADER(FClothSimulationIntegrationCS, "/Plugin/ShaderSandbox/Private/ClothSimulationGridMesh.usf", "Interate", SF_Compute);
 
+class FClothSimulationApplyWindCS : public FGlobalShader
+{
+	DECLARE_GLOBAL_SHADER(FClothSimulationApplyWindCS);
+	SHADER_USE_PARAMETER_STRUCT(FClothSimulationApplyWindCS, FGlobalShader);
+
+	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
+		SHADER_PARAMETER(uint32, NumVertex)
+		SHADER_PARAMETER(FVector, WindVelocity)
+		SHADER_PARAMETER(float, Density)
+		SHADER_PARAMETER(float, DeltaTime)
+		SHADER_PARAMETER_UAV(RWBuffer<float>, OutPrevPositionVertexBuffer)
+		SHADER_PARAMETER_UAV(RWBuffer<float>, OutPositionVertexBuffer)
+	END_SHADER_PARAMETER_STRUCT()
+
+public:
+	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters)
+	{
+		return IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
+	}
+};
+
+IMPLEMENT_GLOBAL_SHADER(FClothSimulationApplyWindCS, "/Plugin/ShaderSandbox/Private/ClothSimulationGridMesh.usf", "ApplyWind", SF_Compute);
+
 class FClothSimulationSolveDistanceConstraintCS : public FGlobalShader
 {
 	DECLARE_GLOBAL_SHADER(FClothSimulationSolveDistanceConstraintCS);
@@ -111,6 +134,7 @@ void FClothGridMeshDeformer::FlushDeformTaskQueue(FRHICommandListImmediate& RHIC
 	TShaderMap<FGlobalShaderType>* ShaderMap = GetGlobalShaderMap(ERHIFeatureLevel::SM5);
 
 	TShaderMapRef<FClothSimulationIntegrationCS> ClothSimIntegrationCS(ShaderMap);
+	TShaderMapRef<FClothSimulationApplyWindCS> ClothSimApplyWindCS(ShaderMap);
 	TShaderMapRef<FClothSimulationSolveDistanceConstraintCS> ClothSimSolveDistanceConstraintCS(ShaderMap);
 	TShaderMapRef<FClothSimulationSolveCollisionCS> ClothSimSolveCollisionCS(ShaderMap);
 
@@ -138,6 +162,23 @@ void FClothGridMeshDeformer::FlushDeformTaskQueue(FRHICommandListImmediate& RHIC
 				RDG_EVENT_NAME("ClothSimulationIntegration"),
 				*ClothSimIntegrationCS,
 				ClothSimIntegrateParams,
+				FIntVector(1, 1, 1)
+			);
+
+			FClothSimulationApplyWindCS::FParameters* ClothSimApplyWindParams = GraphBuilder.AllocParameters<FClothSimulationApplyWindCS::FParameters>();
+			ClothSimApplyWindParams->NumVertex = GridClothParams.NumVertex;
+			ClothSimApplyWindParams->WindVelocity = GridClothParams.WindVelocity;
+			ClothSimApplyWindParams->Density = GridClothParams.Density;
+			ClothSimApplyWindParams->DeltaTime = DeltaTimePerIterate;
+			ClothSimApplyWindParams->OutPrevPositionVertexBuffer = GridClothParams.PrevPositionVertexBufferUAV;
+			ClothSimApplyWindParams->OutPositionVertexBuffer = GridClothParams.PositionVertexBufferUAV;
+
+			//TODO: Ç∆ÇËÇ†Ç¶Ç∏ç°ÇÕÇ±ÇÃä÷êîåƒÇ—èoÇµÇ™ÉÅÉbÉVÉÖàÍå¬Ç»ÇÃÇ≈1 Dispatch
+			FComputeShaderUtils::AddPass(
+				GraphBuilder,
+				RDG_EVENT_NAME("ClothSimulationApplyWind"),
+				*ClothSimApplyWindCS,
+				ClothSimApplyWindParams,
 				FIntVector(1, 1, 1)
 			);
 

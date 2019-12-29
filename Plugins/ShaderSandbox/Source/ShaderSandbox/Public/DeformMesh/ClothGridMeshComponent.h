@@ -13,7 +13,7 @@ class SHADERSANDBOX_API UClothGridMeshComponent : public UDeformableGridMeshComp
 public:
 	/** Set the geometry and vertex paintings to use on this triangle mesh as cloth. */
 	UFUNCTION(BlueprintCallable, Category="Components|ClothGridMesh")
-	void InitClothSettings(int32 NumRow, int32 NumColumn, float GridWidth, float GridHeight, float Stiffness, float Damping, float VertexRadius, int32 NumIteration);
+	void InitClothSettings(int32 NumRow, int32 NumColumn, float GridWidth, float GridHeight, float Stiffness, float Damping, float Density, float VertexRadius, int32 NumIteration);
 
 	/** Ignore veclocity discontiuity just next frame. */
 	UFUNCTION(BlueprintCallable, Category="Components|ClothGridMesh")
@@ -28,6 +28,7 @@ public:
 	const TArray<FVector>& GetAccelerations() const { return _Accelerations; }
 	float GetStiffness() const { return _Stiffness; }
 	float GetDamping() const { return _Damping; }
+	float GetDensity() const { return _Density; }
 	FVector GetPreviousInertia() const { return _PreviousInertia; }
 	float GetVertexRadius() const { return _VertexRadius; }
 	int32 GetNumIteration() const { return _NumIteration; }
@@ -46,6 +47,7 @@ private:
 	TArray<FVector> _Accelerations;
 	float _Stiffness;
 	float _Damping;
+	float _Density;
 	FVector _PreviousInertia;
 	float _VertexRadius;
 	int32 _NumIteration;

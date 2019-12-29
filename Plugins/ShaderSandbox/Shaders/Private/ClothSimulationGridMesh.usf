@@ -9,6 +9,9 @@ float SquareDeltaTime;
 float Stiffness;
 float Damping;
 float3 PreviousInertia;
+float3 WindVelocity;
+float Density;
+float DeltaTime;
 float VertexRadius;
 uint NumSphereCollision;
 float4 SphereCenterAndRadiusArray[16];
@@ -52,6 +55,12 @@ void Interate(uint2 DispatchThreadId : SV_DispatchThreadID)
 		OutPrevPositionVertexBuffer[4 * VertIdx + 1] = CurrPos.y;
 		OutPrevPositionVertexBuffer[4 * VertIdx + 2] = CurrPos.z;
 	}
+}
+
+[numthreads(1, 1, 1)]
+void ApplyWind(uint2 DispatchThreadId : SV_DispatchThreadID)
+{
+	// TODO:impl
 }
 
 [numthreads(1, 1, 1)]

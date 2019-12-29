@@ -12,6 +12,10 @@ class SHADERSANDBOX_API AClothManager : public AActor
 	GENERATED_BODY()
 
 public:
+	/** Wind velocity, world coordinate, cm/s. */
+	UPROPERTY(EditAnywhere, Category = Wind)
+	FVector WindVelocity = FVector::ZeroVector;
+
 	AClothManager();
 	virtual ~AClothManager();
 
