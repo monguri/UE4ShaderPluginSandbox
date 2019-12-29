@@ -1,12 +1,12 @@
 #pragma once
 
-#include "Common/ComputableVertexBuffers.h"
+#include "Common/DeformableVertexBuffers.h"
 #include "Rendering/PositionVertexBuffer.h"
 
-struct FClothVertexBuffers : public FComputableVertexBuffers 
+struct FClothVertexBuffers : public FDeformableVertexBuffers 
 {
 	/** The buffer containing the previous frame position vertex data. */
-	FComputablePositionVertexBuffer PrevPositionVertexBuffer;
+	FDeformablePositionVertexBuffer PrevPositionVertexBuffer;
 	/** The buffer containing the acceralation vertex data. */
 	FPositionVertexBuffer AcceralationVertexBuffer; // FPositionVertexBufferを加速度用の頂点属性バッファに使用する
 

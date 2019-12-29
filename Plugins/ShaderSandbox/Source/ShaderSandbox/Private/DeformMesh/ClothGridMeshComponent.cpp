@@ -51,7 +51,7 @@ public:
 
 		// Enqueue initialization of render resource
 		BeginInitResource(&VertexBuffers.PositionVertexBuffer);
-		BeginInitResource(&VertexBuffers.ComputableMeshVertexBuffer);
+		BeginInitResource(&VertexBuffers.DeformableMeshVertexBuffer);
 		BeginInitResource(&VertexBuffers.ColorVertexBuffer);
 		BeginInitResource(&VertexBuffers.PrevPositionVertexBuffer);
 		BeginInitResource(&VertexBuffers.AcceralationVertexBuffer);
@@ -106,7 +106,7 @@ public:
 		}
 #endif
 		VertexBuffers.PositionVertexBuffer.ReleaseResource();
-		VertexBuffers.ComputableMeshVertexBuffer.ReleaseResource();
+		VertexBuffers.DeformableMeshVertexBuffer.ReleaseResource();
 		VertexBuffers.ColorVertexBuffer.ReleaseResource();
 		VertexBuffers.PrevPositionVertexBuffer.ReleaseResource();
 		VertexBuffers.AcceralationVertexBuffer.ReleaseResource();
@@ -269,7 +269,7 @@ public:
 		VertexBuffers.SetAccelerations(Component->GetAccelerations());
 
 		Params.PositionVertexBufferUAV = VertexBuffers.PositionVertexBuffer.GetUAV();
-		Params.TangentVertexBufferUAV = VertexBuffers.ComputableMeshVertexBuffer.GetTangentsUAV();
+		Params.TangentVertexBufferUAV = VertexBuffers.DeformableMeshVertexBuffer.GetTangentsUAV();
 		Params.PrevPositionVertexBufferUAV = VertexBuffers.PrevPositionVertexBuffer.GetUAV();
 		Params.AccelerationVertexBufferSRV = VertexBuffers.AcceralationVertexBuffer.GetSRV();
 

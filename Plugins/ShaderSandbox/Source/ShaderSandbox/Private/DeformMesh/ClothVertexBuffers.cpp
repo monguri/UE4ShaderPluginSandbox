@@ -23,7 +23,7 @@ void FClothVertexBuffers::InitFromClothVertexAttributes(FLocalVertexFactory* Ver
 	if (Vertices.Num())
 	{
 		PositionVertexBuffer.Init(Vertices.Num());
-		ComputableMeshVertexBuffer.Init(Vertices.Num(), NumTexCoords);
+		DeformableMeshVertexBuffer.Init(Vertices.Num(), NumTexCoords);
 		ColorVertexBuffer.Init(Vertices.Num());
 		PrevPositionVertexBuffer.Init(Vertices.Num());
 		AcceralationVertexBuffer.Init(Vertices.Num());
@@ -34,10 +34,10 @@ void FClothVertexBuffers::InitFromClothVertexAttributes(FLocalVertexFactory* Ver
 			float InvMass = InvMasses[i];
 
 			PositionVertexBuffer.VertexPosition(i) = FVector4(Vertex.Position, InvMass);
-			ComputableMeshVertexBuffer.SetVertexTangents(i, Vertex.TangentX.ToFVector(), Vertex.GetTangentY(), Vertex.TangentZ.ToFVector());
+			DeformableMeshVertexBuffer.SetVertexTangents(i, Vertex.TangentX.ToFVector(), Vertex.GetTangentY(), Vertex.TangentZ.ToFVector());
 			for (uint32 j = 0; j < NumTexCoords; j++)
 			{
-				ComputableMeshVertexBuffer.SetVertexUV(i, j, Vertex.TextureCoordinate[j]);
+				DeformableMeshVertexBuffer.SetVertexUV(i, j, Vertex.TextureCoordinate[j]);
 			}
 			ColorVertexBuffer.VertexColor(i) = Vertex.Color;
 			// 前フレームの位置は初期化では現フレームと同じにする
@@ -48,14 +48,14 @@ void FClothVertexBuffers::InitFromClothVertexAttributes(FLocalVertexFactory* Ver
 	else
 	{
 		PositionVertexBuffer.Init(1);
-		ComputableMeshVertexBuffer.Init(1, 1);
+		DeformableMeshVertexBuffer.Init(1, 1);
 		ColorVertexBuffer.Init(1);
 		PrevPositionVertexBuffer.Init(1);
 		AcceralationVertexBuffer.Init(1);
 
 		PositionVertexBuffer.VertexPosition(0) = FVector4(0, 0, 0, 0);
-		ComputableMeshVertexBuffer.SetVertexTangents(0, FVector(1, 0, 0), FVector(0, 1, 0), FVector(0, 0, 1));
-		ComputableMeshVertexBuffer.SetVertexUV(0, 0, FVector2D(0, 0));
+		DeformableMeshVertexBuffer.SetVertexTangents(0, FVector(1, 0, 0), FVector(0, 1, 0), FVector(0, 0, 1));
+		DeformableMeshVertexBuffer.SetVertexUV(0, 0, FVector2D(0, 0));
 		ColorVertexBuffer.VertexColor(0) = FColor(1,1,1,1);
 		PrevPositionVertexBuffer.VertexPosition(0) = FVector4(0, 0, 0, 0);
 		AcceralationVertexBuffer.VertexPosition(0) = FVector(0, 0, -980.0f);
@@ -68,16 +68,16 @@ void FClothVertexBuffers::InitFromClothVertexAttributes(FLocalVertexFactory* Ver
 		[VertexFactory, Self, LightMapIndex](FRHICommandListImmediate& RHICmdList)
 		{
 			InitOrUpdateResourceMacroCloth(&Self->PositionVertexBuffer);
-			InitOrUpdateResourceMacroCloth(&Self->ComputableMeshVertexBuffer);
+			InitOrUpdateResourceMacroCloth(&Self->DeformableMeshVertexBuffer);
 			InitOrUpdateResourceMacroCloth(&Self->ColorVertexBuffer);
 			InitOrUpdateResourceMacroCloth(&Self->PrevPositionVertexBuffer);
 			InitOrUpdateResourceMacroCloth(&Self->AcceralationVertexBuffer);
 
 			FLocalVertexFactory::FDataType Data;
 			Self->PositionVertexBuffer.BindPositionVertexBuffer(VertexFactory, Data);
-			Self->ComputableMeshVertexBuffer.BindTangentVertexBuffer(VertexFactory, Data);
-			Self->ComputableMeshVertexBuffer.BindPackedTexCoordVertexBuffer(VertexFactory, Data);
-			Self->ComputableMeshVertexBuffer.BindLightMapVertexBuffer(VertexFactory, Data, LightMapIndex);
+			Self->DeformableMeshVertexBuffer.BindTangentVertexBuffer(VertexFactory, Data);
+			Self->DeformableMeshVertexBuffer.BindPackedTexCoordVertexBuffer(VertexFactory, Data);
+			Self->DeformableMeshVertexBuffer.BindLightMapVertexBuffer(VertexFactory, Data, LightMapIndex);
 			Self->ColorVertexBuffer.BindColorVertexBuffer(VertexFactory, Data);
 			// PrevPositionVertexBuffer、AcceralationVertexBufferはシミュレーション用のデータなのでLocalVertexFactoryとバインドする必要はない
 			VertexFactory->SetData(Data);

@@ -12,7 +12,7 @@
 #include "DynamicMeshBuilder.h"
 #include "EngineGlobals.h"
 #include "Engine/Engine.h"
-#include "Common/ComputableVertexBuffers.h"
+#include "Common/DeformableVertexBuffers.h"
 #include "SinWaveGridMeshDeformer.h"
 #include "RayTracingInstance.h"
 
@@ -44,7 +44,7 @@ public:
 
 		// Enqueue initialization of render resource
 		BeginInitResource(&VertexBuffers.PositionVertexBuffer);
-		BeginInitResource(&VertexBuffers.ComputableMeshVertexBuffer);
+		BeginInitResource(&VertexBuffers.DeformableMeshVertexBuffer);
 		BeginInitResource(&VertexBuffers.ColorVertexBuffer);
 		BeginInitResource(&IndexBuffer);
 		BeginInitResource(&VertexFactory);
@@ -97,7 +97,7 @@ public:
 		}
 #endif
 		VertexBuffers.PositionVertexBuffer.ReleaseResource();
-		VertexBuffers.ComputableMeshVertexBuffer.ReleaseResource();
+		VertexBuffers.DeformableMeshVertexBuffer.ReleaseResource();
 		VertexBuffers.ColorVertexBuffer.ReleaseResource();
 		IndexBuffer.ReleaseResource();
 		VertexFactory.ReleaseResource();
@@ -254,7 +254,7 @@ public:
 		ENQUEUE_RENDER_COMMAND(SinWaveDeformGridMeshCommand)(
 			[this, Params](FRHICommandListImmediate& RHICmdList)
 			{
-				SinWaveDeformGridMesh(RHICmdList, Params, VertexBuffers.PositionVertexBuffer.GetUAV(), VertexBuffers.ComputableMeshVertexBuffer.GetTangentsUAV()
+				SinWaveDeformGridMesh(RHICmdList, Params, VertexBuffers.PositionVertexBuffer.GetUAV(), VertexBuffers.DeformableMeshVertexBuffer.GetTangentsUAV()
 #if 0
 #if RHI_RAYTRACING
 					, VertexBuffers.RayTracingGeometry
@@ -269,7 +269,7 @@ public:
 private:
 
 	UMaterialInterface* Material;
-	FComputableVertexBuffers VertexBuffers;
+	FDeformableVertexBuffers VertexBuffers;
 	FDynamicMeshIndexBuffer32 IndexBuffer;
 	FLocalVertexFactory VertexFactory;
 

@@ -1,9 +1,9 @@
-#include "Common/ComputableVertexBuffers.h"
+#include "Common/DeformableVertexBuffers.h"
 #include "LocalVertexFactory.h"
 #include "DynamicMeshBuilder.h"
 #include "StaticMeshVertexData.h"
 
-FComputableMeshVertexBuffer::FComputableMeshVertexBuffer() :
+FDeformableMeshVertexBuffer::FDeformableMeshVertexBuffer() :
 	TangentsData(nullptr),
 	TexcoordData(nullptr),
 	TangentsDataPtr(nullptr),
@@ -13,13 +13,13 @@ FComputableMeshVertexBuffer::FComputableMeshVertexBuffer() :
 	bUseFullPrecisionUVs(!GVertexElementTypeSupport.IsSupported(VET_Half2))
 {}
 
-FComputableMeshVertexBuffer::~FComputableMeshVertexBuffer()
+FDeformableMeshVertexBuffer::~FDeformableMeshVertexBuffer()
 {
 	CleanUp();
 }
 
 /** Delete existing resources */
-void FComputableMeshVertexBuffer::CleanUp()
+void FDeformableMeshVertexBuffer::CleanUp()
 {
 	if (TangentsData)
 	{
@@ -33,7 +33,7 @@ void FComputableMeshVertexBuffer::CleanUp()
 	}
 }
 
-void FComputableMeshVertexBuffer::Init(uint32 InNumVertices, uint32 InNumTexCoords)
+void FDeformableMeshVertexBuffer::Init(uint32 InNumVertices, uint32 InNumTexCoords)
 {
 	NumTexCoords = InNumTexCoords;
 	NumVertices = InNumVertices;
@@ -48,7 +48,7 @@ void FComputableMeshVertexBuffer::Init(uint32 InNumVertices, uint32 InNumTexCoor
 	TexcoordDataPtr = NumVertices ? TexcoordData->GetDataPointer() : nullptr;
 }
 
-void FComputableMeshVertexBuffer::ConvertHalfTexcoordsToFloat(const uint8* InData)
+void FDeformableMeshVertexBuffer::ConvertHalfTexcoordsToFloat(const uint8* InData)
 {
 	check(TexcoordData);
 	SetUseFullPrecisionUVs(true);
@@ -72,7 +72,7 @@ void FComputableMeshVertexBuffer::ConvertHalfTexcoordsToFloat(const uint8* InDat
 	OriginalTexcoordData = nullptr;
 }
 
-FVertexBufferRHIRef FComputableMeshVertexBuffer::CreateTangentsRHIBuffer_RenderThread()
+FVertexBufferRHIRef FDeformableMeshVertexBuffer::CreateTangentsRHIBuffer_RenderThread()
 {
 	if (GetNumVertices())
 	{
@@ -85,7 +85,7 @@ FVertexBufferRHIRef FComputableMeshVertexBuffer::CreateTangentsRHIBuffer_RenderT
 	return nullptr;
 }
 
-FVertexBufferRHIRef FComputableMeshVertexBuffer::CreateTexCoordRHIBuffer_RenderThread()
+FVertexBufferRHIRef FDeformableMeshVertexBuffer::CreateTexCoordRHIBuffer_RenderThread()
 {
 	if (GetNumTexCoords())
 	{
@@ -98,7 +98,7 @@ FVertexBufferRHIRef FComputableMeshVertexBuffer::CreateTexCoordRHIBuffer_RenderT
 	return nullptr;
 }
 
-void FComputableMeshVertexBuffer::InitRHI()
+void FDeformableMeshVertexBuffer::InitRHI()
 {
 	TangentsVertexBuffer.VertexBufferRHI = CreateTangentsRHIBuffer_RenderThread();
 	TexCoordVertexBuffer.VertexBufferRHI = CreateTexCoordRHIBuffer_RenderThread();
@@ -124,7 +124,7 @@ void FComputableMeshVertexBuffer::InitRHI()
 	}
 }
 
-void FComputableMeshVertexBuffer::ReleaseRHI()
+void FDeformableMeshVertexBuffer::ReleaseRHI()
 {
 	TangentsSRV.SafeRelease();
 	TangentsUAV.SafeRelease();
@@ -134,21 +134,21 @@ void FComputableMeshVertexBuffer::ReleaseRHI()
 	TexCoordVertexBuffer.ReleaseRHI();
 }
 
-void FComputableMeshVertexBuffer::InitResource()
+void FDeformableMeshVertexBuffer::InitResource()
 {
 	FRenderResource::InitResource();
 	TangentsVertexBuffer.InitResource();
 	TexCoordVertexBuffer.InitResource();
 }
 
-void FComputableMeshVertexBuffer::ReleaseResource()
+void FDeformableMeshVertexBuffer::ReleaseResource()
 {
 	FRenderResource::ReleaseResource();
 	TangentsVertexBuffer.ReleaseResource();
 	TexCoordVertexBuffer.ReleaseResource();
 }
 
-void FComputableMeshVertexBuffer::AllocateData()
+void FDeformableMeshVertexBuffer::AllocateData()
 {
 	// Clear any old VertexData before allocating.
 	CleanUp();
@@ -172,7 +172,7 @@ void FComputableMeshVertexBuffer::AllocateData()
 	}
 }
 
-void FComputableMeshVertexBuffer::BindTangentVertexBuffer(const FVertexFactory* VertexFactory, FStaticMeshDataType& Data) const
+void FDeformableMeshVertexBuffer::BindTangentVertexBuffer(const FVertexFactory* VertexFactory, FStaticMeshDataType& Data) const
 {
 	{
 		Data.TangentsSRV = TangentsSRV;
@@ -209,7 +209,7 @@ void FComputableMeshVertexBuffer::BindTangentVertexBuffer(const FVertexFactory* 
 	}
 }
 
-void FComputableMeshVertexBuffer::BindPackedTexCoordVertexBuffer(const FVertexFactory* VertexFactory, FStaticMeshDataType& Data) const
+void FDeformableMeshVertexBuffer::BindPackedTexCoordVertexBuffer(const FVertexFactory* VertexFactory, FStaticMeshDataType& Data) const
 {
 	Data.TextureCoordinates.Empty();
 	Data.NumTexCoords = GetNumTexCoords();
@@ -264,7 +264,7 @@ void FComputableMeshVertexBuffer::BindPackedTexCoordVertexBuffer(const FVertexFa
 	}
 }
 
-void FComputableMeshVertexBuffer::BindLightMapVertexBuffer(const FVertexFactory* VertexFactory, FStaticMeshDataType& Data, int LightMapCoordinateIndex) const
+void FDeformableMeshVertexBuffer::BindLightMapVertexBuffer(const FVertexFactory* VertexFactory, FStaticMeshDataType& Data, int LightMapCoordinateIndex) const
 {
 	LightMapCoordinateIndex = LightMapCoordinateIndex < (int32)GetNumTexCoords() ? LightMapCoordinateIndex : (int32)GetNumTexCoords() - 1;
 	check(LightMapCoordinateIndex >= 0);
@@ -308,30 +308,30 @@ void FComputableMeshVertexBuffer::BindLightMapVertexBuffer(const FVertexFactory*
 }
 
 /** The implementation of the static mesh position-only vertex data storage type. */
-class FComputablePositionVertexData :
-	public TStaticMeshVertexData<FComputablePositionVertex>
+class FDeformablePositionVertexData :
+	public TStaticMeshVertexData<FDeformablePositionVertex>
 {
 public:
-	FComputablePositionVertexData(bool InNeedsCPUAccess=true )
-		: TStaticMeshVertexData<FComputablePositionVertex>( InNeedsCPUAccess )
+	FDeformablePositionVertexData(bool InNeedsCPUAccess=true )
+		: TStaticMeshVertexData<FDeformablePositionVertex>( InNeedsCPUAccess )
 	{
 	}
 };
 
-FComputablePositionVertexBuffer::FComputablePositionVertexBuffer():
+FDeformablePositionVertexBuffer::FDeformablePositionVertexBuffer():
 	VertexData(NULL),
 	Data(NULL),
 	Stride(0),
 	NumVertices(0)
 {}
 
-FComputablePositionVertexBuffer::~FComputablePositionVertexBuffer()
+FDeformablePositionVertexBuffer::~FDeformablePositionVertexBuffer()
 {
 	CleanUp();
 }
 
 /** Delete existing resources */
-void FComputablePositionVertexBuffer::CleanUp()
+void FDeformablePositionVertexBuffer::CleanUp()
 {
 	if (VertexData)
 	{
@@ -340,7 +340,7 @@ void FComputablePositionVertexBuffer::CleanUp()
 	}
 }
 
-void FComputablePositionVertexBuffer::Init(uint32 InNumVertices)
+void FDeformablePositionVertexBuffer::Init(uint32 InNumVertices)
 {
 	NumVertices = InNumVertices;
 
@@ -352,7 +352,7 @@ void FComputablePositionVertexBuffer::Init(uint32 InNumVertices)
 	Data = NumVertices ? VertexData->GetDataPointer() : nullptr;
 }
 
-FVertexBufferRHIRef FComputablePositionVertexBuffer::CreateRHIBuffer_RenderThread()
+FVertexBufferRHIRef FDeformablePositionVertexBuffer::CreateRHIBuffer_RenderThread()
 {
 	if (NumVertices)
 	{
@@ -365,7 +365,7 @@ FVertexBufferRHIRef FComputablePositionVertexBuffer::CreateRHIBuffer_RenderThrea
 	return nullptr;
 }
 
-void FComputablePositionVertexBuffer::InitRHI()
+void FDeformablePositionVertexBuffer::InitRHI()
 {
 	VertexBufferRHI = CreateRHIBuffer_RenderThread();
 	// we have decide to create the SRV based on GMaxRHIShaderPlatform because this is created once and shared between feature levels for editor preview.
@@ -377,28 +377,28 @@ void FComputablePositionVertexBuffer::InitRHI()
 	}
 }
 
-void FComputablePositionVertexBuffer::ReleaseRHI()
+void FDeformablePositionVertexBuffer::ReleaseRHI()
 {
 	PositionComponentSRV.SafeRelease();
 	PositionComponentUAV.SafeRelease();
 	FVertexBuffer::ReleaseRHI();
 }
 
-void FComputablePositionVertexBuffer::AllocateData()
+void FDeformablePositionVertexBuffer::AllocateData()
 {
 	// Clear any old VertexData before allocating.
 	CleanUp();
 
-	VertexData = new FComputablePositionVertexData();
+	VertexData = new FDeformablePositionVertexData();
 	// Calculate the vertex stride.
 	Stride = VertexData->GetStride();
 }
 
-void FComputablePositionVertexBuffer::BindPositionVertexBuffer(const class FVertexFactory* VertexFactory, struct FStaticMeshDataType& StaticMeshData) const
+void FDeformablePositionVertexBuffer::BindPositionVertexBuffer(const class FVertexFactory* VertexFactory, struct FStaticMeshDataType& StaticMeshData) const
 {
 	StaticMeshData.PositionComponent = FVertexStreamComponent(
 		this,
-		STRUCT_OFFSET(FComputablePositionVertex, Position),
+		STRUCT_OFFSET(FDeformablePositionVertex, Position),
 		GetStride(),
 		VET_Float4
 	);
@@ -407,18 +407,18 @@ void FComputablePositionVertexBuffer::BindPositionVertexBuffer(const class FVert
 }
 
 /** The implementation of the static mesh color-only vertex data storage type. */
-class FComputableColorVertexData :
+class FDeformableColorVertexData :
 	public TStaticMeshVertexData<FColor>
 {
 public:
-	FComputableColorVertexData( bool InNeedsCPUAccess=true )
+	FDeformableColorVertexData( bool InNeedsCPUAccess=true )
 		: TStaticMeshVertexData<FColor>( InNeedsCPUAccess )
 	{
 	}
 };
 
 
-FComputableColorVertexBuffer::FComputableColorVertexBuffer():
+FDeformableColorVertexBuffer::FDeformableColorVertexBuffer():
 	VertexData(NULL),
 	Data(NULL),
 	Stride(0),
@@ -426,13 +426,13 @@ FComputableColorVertexBuffer::FComputableColorVertexBuffer():
 {
 }
 
-FComputableColorVertexBuffer::~FComputableColorVertexBuffer()
+FDeformableColorVertexBuffer::~FDeformableColorVertexBuffer()
 {
 	CleanUp();
 }
 
 /** Delete existing resources */
-void FComputableColorVertexBuffer::CleanUp()
+void FDeformableColorVertexBuffer::CleanUp()
 {
 	if (VertexData)
 	{
@@ -441,7 +441,7 @@ void FComputableColorVertexBuffer::CleanUp()
 	}
 }
 
-void FComputableColorVertexBuffer::Init(uint32 InNumVertices)
+void FDeformableColorVertexBuffer::Init(uint32 InNumVertices)
 {
 	NumVertices = InNumVertices;
 
@@ -453,7 +453,7 @@ void FComputableColorVertexBuffer::Init(uint32 InNumVertices)
 	Data = InNumVertices ? VertexData->GetDataPointer() : nullptr;
 }
 
-FVertexBufferRHIRef FComputableColorVertexBuffer::CreateRHIBuffer_RenderThread()
+FVertexBufferRHIRef FDeformableColorVertexBuffer::CreateRHIBuffer_RenderThread()
 {
 	if (NumVertices)
 	{
@@ -466,7 +466,7 @@ FVertexBufferRHIRef FComputableColorVertexBuffer::CreateRHIBuffer_RenderThread()
 	return nullptr;
 }
 
-void FComputableColorVertexBuffer::InitRHI()
+void FDeformableColorVertexBuffer::InitRHI()
 {
 	VertexBufferRHI = CreateRHIBuffer_RenderThread();
 	if (VertexBufferRHI)
@@ -476,24 +476,24 @@ void FComputableColorVertexBuffer::InitRHI()
 	}
 }
 
-void FComputableColorVertexBuffer::ReleaseRHI()
+void FDeformableColorVertexBuffer::ReleaseRHI()
 {
 	ColorComponentsSRV.SafeRelease();
 	ColorComponentsUAV.SafeRelease();
 	FVertexBuffer::ReleaseRHI();
 }
 
-void FComputableColorVertexBuffer::AllocateData( )
+void FDeformableColorVertexBuffer::AllocateData( )
 {
 	// Clear any old VertexData before allocating.
 	CleanUp();
 
-	VertexData = new FComputableColorVertexData();
+	VertexData = new FDeformableColorVertexData();
 	// Calculate the vertex stride.
 	Stride = VertexData->GetStride();
 }
 
-void FComputableColorVertexBuffer::BindColorVertexBuffer(const FVertexFactory* VertexFactory, FStaticMeshDataType& StaticMeshData) const
+void FDeformableColorVertexBuffer::BindColorVertexBuffer(const FVertexFactory* VertexFactory, FStaticMeshDataType& StaticMeshData) const
 {
 	if (GetNumVertices() == 0)
 	{
@@ -516,7 +516,7 @@ void FComputableColorVertexBuffer::BindColorVertexBuffer(const FVertexFactory* V
 	}
 }
 
-void FComputableColorVertexBuffer::BindDefaultColorVertexBuffer(const FVertexFactory* VertexFactory, FStaticMeshDataType& StaticMeshData, NullBindStride BindStride)
+void FDeformableColorVertexBuffer::BindDefaultColorVertexBuffer(const FVertexFactory* VertexFactory, FStaticMeshDataType& StaticMeshData, NullBindStride BindStride)
 {
 	StaticMeshData.ColorComponentsSRV = GNullColorVertexBuffer.VertexBufferSRV;
 	// TODO:Ç±Ç±Ç…ëäìñÇ∑ÇÈUAVÇÃèàóùÇÕïKóvÇ»Ç¢ÅH
@@ -547,7 +547,7 @@ static inline void InitOrUpdateResourceMacro(FRenderResource* Resource)
 	}
 }
 
-void FComputableVertexBuffers::InitFromDynamicVertex(FLocalVertexFactory* VertexFactory, const TArray<FDynamicMeshVertex>& Vertices, uint32 NumTexCoords, uint32 LightMapIndex)
+void FDeformableVertexBuffers::InitFromDynamicVertex(FLocalVertexFactory* VertexFactory, const TArray<FDynamicMeshVertex>& Vertices, uint32 NumTexCoords, uint32 LightMapIndex)
 {
 	check(NumTexCoords < MAX_STATIC_TEXCOORDS && NumTexCoords > 0);
 	check(LightMapIndex < NumTexCoords);
@@ -555,7 +555,7 @@ void FComputableVertexBuffers::InitFromDynamicVertex(FLocalVertexFactory* Vertex
 	if (Vertices.Num())
 	{
 		PositionVertexBuffer.Init(Vertices.Num());
-		ComputableMeshVertexBuffer.Init(Vertices.Num(), NumTexCoords);
+		DeformableMeshVertexBuffer.Init(Vertices.Num(), NumTexCoords);
 		ColorVertexBuffer.Init(Vertices.Num());
 
 		for (int32 i = 0; i < Vertices.Num(); i++)
@@ -563,10 +563,10 @@ void FComputableVertexBuffers::InitFromDynamicVertex(FLocalVertexFactory* Vertex
 			const FDynamicMeshVertex& Vertex = Vertices[i];
 
 			PositionVertexBuffer.VertexPosition(i) = Vertex.Position;
-			ComputableMeshVertexBuffer.SetVertexTangents(i, Vertex.TangentX.ToFVector(), Vertex.GetTangentY(), Vertex.TangentZ.ToFVector());
+			DeformableMeshVertexBuffer.SetVertexTangents(i, Vertex.TangentX.ToFVector(), Vertex.GetTangentY(), Vertex.TangentZ.ToFVector());
 			for (uint32 j = 0; j < NumTexCoords; j++)
 			{
-				ComputableMeshVertexBuffer.SetVertexUV(i, j, Vertex.TextureCoordinate[j]);
+				DeformableMeshVertexBuffer.SetVertexUV(i, j, Vertex.TextureCoordinate[j]);
 			}
 			ColorVertexBuffer.VertexColor(i) = Vertex.Color;
 		}
@@ -574,30 +574,30 @@ void FComputableVertexBuffers::InitFromDynamicVertex(FLocalVertexFactory* Vertex
 	else
 	{
 		PositionVertexBuffer.Init(1);
-		ComputableMeshVertexBuffer.Init(1, 1);
+		DeformableMeshVertexBuffer.Init(1, 1);
 		ColorVertexBuffer.Init(1);
 
 		PositionVertexBuffer.VertexPosition(0) = FVector(0, 0, 0);
-		ComputableMeshVertexBuffer.SetVertexTangents(0, FVector(1, 0, 0), FVector(0, 1, 0), FVector(0, 0, 1));
-		ComputableMeshVertexBuffer.SetVertexUV(0, 0, FVector2D(0, 0));
+		DeformableMeshVertexBuffer.SetVertexTangents(0, FVector(1, 0, 0), FVector(0, 1, 0), FVector(0, 0, 1));
+		DeformableMeshVertexBuffer.SetVertexUV(0, 0, FVector2D(0, 0));
 		ColorVertexBuffer.VertexColor(0) = FColor(1,1,1,1);
 		NumTexCoords = 1;
 		LightMapIndex = 0;
 	}
 
-	FComputableVertexBuffers* Self = this;
-	ENQUEUE_RENDER_COMMAND(InitComputableVertexBuffers)(
+	FDeformableVertexBuffers* Self = this;
+	ENQUEUE_RENDER_COMMAND(InitDeformableVertexBuffers)(
 		[VertexFactory, Self, LightMapIndex](FRHICommandListImmediate& RHICmdList)
 		{
 			InitOrUpdateResourceMacro(&Self->PositionVertexBuffer);
-			InitOrUpdateResourceMacro(&Self->ComputableMeshVertexBuffer);
+			InitOrUpdateResourceMacro(&Self->DeformableMeshVertexBuffer);
 			InitOrUpdateResourceMacro(&Self->ColorVertexBuffer);
 
 			FLocalVertexFactory::FDataType Data;
 			Self->PositionVertexBuffer.BindPositionVertexBuffer(VertexFactory, Data);
-			Self->ComputableMeshVertexBuffer.BindTangentVertexBuffer(VertexFactory, Data);
-			Self->ComputableMeshVertexBuffer.BindPackedTexCoordVertexBuffer(VertexFactory, Data);
-			Self->ComputableMeshVertexBuffer.BindLightMapVertexBuffer(VertexFactory, Data, LightMapIndex);
+			Self->DeformableMeshVertexBuffer.BindTangentVertexBuffer(VertexFactory, Data);
+			Self->DeformableMeshVertexBuffer.BindPackedTexCoordVertexBuffer(VertexFactory, Data);
+			Self->DeformableMeshVertexBuffer.BindLightMapVertexBuffer(VertexFactory, Data, LightMapIndex);
 			Self->ColorVertexBuffer.BindColorVertexBuffer(VertexFactory, Data);
 			VertexFactory->SetData(Data);
 

@@ -4,14 +4,14 @@
 #include "RenderResource.h"
 #include "Rendering/StaticMeshVertexBuffer.h"
 
-class FComputableMeshVertexBuffer : public FRenderResource
+class FDeformableMeshVertexBuffer : public FRenderResource
 {
 public:
 	/** Default constructor. */
-	FComputableMeshVertexBuffer();
+	FDeformableMeshVertexBuffer();
 
 	/** Destructor. */
-	~FComputableMeshVertexBuffer();
+	~FDeformableMeshVertexBuffer();
 
 	/** Delete existing resources */
 	void CleanUp();
@@ -92,7 +92,7 @@ public:
 	virtual void ReleaseRHI() override;
 	virtual void InitResource() override;
 	virtual void ReleaseResource() override;
-	virtual FString GetFriendlyName() const override { return TEXT("Computable-mesh vertices"); }
+	virtual FString GetFriendlyName() const override { return TEXT("Deformable-mesh vertices"); }
 
 	void BindTangentVertexBuffer(const class FVertexFactory* VertexFactory, struct FStaticMeshDataType& Data) const;
 	void BindPackedTexCoordVertexBuffer(const class FVertexFactory* VertexFactory, struct FStaticMeshDataType& Data) const;
@@ -152,25 +152,25 @@ private:
 };
 
 /** A vertex that stores position and extra w. */
-struct FComputablePositionVertex
+struct FDeformablePositionVertex
 {
 	FVector4 Position;
 
-	friend FArchive& operator<<(FArchive& Ar, FComputablePositionVertex& V)
+	friend FArchive& operator<<(FArchive& Ar, FDeformablePositionVertex& V)
 	{
 		Ar << V.Position;
 		return Ar;
 	}
 };
 
-class FComputablePositionVertexBuffer : public FVertexBuffer
+class FDeformablePositionVertexBuffer : public FVertexBuffer
 {
 public:
 	/** Default constructor. */
-	FComputablePositionVertexBuffer();
+	FDeformablePositionVertexBuffer();
 
 	/** Destructor. */
-	~FComputablePositionVertexBuffer();
+	~FDeformablePositionVertexBuffer();
 
 	/** Delete existing resources */
 	void CleanUp();
@@ -185,12 +185,12 @@ public:
 	FORCEINLINE FVector4& VertexPosition(uint32 VertexIndex)
 	{
 		checkSlow(VertexIndex < GetNumVertices());
-		return ((FComputablePositionVertex*)(Data + VertexIndex * Stride))->Position;
+		return ((FDeformablePositionVertex*)(Data + VertexIndex * Stride))->Position;
 	}
 	FORCEINLINE const FVector4& VertexPosition(uint32 VertexIndex) const
 	{
 		checkSlow(VertexIndex < GetNumVertices());
-		return ((FComputablePositionVertex*)(Data + VertexIndex * Stride))->Position;
+		return ((FDeformablePositionVertex*)(Data + VertexIndex * Stride))->Position;
 	}
 	// Other accessors.
 	FORCEINLINE uint32 GetStride() const
@@ -214,7 +214,7 @@ private:
 	FUnorderedAccessViewRHIRef PositionComponentUAV;
 
 	/** The vertex data storage type */
-	class FComputablePositionVertexData* VertexData;
+	class FDeformablePositionVertexData* VertexData;
 
 	/** The cached vertex data pointer. */
 	uint8* Data;
@@ -229,7 +229,7 @@ private:
 	void AllocateData();
 };
 
-class FComputableColorVertexBuffer : public FVertexBuffer
+class FDeformableColorVertexBuffer : public FVertexBuffer
 {
 public:
 	enum class NullBindStride
@@ -239,10 +239,10 @@ public:
 	};
 
 	/** Default constructor. */
-	FComputableColorVertexBuffer();
+	FDeformableColorVertexBuffer();
 
 	/** Destructor. */
-	~FComputableColorVertexBuffer();
+	~FDeformableColorVertexBuffer();
 
 	/** Delete existing resources */
 	void CleanUp();
@@ -274,7 +274,7 @@ public:
 	// FRenderResource interface.
 	virtual void InitRHI() override;
 	virtual void ReleaseRHI() override;
-	virtual FString GetFriendlyName() const override { return TEXT("ColorOnly Computable Mesh Vertices"); }
+	virtual FString GetFriendlyName() const override { return TEXT("ColorOnly Deformable Mesh Vertices"); }
 
 	/** Create an RHI vertex buffer with CPU data. CPU data may be discarded after creation (see TResourceArray::Discard) */
 	FVertexBufferRHIRef CreateRHIBuffer_RenderThread();
@@ -284,7 +284,7 @@ public:
 
 private:
 	/** The vertex data storage type */
-	class FComputableColorVertexData* VertexData;
+	class FDeformableColorVertexData* VertexData;
 
 	FShaderResourceViewRHIRef ColorComponentsSRV;
 	FUnorderedAccessViewRHIRef ColorComponentsUAV;
@@ -302,20 +302,20 @@ private:
 	void AllocateData();
 };
 
-struct FComputableVertexBuffers
+struct FDeformableVertexBuffers
 {
 	/** The buffer containing vertex data. */
-	FComputableMeshVertexBuffer ComputableMeshVertexBuffer;
+	FDeformableMeshVertexBuffer DeformableMeshVertexBuffer;
 	/** The buffer containing the position vertex data. */
-	FComputablePositionVertexBuffer PositionVertexBuffer;
+	FDeformablePositionVertexBuffer PositionVertexBuffer;
 	/** The buffer containing the vertex color data. */
-	FComputableColorVertexBuffer ColorVertexBuffer;
+	FDeformableColorVertexBuffer ColorVertexBuffer;
 
 #if RHI_RAYTRACING
 	FRayTracingGeometry RayTracingGeometry;
 #endif
 
-	virtual ~FComputableVertexBuffers() {}
+	virtual ~FDeformableVertexBuffers() {}
 	/* This is a temporary function to refactor and convert old code, do not copy this as is and try to build your data as SoA from the beginning.*/
 	void InitFromDynamicVertex(class FLocalVertexFactory* VertexFactory, const TArray<struct FDynamicMeshVertex>& Vertices, uint32 NumTexCoords = 1, uint32 LightMapIndex = 0);
 };
