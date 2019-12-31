@@ -40,3 +40,19 @@ Japanese
 
 テスト用マップをプレーすると、SinWaveMeshActorがサインカーブで波打ちます。
 頂点バッファをコンピュートシェーダで動かしています。
+
+## ClothGridDemo
+It has been tested only on UE4.23, Win64 DX11, not on ray tracing.
+I will test it on UE4.24 soon.
+
+![ClothGridDemo](Plugins/ShaderSandbox/ClothWind.gif "SinWaveGridDemo")
+
+English
+
+If you play on the test map, several ClothGridActor begin to move.
+Cloth siumlation is done by compute shaders.
+
+Japanese
+
+テスト用マップをプレーすると、いくつかのClothGridActorが動きます。
+クロスシミュレーションはコンピュートシェーダで行っています。
