@@ -64,47 +64,10 @@ public:
 		{
 			Material = UMaterial::GetDefaultMaterial(MD_Surface);
 		}
-
-#if RHI_RAYTRACING
-		if (IsRayTracingEnabled())
-		{
-			ENQUEUE_RENDER_COMMAND(InitClothGridMeshRayTracingGeometry)(
-				[this](FRHICommandList& RHICmdList)
-			{
-				FRayTracingGeometryInitializer Initializer;
-				Initializer.PositionVertexBuffer = nullptr;
-				Initializer.IndexBuffer = nullptr;
-				Initializer.BaseVertexIndex = 0;
-				Initializer.VertexBufferStride = 16;
-				Initializer.VertexBufferByteOffset = 0;
-				Initializer.TotalPrimitiveCount = 0;
-				Initializer.VertexBufferElementType = VET_Float4;
-				Initializer.GeometryType = RTGT_Triangles;
-				Initializer.bFastBuild = true;
-				Initializer.bAllowUpdate = true;
-				VertexBuffers.RayTracingGeometry.SetInitializer(Initializer);
-				VertexBuffers.RayTracingGeometry.InitResource();
-
-				VertexBuffers.RayTracingGeometry.Initializer.PositionVertexBuffer = VertexBuffers.PositionVertexBuffer.VertexBufferRHI;
-				VertexBuffers.RayTracingGeometry.Initializer.IndexBuffer = IndexBuffer.IndexBufferRHI;
-				VertexBuffers.RayTracingGeometry.Initializer.TotalPrimitiveCount = IndexBuffer.Indices.Num() / 3;
-
-				//#dxr_todo: add support for segments?
-				
-				VertexBuffers.RayTracingGeometry.UpdateRHI();
-			});
-		}
-#endif
 	}
 
 	virtual ~FClothGridMeshSceneProxy()
 	{
-#if RHI_RAYTRACING
-		if (IsRayTracingEnabled())
-		{
-			VertexBuffers.RayTracingGeometry.ReleaseResource();
-		}
-#endif
 		VertexBuffers.PositionVertexBuffer.ReleaseResource();
 		VertexBuffers.DeformableMeshVertexBuffer.ReleaseResource();
 		VertexBuffers.ColorVertexBuffer.ReleaseResource();
@@ -196,57 +159,6 @@ public:
 	virtual uint32 GetMemoryFootprint( void ) const override { return( sizeof( *this ) + GetAllocatedSize() ); }
 
 	uint32 GetAllocatedSize( void ) const { return( FPrimitiveSceneProxy::GetAllocatedSize() ); }
-
-#if RHI_RAYTRACING
-	virtual bool IsRayTracingRelevant() const override { return true; }
-
-	virtual void GetDynamicRayTracingInstances(FRayTracingMaterialGatheringContext& Context, TArray<FRayTracingInstance>& OutRayTracingInstances) override
-	{
-		if (VertexBuffers.RayTracingGeometry.RayTracingGeometryRHI.IsValid())
-		{
-			check(VertexBuffers.RayTracingGeometry.Initializer.PositionVertexBuffer.IsValid());
-			check(VertexBuffers.RayTracingGeometry.Initializer.IndexBuffer.IsValid());
-
-			FRayTracingInstance RayTracingInstance;
-			RayTracingInstance.Geometry = &VertexBuffers.RayTracingGeometry;
-			RayTracingInstance.InstanceTransforms.Add(GetLocalToWorld());
-
-			uint32 SectionIdx = 0;
-			FMeshBatch MeshBatch;
-
-			MeshBatch.VertexFactory = &VertexFactory;
-			MeshBatch.SegmentIndex = 0;
-			MeshBatch.MaterialRenderProxy = Material->GetRenderProxy();
-			MeshBatch.ReverseCulling = IsLocalToWorldDeterminantNegative();
-			MeshBatch.Type = PT_TriangleList;
-			MeshBatch.DepthPriorityGroup = SDPG_World;
-			MeshBatch.bCanApplyViewModeOverrides = false;
-
-			FMeshBatchElement& BatchElement = MeshBatch.Elements[0];
-			BatchElement.IndexBuffer = &IndexBuffer;
-
-			bool bHasPrecomputedVolumetricLightmap;
-			FMatrix PreviousLocalToWorld;
-			int32 SingleCaptureIndex;
-			bool bOutputVelocity;
-			GetScene().GetPrimitiveUniformShaderParameters_RenderThread(GetPrimitiveSceneInfo(), bHasPrecomputedVolumetricLightmap, PreviousLocalToWorld, SingleCaptureIndex, bOutputVelocity);
-
-			FDynamicPrimitiveUniformBuffer& DynamicPrimitiveUniformBuffer = Context.RayTracingMeshResourceCollector.AllocateOneFrameResource<FDynamicPrimitiveUniformBuffer>();
-			DynamicPrimitiveUniformBuffer.Set(GetLocalToWorld(), PreviousLocalToWorld, GetBounds(), GetLocalBounds(), true, bHasPrecomputedVolumetricLightmap, DrawsVelocity(), bOutputVelocity);
-			BatchElement.PrimitiveUniformBufferResource = &DynamicPrimitiveUniformBuffer.UniformBuffer;
-
-			BatchElement.FirstIndex = 0;
-			BatchElement.NumPrimitives = IndexBuffer.Indices.Num() / 3;
-			BatchElement.MinVertexIndex = 0;
-			BatchElement.MaxVertexIndex = VertexBuffers.PositionVertexBuffer.GetNumVertices() - 1;
-
-			RayTracingInstance.Materials.Add(MeshBatch);
-
-			RayTracingInstance.BuildInstanceMaskAndFlags();
-			OutRayTracingInstances.Add(RayTracingInstance);
-		}
-	}
-#endif
 
 	void EnqueClothGridMeshRenderCommand(UClothGridMeshComponent* Component)
 	{
