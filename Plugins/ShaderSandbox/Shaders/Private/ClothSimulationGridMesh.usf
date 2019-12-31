@@ -326,29 +326,29 @@ void SolveDistanceConstraint(uint2 DispatchThreadId : SV_DispatchThreadID)
 	}
 }
 
-[numthreads(1, 1, 1)]
-void SolveCollision(uint2 DispatchThreadId : SV_DispatchThreadID)
+[numthreads(NUM_THREAD_X, 1, 1)]
+void SolveCollision(uint ThreadId : SV_GroupThreadID)
 {
 	// TODO:複数のコリジョンが重なっていることによるめりこみ押し出しの競合についてはとりあえず考えない
-	for (uint CollisionIdx = 0; CollisionIdx < NumSphereCollision; CollisionIdx++)
+	for (uint VertIdx = ThreadId; VertIdx < NumVertex; VertIdx += NUM_THREAD_X)
 	{
-		float4 SphereCenterAndRadius = SphereCenterAndRadiusArray[CollisionIdx];
-		float3 SphereCenter = SphereCenterAndRadius.xyz;
-		// 計算をシンプルにするために頂点の半径は0にしてコリジョン側の半径に頂点半径をプラスして扱う
-		float SphereRadius = SphereCenterAndRadius.w + VertexRadius;
-		float SquareSphereRadius = SphereRadius * SphereRadius;
+		float3 CurrVertexPos = GetCurrentVBPosition(VertIdx);
 
-		for (uint VertIdx = 0; VertIdx < NumVertex; VertIdx++)
+		for (uint CollisionIdx = 0; CollisionIdx < NumSphereCollision; CollisionIdx++)
 		{
-			float3 CurrVertexPos = GetCurrentVBPosition(VertIdx);
+			float4 SphereCenterAndRadius = SphereCenterAndRadiusArray[CollisionIdx];
+			float3 SphereCenter = SphereCenterAndRadius.xyz;
+			// 計算をシンプルにするために頂点の半径は0にしてコリジョン側の半径に頂点半径をプラスして扱う
+			float SphereRadius = SphereCenterAndRadius.w + VertexRadius;
+			float SquareSphereRadius = SphereRadius * SphereRadius;
 
 			// めりこんでいれば半径方向に押し出す
 			if (dot(CurrVertexPos - SphereCenter, CurrVertexPos - SphereCenter) < SquareSphereRadius)
 			{
 				CurrVertexPos = SphereCenter + normalize(CurrVertexPos - SphereCenter) * SphereRadius;
 			}
-
-			SetCurrentVBPosition(VertIdx, CurrVertexPos);
 		}
+
+		SetCurrentVBPosition(VertIdx, CurrVertexPos);
 	}
 }
