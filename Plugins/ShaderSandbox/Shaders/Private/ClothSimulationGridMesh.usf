@@ -78,7 +78,11 @@ void Interate(uint ThreadId : SV_GroupThreadID)
 	}
 }
 
+#if 1 // TODO:若干マルチスレッドをすると動きがくしゃくしゃなる兆候が見られたのでとりあえずマルチスレッド対応は後回し
+[numthreads(1, 1, 1)]
+#else
 [numthreads(NUM_THREAD_X, 1, 1)]
+#endif
 void ApplyWind(uint ThreadId : SV_GroupThreadID)
 {
 	const float SMALL_NUMBER = 0.0001f;
@@ -86,7 +90,11 @@ void ApplyWind(uint ThreadId : SV_GroupThreadID)
 	const float DRAG_COEFFICIENT = 0.2f / 100.0f; // 式がMKS単位系なので100で割る
 
 	// グリッドのトライアングル単位で処理するのでセルでループする
+#if 1
+	for (uint RowColumnIndex = 0; RowColumnIndex < NumRow * NumColumn; RowColumnIndex++)
+#else
 	for (uint RowColumnIndex = ThreadId; RowColumnIndex < NumRow * NumColumn; RowColumnIndex += NUM_THREAD_X)
+#endif
 	{
 		uint RowIndex = RowColumnIndex / NumColumn;
 		uint ColumnIndex = RowColumnIndex % NumColumn;
@@ -266,12 +274,20 @@ void ApplyWind(uint ThreadId : SV_GroupThreadID)
 	}
 }
 
+#if 1 // TODO:マルチスレッドをすると動きが壊れるとりあえずマルチスレッド対応は後回し
 [numthreads(1, 1, 1)]
-void SolveDistanceConstraint(uint2 DispatchThreadId : SV_DispatchThreadID)
+#else
+[numthreads(NUM_THREAD_X, 1, 1)]
+#endif
+void SolveDistanceConstraint(uint ThreadId : SV_GroupThreadID)
 {
 	const float SMALL_NUMBER = 0.0001f;
 
+#if 1
 	for (uint VertIdx = 0; VertIdx < NumVertex; VertIdx++)
+#else
+	for (uint VertIdx = ThreadId; VertIdx < NumVertex; VertIdx += NUM_THREAD_X)
+#endif
 	{
 		uint RowIndex = VertIdx / (NumColumn + 1);
 		uint ColumnIndex = VertIdx % (NumColumn + 1);
