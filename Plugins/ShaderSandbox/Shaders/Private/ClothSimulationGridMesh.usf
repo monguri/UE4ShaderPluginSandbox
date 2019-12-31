@@ -44,12 +44,14 @@ void SetPreviousVBPosition(uint VertIdx, float3 Pos)
 	OutPrevPositionVertexBuffer[4 * VertIdx + 2] = Pos.z;
 }
 
-[numthreads(1, 1, 1)]
-void Interate(uint2 DispatchThreadId : SV_DispatchThreadID)
+static const uint NUM_THREAD_X = 32;
+
+[numthreads(NUM_THREAD_X, 1, 1)]
+void Interate(uint ThreadId : SV_GroupThreadID)
 {
 	const float SMALL_NUMBER = 0.0001f;
 
-	for (uint VertIdx = 0; VertIdx < NumVertex; VertIdx++)
+	for (uint VertIdx = ThreadId; VertIdx < NumVertex; VertIdx += NUM_THREAD_X)
 	{
 		float3 CurrPos = GetCurrentVBPosition(VertIdx);
 		float3 PrevPos = GetPreviousVBPosition(VertIdx);
