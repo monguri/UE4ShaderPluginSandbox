@@ -1,9 +1,30 @@
 #pragma once
 
-#include "Components/SceneComponent.h"
+#include "Components/PrimitiveComponent.h"
 #include "GameFramework/Actor.h"
 #include "DeformMesh/ClothGridMeshDeformer.h"
+#include "Common/DeformableVertexBuffers.h"
 #include "ClothManager.generated.h"
+
+UCLASS(hidecategories=(Object,LOD, Physics, Collision), ClassGroup=Rendering)
+class SHADERSANDBOX_API UClothManagerComponent : public UPrimitiveComponent
+{
+	GENERATED_BODY()
+
+public:
+	void RegisterClothMesh(class UClothGridMeshComponent* ClothMesh);
+	void UnregisterClothMesh(class UClothGridMeshComponent* ClothMesh);
+	void EnqueueSimulateClothTask(const FGridClothParameters& Task);
+
+	//~ Begin UPrimitiveComponent Interface.
+	virtual FPrimitiveSceneProxy* CreateSceneProxy() override;
+	//~ End UPrimitiveComponent Interface.
+
+protected:
+	//~ Begin UActorComponent Interface
+	virtual void SendRenderDynamicData_Concurrent() override;
+	//~ End UActorComponent Interface
+};
 
 // Cloth instance manager.
 UCLASS(hidecategories=(Object,LOD, Physics, Collision), ClassGroup=Rendering)
@@ -32,10 +53,7 @@ public:
 	void EnqueueSimulateClothTask(const FGridClothParameters& Task);
 
 private:
-	int32 NumTask = 0;
-	TArray<class UClothGridMeshComponent*> ClothMeshes;
 	TArray<class USphereCollisionComponent*> SphereCollisions;
-	FClothGridMeshDeformer VertexDeformer;
 };
 
 // global singleton instance

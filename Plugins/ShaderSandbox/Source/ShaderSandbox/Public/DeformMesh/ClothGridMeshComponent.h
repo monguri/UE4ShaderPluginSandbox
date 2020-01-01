@@ -35,7 +35,6 @@ public:
 
 protected:
 	//~ Begin UActorComponent Interface
-	virtual void OnRegister() override;
 	virtual void SendRenderDynamicData_Concurrent() override;
 	//~ End UActorComponent Interface
 

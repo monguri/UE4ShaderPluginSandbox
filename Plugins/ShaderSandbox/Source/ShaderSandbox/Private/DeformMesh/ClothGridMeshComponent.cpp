@@ -224,21 +224,6 @@ UClothGridMeshComponent::~UClothGridMeshComponent()
 	}
 }
 
-void UClothGridMeshComponent::OnRegister()
-{
-	Super::OnRegister();
-
-	AClothManager* Manager = AClothManager::GetInstance();
-	if (Manager == nullptr)
-	{
-		UE_LOG(LogTemp, Error, TEXT("UClothGridMeshComponent::OnRegister() There is no AClothManager. So failed to register this cloth mesh."));
-	}
-	else
-	{
-		Manager->RegisterClothMesh(this);
-	}
-}
-
 void UClothGridMeshComponent::InitClothSettings(int32 NumRow, int32 NumColumn, float GridWidth, float GridHeight, float Stiffness, float Damping, float FluidDensity, float VertexRadius, int32 NumIteration)
 {
 	_NumRow = NumRow;
@@ -298,6 +283,16 @@ void UClothGridMeshComponent::InitClothSettings(int32 NumRow, int32 NumColumn, f
 
 	MarkRenderStateDirty();
 	UpdateBounds();
+
+	AClothManager* Manager = AClothManager::GetInstance();
+	if (Manager == nullptr)
+	{
+		UE_LOG(LogTemp, Error, TEXT("UClothGridMeshComponent::OnRegister() There is no AClothManager. So failed to register this cloth mesh."));
+	}
+	else
+	{
+		Manager->RegisterClothMesh(this);
+	}
 }
 
 void UClothGridMeshComponent::IgnoreVelocityDiscontinuityNextFrame()
