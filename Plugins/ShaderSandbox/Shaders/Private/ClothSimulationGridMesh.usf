@@ -46,8 +46,7 @@ void SetPreviousVBPosition(uint VertIdx, float3 Pos)
 
 static const uint NUM_THREAD_X = 32;
 
-[numthreads(NUM_THREAD_X, 1, 1)]
-void Interate(uint ThreadId : SV_GroupThreadID)
+void Integrate(uint ThreadId)
 {
 	const float SMALL_NUMBER = 0.0001f;
 
@@ -78,8 +77,7 @@ void Interate(uint ThreadId : SV_GroupThreadID)
 	}
 }
 
-[numthreads(NUM_THREAD_X, 1, 1)]
-void ApplyWind(uint ThreadId : SV_GroupThreadID)
+void ApplyWind(uint ThreadId)
 {
 	const float SMALL_NUMBER = 0.0001f;
 	const float LIFT_COEFFICIENT = 0.2f / 100.0f; // 式がMKS単位系なので100で割る
@@ -277,8 +275,7 @@ void ApplyWind(uint ThreadId : SV_GroupThreadID)
 	}
 }
 
-[numthreads(NUM_THREAD_X, 1, 1)]
-void SolveDistanceConstraint(uint ThreadId : SV_GroupThreadID)
+void SolveDistanceConstraint(uint ThreadId)
 {
 	const float SMALL_NUMBER = 0.0001f;
 
@@ -346,8 +343,7 @@ void SolveDistanceConstraint(uint ThreadId : SV_GroupThreadID)
 	}
 }
 
-[numthreads(NUM_THREAD_X, 1, 1)]
-void SolveCollision(uint ThreadId : SV_GroupThreadID)
+void SolveCollision(uint ThreadId)
 {
 	// TODO:複数のコリジョンが重なっていることによるめりこみ押し出しの競合についてはとりあえず考えない
 	for (uint VertIdx = ThreadId; VertIdx < NumVertex; VertIdx += NUM_THREAD_X)
@@ -372,3 +368,23 @@ void SolveCollision(uint ThreadId : SV_GroupThreadID)
 		SetCurrentVBPosition(VertIdx, CurrVertexPos);
 	}
 }
+
+[numthreads(NUM_THREAD_X, 1, 1)]
+void Main(uint ThreadId : SV_GroupThreadID)
+{
+	Integrate(ThreadId);
+	GroupMemoryBarrierWithGroupSync();
+
+	if (FluidDensity > 0.0f)
+	{
+		ApplyWind(ThreadId);
+		GroupMemoryBarrierWithGroupSync();
+	}
+
+	SolveDistanceConstraint(ThreadId);
+	GroupMemoryBarrierWithGroupSync();
+
+	SolveCollision(ThreadId);
+	GroupMemoryBarrierWithGroupSync();
+}
+

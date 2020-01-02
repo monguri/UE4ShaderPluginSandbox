@@ -46,16 +46,30 @@ public:
 
 IMPLEMENT_GLOBAL_SHADER(FClothMeshCopyFromWorkBufferCS, "/Plugin/ShaderSandbox/Private/ClothMeshCopy.usf", "CopyFromWorkBuffer", SF_Compute);
 
-class FClothSimulationIntegrationCS : public FGlobalShader
+class FClothSimulationCS : public FGlobalShader
 {
-	DECLARE_GLOBAL_SHADER(FClothSimulationIntegrationCS);
-	SHADER_USE_PARAMETER_STRUCT(FClothSimulationIntegrationCS, FGlobalShader);
+public:
+	static const uint32 MAX_SPHERE_COLLISION = 16;
+
+	DECLARE_GLOBAL_SHADER(FClothSimulationCS);
+	SHADER_USE_PARAMETER_STRUCT(FClothSimulationCS, FGlobalShader);
 
 	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
+		SHADER_PARAMETER(uint32, NumRow)
+		SHADER_PARAMETER(uint32, NumColumn)
 		SHADER_PARAMETER(uint32, NumVertex)
+		SHADER_PARAMETER(float, GridWidth)
+		SHADER_PARAMETER(float, GridHeight)
 		SHADER_PARAMETER(float, SquareDeltaTime)
+		SHADER_PARAMETER(float, Stiffness)
 		SHADER_PARAMETER(float, Damping)
 		SHADER_PARAMETER(FVector, PreviousInertia)
+		SHADER_PARAMETER(FVector, WindVelocity)
+		SHADER_PARAMETER(float, FluidDensity)
+		SHADER_PARAMETER(float, DeltaTime)
+		SHADER_PARAMETER(float, VertexRadius)
+		SHADER_PARAMETER(uint32, NumSphereCollision)
+		SHADER_PARAMETER_ARRAY(FVector4, SphereCenterAndRadiusArray, [MAX_SPHERE_COLLISION])
 		SHADER_PARAMETER_SRV(Buffer<float>, InAccelerationVertexBuffer)
 		SHADER_PARAMETER_UAV(RWBuffer<float>, OutPrevPositionVertexBuffer)
 		SHADER_PARAMETER_UAV(RWBuffer<float>, OutPositionVertexBuffer)
@@ -68,80 +82,7 @@ public:
 	}
 };
 
-IMPLEMENT_GLOBAL_SHADER(FClothSimulationIntegrationCS, "/Plugin/ShaderSandbox/Private/ClothSimulationGridMesh.usf", "Interate", SF_Compute);
-
-class FClothSimulationApplyWindCS : public FGlobalShader
-{
-	DECLARE_GLOBAL_SHADER(FClothSimulationApplyWindCS);
-	SHADER_USE_PARAMETER_STRUCT(FClothSimulationApplyWindCS, FGlobalShader);
-
-	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
-		SHADER_PARAMETER(uint32, NumRow)
-		SHADER_PARAMETER(uint32, NumColumn)
-		SHADER_PARAMETER(FVector, WindVelocity)
-		SHADER_PARAMETER(float, FluidDensity)
-		SHADER_PARAMETER(float, DeltaTime)
-		SHADER_PARAMETER_UAV(RWBuffer<float>, OutPrevPositionVertexBuffer)
-		SHADER_PARAMETER_UAV(RWBuffer<float>, OutPositionVertexBuffer)
-	END_SHADER_PARAMETER_STRUCT()
-
-public:
-	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters)
-	{
-		return IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
-	}
-};
-
-IMPLEMENT_GLOBAL_SHADER(FClothSimulationApplyWindCS, "/Plugin/ShaderSandbox/Private/ClothSimulationGridMesh.usf", "ApplyWind", SF_Compute);
-
-class FClothSimulationSolveDistanceConstraintCS : public FGlobalShader
-{
-	DECLARE_GLOBAL_SHADER(FClothSimulationSolveDistanceConstraintCS);
-	SHADER_USE_PARAMETER_STRUCT(FClothSimulationSolveDistanceConstraintCS, FGlobalShader);
-
-	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
-		SHADER_PARAMETER(uint32, NumRow)
-		SHADER_PARAMETER(uint32, NumColumn)
-		SHADER_PARAMETER(uint32, NumVertex)
-		SHADER_PARAMETER(float, GridWidth)
-		SHADER_PARAMETER(float, GridHeight)
-		SHADER_PARAMETER(float, Stiffness)
-		SHADER_PARAMETER_UAV(RWBuffer<float>, OutPositionVertexBuffer)
-	END_SHADER_PARAMETER_STRUCT()
-
-public:
-	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters)
-	{
-		return IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
-	}
-};
-
-IMPLEMENT_GLOBAL_SHADER(FClothSimulationSolveDistanceConstraintCS, "/Plugin/ShaderSandbox/Private/ClothSimulationGridMesh.usf", "SolveDistanceConstraint", SF_Compute);
-
-class FClothSimulationSolveCollisionCS : public FGlobalShader
-{
-public:
-	static const uint32 MAX_SPHERE_COLLISION = 16;
-
-	DECLARE_GLOBAL_SHADER(FClothSimulationSolveCollisionCS);
-	SHADER_USE_PARAMETER_STRUCT(FClothSimulationSolveCollisionCS, FGlobalShader);
-
-	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
-		SHADER_PARAMETER(uint32, NumVertex)
-		SHADER_PARAMETER(uint32, NumSphereCollision)
-		SHADER_PARAMETER(float, VertexRadius)
-		SHADER_PARAMETER_ARRAY(FVector4, SphereCenterAndRadiusArray, [MAX_SPHERE_COLLISION])
-		SHADER_PARAMETER_UAV(RWBuffer<float>, OutPositionVertexBuffer)
-	END_SHADER_PARAMETER_STRUCT()
-
-public:
-	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters)
-	{
-		return IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
-	}
-};
-
-IMPLEMENT_GLOBAL_SHADER(FClothSimulationSolveCollisionCS, "/Plugin/ShaderSandbox/Private/ClothSimulationGridMesh.usf", "SolveCollision", SF_Compute);
+IMPLEMENT_GLOBAL_SHADER(FClothSimulationCS, "/Plugin/ShaderSandbox/Private/ClothSimulationGridMesh.usf", "Main", SF_Compute);
 
 class FClothGridMeshTangentCS : public FGlobalShader
 {
@@ -176,10 +117,7 @@ void FClothGridMeshDeformer::FlushDeformTaskQueue(FRHICommandListImmediate& RHIC
 
 	TShaderMap<FGlobalShaderType>* ShaderMap = GetGlobalShaderMap(ERHIFeatureLevel::SM5);
 
-	TShaderMapRef<FClothSimulationIntegrationCS> ClothSimIntegrationCS(ShaderMap);
-	TShaderMapRef<FClothSimulationApplyWindCS> ClothSimApplyWindCS(ShaderMap);
-	TShaderMapRef<FClothSimulationSolveDistanceConstraintCS> ClothSimSolveDistanceConstraintCS(ShaderMap);
-	TShaderMapRef<FClothSimulationSolveCollisionCS> ClothSimSolveCollisionCS(ShaderMap);
+	TShaderMapRef<FClothSimulationCS> ClothSimulationCS(ShaderMap);
 
 	// TODO:Stiffness、Dampingの効果がNumIterationやフレームレートに依存してしまっているのでどうにかせねば
 
@@ -191,86 +129,42 @@ void FClothGridMeshDeformer::FlushDeformTaskQueue(FRHICommandListImmediate& RHIC
 
 		for (uint32 IterCount = 0; IterCount < GridClothParams.NumIteration; IterCount++)
 		{
-			FClothSimulationIntegrationCS::FParameters* ClothSimIntegrateParams = GraphBuilder.AllocParameters<FClothSimulationIntegrationCS::FParameters>();
-			ClothSimIntegrateParams->NumVertex = GridClothParams.NumVertex;
-			ClothSimIntegrateParams->SquareDeltaTime = SquareDeltaTime;
-			ClothSimIntegrateParams->Damping = GridClothParams.Damping;
-			ClothSimIntegrateParams->PreviousInertia = GridClothParams.PreviousInertia;
-			ClothSimIntegrateParams->InAccelerationVertexBuffer = GridClothParams.AccelerationVertexBufferSRV;
-			ClothSimIntegrateParams->OutPrevPositionVertexBuffer = GridClothParams.PrevPositionVertexBufferUAV;
-			ClothSimIntegrateParams->OutPositionVertexBuffer = GridClothParams.PositionVertexBufferUAV;
-
-			//TODO: とりあえず今はこの関数呼び出しがメッシュ一個なので1 Dispatch
-			FComputeShaderUtils::AddPass(
-				GraphBuilder,
-				RDG_EVENT_NAME("ClothSimulationIntegration"),
-				*ClothSimIntegrationCS,
-				ClothSimIntegrateParams,
-				FIntVector(1, 1, 1)
-			);
-
-			if (GridClothParams.FluidDensity > 0.0f) // FluidDensityが0のときは空気抵抗力は与えない
+			FClothSimulationCS::FParameters* ClothSimParams = GraphBuilder.AllocParameters<FClothSimulationCS::FParameters>();
+			ClothSimParams->NumRow = GridClothParams.NumRow;
+			ClothSimParams->NumColumn = GridClothParams.NumColumn;
+			ClothSimParams->NumVertex = GridClothParams.NumVertex;
+			ClothSimParams->GridWidth = GridClothParams.GridWidth;
+			ClothSimParams->GridHeight = GridClothParams.GridHeight;
+			ClothSimParams->SquareDeltaTime = SquareDeltaTime;
+			ClothSimParams->Stiffness = GridClothParams.Stiffness;
+			ClothSimParams->Damping = GridClothParams.Damping;
+			ClothSimParams->PreviousInertia = GridClothParams.PreviousInertia;
+			ClothSimParams->WindVelocity = WindVelocity;
+			ClothSimParams->FluidDensity = GridClothParams.FluidDensity / (100.0f * 100.0f * 100.0f); // シェーダの計算がMKS単位系基準なのでそれに入れるFluidDensityはすごく小さくせねばならずユーザが入力しにくいので、MKS単位系で入れさせておいてここでスケールする
+			ClothSimParams->DeltaTime = DeltaTimePerIterate;
+			ClothSimParams->VertexRadius = GridClothParams.VertexRadius;
+			ClothSimParams->NumSphereCollision = GridClothParams.SphereCollisionParams.Num();
+			for (uint32 i = 0; i < FClothSimulationCS::MAX_SPHERE_COLLISION; i++)
 			{
-				FClothSimulationApplyWindCS::FParameters* ClothSimApplyWindParams = GraphBuilder.AllocParameters<FClothSimulationApplyWindCS::FParameters>();
-				ClothSimApplyWindParams->NumRow = GridClothParams.NumRow;
-				ClothSimApplyWindParams->NumColumn = GridClothParams.NumColumn;
-				ClothSimApplyWindParams->WindVelocity = WindVelocity;
-				ClothSimApplyWindParams->FluidDensity = GridClothParams.FluidDensity / (100.0f * 100.0f * 100.0f); // シェーダの計算がMKS単位系基準なのでそれに入れるFluidDensityはすごく小さくせねばならずユーザが入力しにくいので、MKS単位系で入れさせておいてここでスケールする
-				ClothSimApplyWindParams->DeltaTime = DeltaTimePerIterate;
-				ClothSimApplyWindParams->OutPrevPositionVertexBuffer = GridClothParams.PrevPositionVertexBufferUAV;
-				ClothSimApplyWindParams->OutPositionVertexBuffer = GridClothParams.PositionVertexBufferUAV;
-
-				//TODO: とりあえず今はこの関数呼び出しがメッシュ一個なので1 Dispatch
-				FComputeShaderUtils::AddPass(
-					GraphBuilder,
-					RDG_EVENT_NAME("ClothSimulationApplyWind"),
-					*ClothSimApplyWindCS,
-					ClothSimApplyWindParams,
-					FIntVector(1, 1, 1)
-				);
-			}
-
-			FClothSimulationSolveDistanceConstraintCS::FParameters* ClothSimDistanceConstraintParams = GraphBuilder.AllocParameters<FClothSimulationSolveDistanceConstraintCS::FParameters>();
-			ClothSimDistanceConstraintParams->NumRow = GridClothParams.NumRow;
-			ClothSimDistanceConstraintParams->NumColumn = GridClothParams.NumColumn;
-			ClothSimDistanceConstraintParams->NumVertex = GridClothParams.NumVertex;
-			ClothSimDistanceConstraintParams->GridWidth = GridClothParams.GridWidth;
-			ClothSimDistanceConstraintParams->GridHeight = GridClothParams.GridHeight;
-			ClothSimDistanceConstraintParams->Stiffness = GridClothParams.Stiffness;
-			ClothSimDistanceConstraintParams->OutPositionVertexBuffer = GridClothParams.PositionVertexBufferUAV;
-
-			//TODO: とりあえず今はこの関数呼び出しがメッシュ一個なので1 Dispatch
-			FComputeShaderUtils::AddPass(
-				GraphBuilder,
-				RDG_EVENT_NAME("ClothSimulationSolveDistanceConstraint"),
-				*ClothSimSolveDistanceConstraintCS,
-				ClothSimDistanceConstraintParams,
-				FIntVector(1, 1, 1)
-			);
-
-			FClothSimulationSolveCollisionCS::FParameters* ClothSimCollisionParams = GraphBuilder.AllocParameters<FClothSimulationSolveCollisionCS::FParameters>();
-			ClothSimCollisionParams->NumVertex = GridClothParams.NumVertex;
-			ClothSimCollisionParams->VertexRadius = GridClothParams.VertexRadius;
-			ClothSimCollisionParams->NumSphereCollision = GridClothParams.SphereCollisionParams.Num();
-			for (uint32 i = 0; i < FClothSimulationSolveCollisionCS::MAX_SPHERE_COLLISION; i++)
-			{
-				if (i < ClothSimCollisionParams->NumSphereCollision)
+				if (i < ClothSimParams->NumSphereCollision)
 				{
-					ClothSimCollisionParams->SphereCenterAndRadiusArray[i] = FVector4(GridClothParams.SphereCollisionParams[i].RelativeCenter, GridClothParams.SphereCollisionParams[i].Radius);
+					ClothSimParams->SphereCenterAndRadiusArray[i] = FVector4(GridClothParams.SphereCollisionParams[i].RelativeCenter, GridClothParams.SphereCollisionParams[i].Radius);
 				}
 				else
 				{
-					ClothSimCollisionParams->SphereCenterAndRadiusArray[i] = FVector4(0.0f, 0.0f, 0.0f, 0.0f);
+					ClothSimParams->SphereCenterAndRadiusArray[i] = FVector4(0.0f, 0.0f, 0.0f, 0.0f);
 				}
 			}
-			ClothSimCollisionParams->OutPositionVertexBuffer = GridClothParams.PositionVertexBufferUAV;
+			ClothSimParams->InAccelerationVertexBuffer = GridClothParams.AccelerationVertexBufferSRV;
+			ClothSimParams->OutPrevPositionVertexBuffer = GridClothParams.PrevPositionVertexBufferUAV;
+			ClothSimParams->OutPositionVertexBuffer = GridClothParams.PositionVertexBufferUAV;
 
 			//TODO: とりあえず今はこの関数呼び出しがメッシュ一個なので1 Dispatch
 			FComputeShaderUtils::AddPass(
 				GraphBuilder,
-				RDG_EVENT_NAME("ClothSimulationSolveCollision"),
-				*ClothSimSolveCollisionCS,
-				ClothSimCollisionParams,
+				RDG_EVENT_NAME("ClothSimulation"),
+				*ClothSimulationCS,
+				ClothSimParams,
 				FIntVector(1, 1, 1)
 			);
 		}
