@@ -150,7 +150,7 @@ public:
 
 	uint32 GetAllocatedSize( void ) const { return( FPrimitiveSceneProxy::GetAllocatedSize() ); }
 
-	void EnqueSinWaveGridMeshRenderCommand(USinWaveGridMeshComponent* Component) const
+	void EnqueSinWaveGridMeshRenderCommand(FRHICommandListImmediate& RHICmdList, USinWaveGridMeshComponent* Component) const
 	{
 		FGridSinWaveParameters Params;
 		Params.NumRow = Component->GetNumRow();
@@ -164,12 +164,7 @@ public:
 		Params.Amplitude = Component->GetAmplitude();
 		Params.AccumulatedTime = Component->GetAccumulatedTime();
 
-		ENQUEUE_RENDER_COMMAND(SinWaveDeformGridMeshCommand)(
-			[this, Params](FRHICommandListImmediate& RHICmdList)
-			{
-				SinWaveDeformGridMesh(RHICmdList, Params, VertexBuffers.PositionVertexBuffer.GetUAV(), VertexBuffers.DeformableMeshVertexBuffer.GetTangentsUAV());
-			}
-		);
+		SinWaveDeformGridMesh(RHICmdList, Params, VertexBuffers.PositionVertexBuffer.GetUAV(), VertexBuffers.DeformableMeshVertexBuffer.GetTangentsUAV());
 	}
 
 private:
@@ -214,6 +209,11 @@ void USinWaveGridMeshComponent::SendRenderDynamicData_Concurrent()
 
 	if (SceneProxy != nullptr)
 	{
-		((const FSinWaveGridMeshSceneProxy*)SceneProxy)->EnqueSinWaveGridMeshRenderCommand(this);
+		ENQUEUE_RENDER_COMMAND(SinWaveDeformGridMeshCommand)(
+			[this](FRHICommandListImmediate& RHICmdList)
+			{
+				((const FSinWaveGridMeshSceneProxy*)SceneProxy)->EnqueSinWaveGridMeshRenderCommand(RHICmdList, this);
+			}
+		);
 	}
 }
