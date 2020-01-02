@@ -4,6 +4,48 @@
 #include "RenderGraphBuilder.h"
 #include "RenderGraphUtils.h"
 
+class FClothMeshCopyToWorkBufferCS : public FGlobalShader
+{
+	DECLARE_GLOBAL_SHADER(FClothMeshCopyToWorkBufferCS);
+	SHADER_USE_PARAMETER_STRUCT(FClothMeshCopyToWorkBufferCS, FGlobalShader);
+
+	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
+		SHADER_PARAMETER(uint32, Offset)
+		SHADER_PARAMETER(uint32, NumVertex)
+		SHADER_PARAMETER_UAV(RWBuffer<float>, PositionVertexBuffer)
+		SHADER_PARAMETER_UAV(RWBuffer<float>, WorkBuffer)
+	END_SHADER_PARAMETER_STRUCT()
+
+public:
+	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters)
+	{
+		return IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
+	}
+};
+
+IMPLEMENT_GLOBAL_SHADER(FClothMeshCopyToWorkBufferCS, "/Plugin/ShaderSandbox/Private/ClothMeshCopy.usf", "CopyToWorkBuffer", SF_Compute);
+
+class FClothMeshCopyFromWorkBufferCS : public FGlobalShader
+{
+	DECLARE_GLOBAL_SHADER(FClothMeshCopyFromWorkBufferCS);
+	SHADER_USE_PARAMETER_STRUCT(FClothMeshCopyFromWorkBufferCS, FGlobalShader);
+
+	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
+		SHADER_PARAMETER(uint32, Offset)
+		SHADER_PARAMETER(uint32, NumVertex)
+		SHADER_PARAMETER_UAV(RWBuffer<float>, PositionVertexBuffer)
+		SHADER_PARAMETER_UAV(RWBuffer<float>, WorkBuffer)
+	END_SHADER_PARAMETER_STRUCT()
+
+public:
+	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters)
+	{
+		return IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
+	}
+};
+
+IMPLEMENT_GLOBAL_SHADER(FClothMeshCopyFromWorkBufferCS, "/Plugin/ShaderSandbox/Private/ClothMeshCopy.usf", "CopyFromWorkBuffer", SF_Compute);
+
 class FClothSimulationIntegrationCS : public FGlobalShader
 {
 	DECLARE_GLOBAL_SHADER(FClothSimulationIntegrationCS);
@@ -128,7 +170,7 @@ void FClothGridMeshDeformer::EnqueueDeformTask(const FGridClothParameters& Param
 	DeformTaskQueue.Add(Param);
 }
 
-void FClothGridMeshDeformer::FlushDeformTaskQueue(FRHICommandListImmediate& RHICmdList, FRHIShaderResourceView* WorkVertexBufferSRV, FRHIUnorderedAccessView* WorkVertexBufferUAV)
+void FClothGridMeshDeformer::FlushDeformTaskQueue(FRHICommandListImmediate& RHICmdList, FRHIUnorderedAccessView* WorkVertexBufferUAV)
 {
 	FRDGBuilder GraphBuilder(RHICmdList);
 
@@ -232,8 +274,10 @@ void FClothGridMeshDeformer::FlushDeformTaskQueue(FRHICommandListImmediate& RHIC
 				FIntVector(1, 1, 1)
 			);
 		}
+	}
 
-
+	for (const FGridClothParameters& GridClothParams : DeformTaskQueue)
+	{
 		TShaderMapRef<FClothGridMeshTangentCS> GridMeshTangentCS(ShaderMap);
 
 		FClothGridMeshTangentCS::FParameters* GridMeshTangentParams = GraphBuilder.AllocParameters<FClothGridMeshTangentCS::FParameters>();

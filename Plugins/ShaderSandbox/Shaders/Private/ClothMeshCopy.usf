@@ -1,0 +1,36 @@
+#include "/Engine/Public/Platform.ush"
+
+uint Offset;
+uint NumVertex;
+RWBuffer<float> PositionVertexBuffer;
+RWBuffer<float> WorkBuffer;
+
+static const uint NUM_THREAD_X = 32;
+
+[numthreads(NUM_THREAD_X, 1, 1)]
+void CopyToWorkBuffer(uint ThreadId : SV_GroupThreadID)
+{
+	const float SMALL_NUMBER = 0.0001f;
+
+	for (uint VertIdx = ThreadId; VertIdx < NumVertex; VertIdx += NUM_THREAD_X)
+	{
+		WorkBuffer[4 * (Offset + VertIdx) + 0] = PositionVertexBuffer[4 * VertIdx + 0];
+		WorkBuffer[4 * (Offset + VertIdx) + 1] = PositionVertexBuffer[4 * VertIdx + 1];
+		WorkBuffer[4 * (Offset + VertIdx) + 2] = PositionVertexBuffer[4 * VertIdx + 2];
+		WorkBuffer[4 * (Offset + VertIdx) + 3] = PositionVertexBuffer[4 * VertIdx + 3];
+	}
+}
+
+[numthreads(NUM_THREAD_X, 1, 1)]
+void CopyFromWorkBuffer(uint ThreadId : SV_GroupThreadID)
+{
+	const float SMALL_NUMBER = 0.0001f;
+
+	for (uint VertIdx = ThreadId; VertIdx < NumVertex; VertIdx += NUM_THREAD_X)
+	{
+		PositionVertexBuffer[4 * VertIdx + 0] = WorkBuffer[4 * (Offset + VertIdx) + 0];
+		PositionVertexBuffer[4 * VertIdx + 1] = WorkBuffer[4 * (Offset + VertIdx) + 1];
+		PositionVertexBuffer[4 * VertIdx + 2] = WorkBuffer[4 * (Offset + VertIdx) + 2];
+		PositionVertexBuffer[4 * VertIdx + 3] = WorkBuffer[4 * (Offset + VertIdx) + 3];
+	}
+}

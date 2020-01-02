@@ -39,7 +39,7 @@ struct FGridClothParameters
 struct FClothGridMeshDeformer
 {
 	void EnqueueDeformTask(const FGridClothParameters& Param);
-	void FlushDeformTaskQueue(FRHICommandListImmediate& RHICmdList, FRHIShaderResourceView* WorkVertexBufferSRV, FRHIUnorderedAccessView* WorkVertexBufferUAV);
+	void FlushDeformTaskQueue(FRHICommandListImmediate& RHICmdList, FRHIUnorderedAccessView* WorkVertexBufferUAV);
 
 	TArray<FGridClothParameters> DeformTaskQueue;
 };

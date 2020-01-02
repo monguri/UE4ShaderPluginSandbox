@@ -75,7 +75,7 @@ public:
 
 		if ((int32)NumTask >= ClothMeshDataMap.Num())
 		{
-			VertexDeformer.FlushDeformTaskQueue(RHICmdList, WorkPositionVertexBuffer.GetSRV(), WorkPositionVertexBuffer.GetUAV());
+			VertexDeformer.FlushDeformTaskQueue(RHICmdList, WorkPositionVertexBuffer.GetUAV());
 			NumTask = 0;
 		}
 	}
