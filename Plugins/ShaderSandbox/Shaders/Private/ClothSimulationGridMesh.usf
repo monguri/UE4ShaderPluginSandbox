@@ -78,11 +78,7 @@ void Interate(uint ThreadId : SV_GroupThreadID)
 	}
 }
 
-#if 1 // TODO:若干マルチスレッドをすると動きがくしゃくしゃなる兆候が見られたのでとりあえずマルチスレッド対応は後回し
-[numthreads(1, 1, 1)]
-#else
 [numthreads(NUM_THREAD_X, 1, 1)]
-#endif
 void ApplyWind(uint ThreadId : SV_GroupThreadID)
 {
 	const float SMALL_NUMBER = 0.0001f;
@@ -90,10 +86,17 @@ void ApplyWind(uint ThreadId : SV_GroupThreadID)
 	const float DRAG_COEFFICIENT = 0.2f / 100.0f; // 式がMKS単位系なので100で割る
 
 	// グリッドのトライアングル単位で処理するのでセルでループする
-#if 1
-	for (uint RowColumnIndex = 0; RowColumnIndex < NumRow * NumColumn; RowColumnIndex++)
-#else
+
+#if 0
+	// TODO:若干マルチスレッドをすると動きがくしゃくしゃなる兆候が見られたのでとりあえずマルチスレッド対応は後回し
 	for (uint RowColumnIndex = ThreadId; RowColumnIndex < NumRow * NumColumn; RowColumnIndex += NUM_THREAD_X)
+#else
+	if (ThreadId > 0)
+	{
+		return;
+	}
+
+	for (uint RowColumnIndex = 0; RowColumnIndex < NumRow * NumColumn; RowColumnIndex++)
 #endif
 	{
 		uint RowIndex = RowColumnIndex / NumColumn;
@@ -274,19 +277,21 @@ void ApplyWind(uint ThreadId : SV_GroupThreadID)
 	}
 }
 
-#if 1 // TODO:マルチスレッドをすると動きが壊れるとりあえずマルチスレッド対応は後回し
-[numthreads(1, 1, 1)]
-#else
 [numthreads(NUM_THREAD_X, 1, 1)]
-#endif
 void SolveDistanceConstraint(uint ThreadId : SV_GroupThreadID)
 {
 	const float SMALL_NUMBER = 0.0001f;
 
-#if 1
-	for (uint VertIdx = 0; VertIdx < NumVertex; VertIdx++)
-#else
+#if 0
+	// TODO:マルチスレッドをすると動きが壊れるとりあえずマルチスレッド対応は後回し
 	for (uint VertIdx = ThreadId; VertIdx < NumVertex; VertIdx += NUM_THREAD_X)
+#else
+	if (ThreadId > 0)
+	{
+		return;
+	}
+
+	for (uint VertIdx = 0; VertIdx < NumVertex; VertIdx++)
 #endif
 	{
 		uint RowIndex = VertIdx / (NumColumn + 1);
@@ -295,7 +300,7 @@ void SolveDistanceConstraint(uint ThreadId : SV_GroupThreadID)
 		float3 CurrVertexPos = GetCurrentVBPosition(VertIdx);
 		float CurrVertexInvMass = OutPositionVertexBuffer[4 * VertIdx + 3];
 
-		// グリッドなので右方向の隣頂点と下方向の隣頂点との間のみ考慮するようにしていれば重複なくコンストレイントを処理できる
+	// グリッドなので右方向の隣頂点と下方向の隣頂点との間のみ考慮するようにしていれば重複なくコンストレイントを処理できる
 
 		if (ColumnIndex < NumColumn)
 		{
