@@ -19,11 +19,6 @@ public:
 	//~ Begin UPrimitiveComponent Interface.
 	virtual FPrimitiveSceneProxy* CreateSceneProxy() override;
 	//~ End UPrimitiveComponent Interface.
-
-protected:
-	//~ Begin UActorComponent Interface
-	virtual void SendRenderDynamicData_Concurrent() override;
-	//~ End UActorComponent Interface
 };
 
 // Cloth instance manager.

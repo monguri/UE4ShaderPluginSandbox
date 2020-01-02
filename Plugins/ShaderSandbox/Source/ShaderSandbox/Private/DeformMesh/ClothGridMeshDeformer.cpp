@@ -128,7 +128,7 @@ void FClothGridMeshDeformer::EnqueueDeformTask(const FGridClothParameters& Param
 	DeformTaskQueue.Add(Param);
 }
 
-void FClothGridMeshDeformer::FlushDeformTaskQueue(FRHICommandListImmediate& RHICmdList)
+void FClothGridMeshDeformer::FlushDeformTaskQueue(FRHICommandListImmediate& RHICmdList, FRHIShaderResourceView* WorkVertexBufferSRV, FRHIUnorderedAccessView* WorkVertexBufferUAV)
 {
 	FRDGBuilder GraphBuilder(RHICmdList);
 

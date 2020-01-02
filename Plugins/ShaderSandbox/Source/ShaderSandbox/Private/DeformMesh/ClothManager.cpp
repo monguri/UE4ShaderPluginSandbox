@@ -31,7 +31,7 @@ public:
 
 	virtual ~FClothManagerSceneProxy()
 	{
-		MergedPositionVertexBuffer.ReleaseResource();
+		WorkPositionVertexBuffer.ReleaseResource();
 	}
 
 	virtual uint32 GetMemoryFootprint( void ) const override { return( sizeof( *this ) + GetAllocatedSize() ); }
@@ -56,20 +56,15 @@ public:
 
 		// TODO:クロスの回数だけInitしてUpdateRHIしてるのはもったいない
 		// Initは再入可能。中でReallocしている
-		MergedPositionVertexBuffer.Init(MergeData.Offset + MergeData.NumVertex);
+		WorkPositionVertexBuffer.Init(MergeData.Offset + MergeData.NumVertex);
 
-		InitOrUpdateResourceMacroClothManager(&MergedPositionVertexBuffer);
+		InitOrUpdateResourceMacroClothManager(&WorkPositionVertexBuffer);
 	}
 
 	void UnregisterClothMesh(UClothGridMeshComponent* ClothMesh)
 	{
 		ClothMeshDataMap.Remove(ClothMesh);
 		// TODO:Removeしても、今のところ連結したバーテックスバッファは縮めない。
-	}
-
-	void Render()
-	{
-		//TODO:impl
 	}
 
 	// TODO:1メッシュにまとめる前の処理を維持するため仮に作った
@@ -80,7 +75,7 @@ public:
 
 		if ((int32)NumTask >= ClothMeshDataMap.Num())
 		{
-			VertexDeformer.FlushDeformTaskQueue(RHICmdList);
+			VertexDeformer.FlushDeformTaskQueue(RHICmdList, WorkPositionVertexBuffer.GetSRV(), WorkPositionVertexBuffer.GetUAV());
 			NumTask = 0;
 		}
 	}
@@ -96,7 +91,8 @@ private:
 	int32 NumTask = 0;
 	TMap<class UClothGridMeshComponent*, FMergeData> ClothMeshDataMap;
 	FClothGridMeshDeformer VertexDeformer;
-	FDeformablePositionVertexBuffer MergedPositionVertexBuffer;
+	// vertex buffer to simulate all clothes by one dispatch by merging all vertex buffers.
+	FDeformablePositionVertexBuffer WorkPositionVertexBuffer;
 };
 
 void UClothManagerComponent::RegisterClothMesh(UClothGridMeshComponent* ClothMesh)
@@ -142,22 +138,6 @@ void UClothManagerComponent::EnqueueSimulateClothTask(const FGridClothParameters
 FPrimitiveSceneProxy* UClothManagerComponent::CreateSceneProxy()
 {
 	return new FClothManagerSceneProxy(this);
-}
-
-void UClothManagerComponent::SendRenderDynamicData_Concurrent()
-{
-	//SCOPE_CYCLE_COUNTER(STAT_ClothGridMeshCompUpdate);
-	Super::SendRenderDynamicData_Concurrent();
-
-	if (SceneProxy != nullptr)
-	{
-		FClothManagerSceneProxy* ClothManagerSceneProxy = (FClothManagerSceneProxy*)SceneProxy;
-		ENQUEUE_RENDER_COMMAND(UnregisterClothMesh)(
-			[ClothManagerSceneProxy](FRHICommandListImmediate& RHICmdList)
-			{
-				ClothManagerSceneProxy->Render();
-			});
-	}
 }
 
 AClothManager::AClothManager()
