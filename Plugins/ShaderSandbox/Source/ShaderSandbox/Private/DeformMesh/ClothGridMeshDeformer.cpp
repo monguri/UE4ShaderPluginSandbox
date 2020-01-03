@@ -57,7 +57,6 @@ class FClothSimulationCS : public FGlobalShader
 public:
 	// TODO:定数バッファを使っているうちはサイズ上限がありあまり大きくできない。StructuredBufferに置き換えよう
 	static const uint32 MAX_CLOTH_MESH = 8;
-	static const uint32 MAX_SPHERE_COLLISION_PER_MESH = 4;
 
 	DECLARE_GLOBAL_SHADER(FClothSimulationCS);
 	SHADER_USE_PARAMETER_STRUCT(FClothSimulationCS, FGlobalShader);
@@ -79,7 +78,7 @@ public:
 		SHADER_PARAMETER_ARRAY(float, DeltaTime, [MAX_CLOTH_MESH])
 		SHADER_PARAMETER_ARRAY(float, VertexRadius, [MAX_CLOTH_MESH])
 		SHADER_PARAMETER_ARRAY(uint32, NumSphereCollision, [MAX_CLOTH_MESH])
-		SHADER_PARAMETER_ARRAY(FVector4, SphereCenterAndRadiusArray, [MAX_CLOTH_MESH * MAX_SPHERE_COLLISION_PER_MESH])
+		SHADER_PARAMETER_ARRAY(FVector4, SphereCenterAndRadiusArray, [MAX_CLOTH_MESH * FGridClothParameters::MAX_SPHERE_COLLISION_PER_MESH])
 		SHADER_PARAMETER_UAV(RWBuffer<float>, WorkAccelerationVertexBuffer)
 		SHADER_PARAMETER_UAV(RWBuffer<float>, WorkPrevPositionVertexBuffer)
 		SHADER_PARAMETER_UAV(RWBuffer<float>, WorkPositionVertexBuffer)
@@ -190,19 +189,19 @@ void FClothGridMeshDeformer::FlushDeformCommandQueue(FRHICommandListImmediate& R
 			ClothSimParams->FluidDensity[MeshIdx] = GridClothParams.FluidDensity / (100.0f * 100.0f * 100.0f); // シェーダの計算がMKS単位系基準なのでそれに入れるFluidDensityはすごく小さくせねばならずユーザが入力しにくいので、MKS単位系で入れさせておいてここでスケールする
 			ClothSimParams->DeltaTime[MeshIdx] = DeltaTimePerIterate;
 			ClothSimParams->VertexRadius[MeshIdx] = GridClothParams.VertexRadius;
-			ClothSimParams->NumSphereCollision[MeshIdx] = GridClothParams.SphereCollisionParams.Num(); //TODO:とりあえず総当たり前提でクロス0にすべてのコリジョンが設定されてる前提
+			ClothSimParams->NumSphereCollision[MeshIdx] = GridClothParams.NumSphereCollision; //TODO:とりあえず総当たり前提でクロス0にすべてのコリジョンが設定されてる前提
 
-			check(GridClothParams.SphereCollisionParams.Num() <= FClothSimulationCS::MAX_SPHERE_COLLISION_PER_MESH);
-			for (uint32 CollisionIdx = 0; CollisionIdx < FClothSimulationCS::MAX_SPHERE_COLLISION_PER_MESH; CollisionIdx++)
+			check(GridClothParams.NumSphereCollision <= FGridClothParameters::MAX_SPHERE_COLLISION_PER_MESH);
+			for (uint32 CollisionIdx = 0; CollisionIdx < FGridClothParameters::MAX_SPHERE_COLLISION_PER_MESH; CollisionIdx++)
 			{
 				if (CollisionIdx < ClothSimParams->NumSphereCollision[MeshIdx]) //TODO:とりあえず総当たり前提でクロス0にすべてのコリジョンが設定されてる前提
 				{
-					ClothSimParams->SphereCenterAndRadiusArray[MeshIdx * FClothSimulationCS::MAX_SPHERE_COLLISION_PER_MESH + CollisionIdx]
+					ClothSimParams->SphereCenterAndRadiusArray[MeshIdx * FGridClothParameters::MAX_SPHERE_COLLISION_PER_MESH + CollisionIdx]
 						= FVector4(GridClothParams.SphereCollisionParams[CollisionIdx].RelativeCenter, GridClothParams.SphereCollisionParams[CollisionIdx].Radius);
 				}
 				else
 				{
-					ClothSimParams->SphereCenterAndRadiusArray[MeshIdx * FClothSimulationCS::MAX_SPHERE_COLLISION_PER_MESH + CollisionIdx]
+					ClothSimParams->SphereCenterAndRadiusArray[MeshIdx * FGridClothParameters::MAX_SPHERE_COLLISION_PER_MESH + CollisionIdx]
 						= FVector4(0.0f, 0.0f, 0.0f, 0.0f);
 				}
 			}

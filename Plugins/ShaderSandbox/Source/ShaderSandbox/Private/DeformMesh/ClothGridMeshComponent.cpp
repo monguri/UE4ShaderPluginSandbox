@@ -187,17 +187,19 @@ public:
 		Command.PrevPositionVertexBufferUAV = VertexBuffers.PrevPositionVertexBuffer.GetUAV();
 		Command.AccelerationVertexBufferSRV = VertexBuffers.AcceralationVertexBuffer.GetSRV();
 
-		TArray<class USphereCollisionComponent*> SphereCollisions = ClothManager->GetSphereCollisions();
+		TArray<USphereCollisionComponent*> SphereCollisions = ClothManager->GetSphereCollisions();
+		Command.Params.NumSphereCollision = SphereCollisions.Num();
 
-		TArray<FSphereCollisionParameters> SphereCollisionParams;
-		SphereCollisionParams.Reserve(SphereCollisions.Num());
-
-		for (const USphereCollisionComponent* SphereCollision : SphereCollisions)
+		for (uint32 i = 0; i < Command.Params.NumSphereCollision; i++)
 		{
-			const FVector& RelativeCenter = Component->GetComponentTransform().InverseTransformPosition(SphereCollision->GetComponentLocation());
-			SphereCollisionParams.Emplace(RelativeCenter, SphereCollision->GetRadius());
+			USphereCollisionComponent* SphereCollision = SphereCollisions[i];
+
+			FSphereCollisionParameters Param;
+			Param.RelativeCenter = Component->GetComponentTransform().InverseTransformPosition(SphereCollision->GetComponentLocation());
+			Param.Radius = SphereCollision->GetRadius();
+
+			Command.Params.SphereCollisionParams[i] = Param;
 		}
-		Command.Params.SphereCollisionParams = SphereCollisionParams;
 
 		ClothManager->EnqueueSimulateClothCommand(Command);
 	}

@@ -6,12 +6,12 @@ struct FSphereCollisionParameters
 {
 	FVector RelativeCenter;
 	float Radius;
-
-	FSphereCollisionParameters(const FVector& RelativeCenterVec, float RadiusVal) : RelativeCenter(RelativeCenterVec), Radius(RadiusVal) {}
 };
 
 struct FGridClothParameters
 {
+	static const uint32 MAX_SPHERE_COLLISION_PER_MESH = 4;
+
 	uint32 NumRow = 0;
 	uint32 NumColumn = 0;
 	uint32 NumVertex = 0;
@@ -25,11 +25,25 @@ struct FGridClothParameters
 	FVector PreviousInertia = FVector::ZeroVector;
 	float VertexRadius = 0.0f;
 	uint32 NumIteration = 0;
+	uint32 NumSphereCollision = 0;
 
-	TArray<FSphereCollisionParameters> SphereCollisionParams;
+	FSphereCollisionParameters SphereCollisionParams[MAX_SPHERE_COLLISION_PER_MESH];
 };
 
 struct FClothParameterStructuredBuffer : public FRenderResource
 {
+public:
+	FClothParameterStructuredBuffer(const TArray<FGridClothParameters>& ComponentsData);
+	virtual ~FClothParameterStructuredBuffer();
+
+	virtual void InitDynamicRHI() override;
+	virtual void ReleaseDynamicRHI() override;
+
+	int32 GetComponentsDataCount() const { return OriginalComponentsData.Num(); };
+
+private:
+	FStructuredBufferRHIRef ComponentsData;
+	FShaderResourceViewRHIRef ComponentsDataSRV;
+	TArray<FGridClothParameters> OriginalComponentsData;
 };
 
