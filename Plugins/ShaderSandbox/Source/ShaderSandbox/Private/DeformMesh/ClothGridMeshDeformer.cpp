@@ -194,8 +194,6 @@ void FClothGridMeshDeformer::FlushDeformTaskQueue(FRHICommandListImmediate& RHIC
 			check(DeformTaskQueue[MeshIdx].SphereCollisionParams.Num() <= FClothSimulationCS::MAX_SPHERE_COLLISION_PER_MESH);
 			for (uint32 CollisionIdx = 0; CollisionIdx < FClothSimulationCS::MAX_SPHERE_COLLISION_PER_MESH; CollisionIdx++)
 			{
-				const FGridClothParameters& GridClothParams = DeformTaskQueue[MeshIdx];
-
 				if (CollisionIdx < ClothSimParams->NumSphereCollision[MeshIdx]) //TODO:とりあえず総当たり前提でクロス0にすべてのコリジョンが設定されてる前提
 				{
 					ClothSimParams->SphereCenterAndRadiusArray[MeshIdx * FClothSimulationCS::MAX_SPHERE_COLLISION_PER_MESH + CollisionIdx]
