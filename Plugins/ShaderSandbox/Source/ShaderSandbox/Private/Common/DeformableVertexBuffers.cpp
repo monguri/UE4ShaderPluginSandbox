@@ -80,7 +80,7 @@ FVertexBufferRHIRef FDeformableMeshVertexBuffer::CreateTangentsRHIBuffer_RenderT
 		const uint32 SizeInBytes = ResourceArray ? ResourceArray->GetResourceDataSize() : 0;
 		FRHIResourceCreateInfo CreateInfo(ResourceArray);
 		CreateInfo.bWithoutNativeResource = !TangentsData;
-		return RHICreateVertexBuffer(SizeInBytes, BUF_Static | BUF_ShaderResource | BUF_UnorderedAccess, CreateInfo);
+		return RHICreateVertexBuffer(SizeInBytes, EBufferUsageFlags::BUF_Static | EBufferUsageFlags::BUF_ShaderResource | EBufferUsageFlags::BUF_UnorderedAccess, CreateInfo);
 	}
 	return nullptr;
 }
@@ -93,7 +93,7 @@ FVertexBufferRHIRef FDeformableMeshVertexBuffer::CreateTexCoordRHIBuffer_RenderT
 		const uint32 SizeInBytes = ResourceArray ? ResourceArray->GetResourceDataSize() : 0;
 		FRHIResourceCreateInfo CreateInfo(ResourceArray);
 		CreateInfo.bWithoutNativeResource = !TexcoordData;
-		return RHICreateVertexBuffer(SizeInBytes, BUF_Static | BUF_ShaderResource | BUF_UnorderedAccess, CreateInfo);
+		return RHICreateVertexBuffer(SizeInBytes, EBufferUsageFlags::BUF_Static | EBufferUsageFlags::BUF_ShaderResource | EBufferUsageFlags::BUF_UnorderedAccess, CreateInfo);
 	}
 	return nullptr;
 }
@@ -360,7 +360,7 @@ FVertexBufferRHIRef FDeformablePositionVertexBuffer::CreateRHIBuffer_RenderThrea
 		const uint32 SizeInBytes = ResourceArray ? ResourceArray->GetResourceDataSize() : 0;
 		FRHIResourceCreateInfo CreateInfo(ResourceArray);
 		CreateInfo.bWithoutNativeResource = !VertexData;
-		return RHICreateVertexBuffer(SizeInBytes, BUF_Static | BUF_ShaderResource | BUF_UnorderedAccess, CreateInfo);
+		return RHICreateVertexBuffer(SizeInBytes, EBufferUsageFlags::BUF_Static | EBufferUsageFlags::BUF_ShaderResource | EBufferUsageFlags::BUF_UnorderedAccess, CreateInfo);
 	}
 	return nullptr;
 }
@@ -461,7 +461,7 @@ FVertexBufferRHIRef FDeformableColorVertexBuffer::CreateRHIBuffer_RenderThread()
 		const uint32 SizeInBytes = ResourceArray ? ResourceArray->GetResourceDataSize() : 0;
 		FRHIResourceCreateInfo CreateInfo(ResourceArray);
 		CreateInfo.bWithoutNativeResource = !VertexData;
-		return RHICreateVertexBuffer(SizeInBytes, BUF_Static | BUF_ShaderResource | BUF_UnorderedAccess, CreateInfo);
+		return RHICreateVertexBuffer(SizeInBytes, EBufferUsageFlags::BUF_Static | EBufferUsageFlags::BUF_ShaderResource | EBufferUsageFlags::BUF_UnorderedAccess, CreateInfo);
 	}
 	return nullptr;
 }
