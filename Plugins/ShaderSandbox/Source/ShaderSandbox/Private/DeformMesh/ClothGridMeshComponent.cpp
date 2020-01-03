@@ -165,27 +165,27 @@ public:
 		AClothManager* ClothManager = AClothManager::GetInstance();
 		check(ClothManager != nullptr);
 
-		FGridClothParameters Params;
-		Params.NumRow = Component->GetNumRow();
-		Params.NumColumn = Component->GetNumColumn();
-		Params.NumVertex = Component->GetVertices().Num();
-		Params.GridWidth = Component->GetGridWidth();
-		Params.GridHeight = Component->GetGridHeight();
-		Params.DeltaTime = Component->GetDeltaTime();
-		Params.Stiffness = Component->GetStiffness();
-		Params.Damping = Component->GetDamping();
-		Params.WindVelocity = ClothManager->WindVelocity;
-		Params.FluidDensity = Component->GetFluidDensity();
-		Params.PreviousInertia = Component->GetPreviousInertia();
-		Params.VertexRadius = Component->GetVertexRadius();
-		Params.NumIteration = Component->GetNumIteration();
+		FClothGridMeshDeformCommand Command;
+		Command.Params.NumRow = Component->GetNumRow();
+		Command.Params.NumColumn = Component->GetNumColumn();
+		Command.Params.NumVertex = Component->GetVertices().Num();
+		Command.Params.GridWidth = Component->GetGridWidth();
+		Command.Params.GridHeight = Component->GetGridHeight();
+		Command.Params.DeltaTime = Component->GetDeltaTime();
+		Command.Params.Stiffness = Component->GetStiffness();
+		Command.Params.Damping = Component->GetDamping();
+		Command.Params.WindVelocity = ClothManager->WindVelocity;
+		Command.Params.FluidDensity = Component->GetFluidDensity();
+		Command.Params.PreviousInertia = Component->GetPreviousInertia();
+		Command.Params.VertexRadius = Component->GetVertexRadius();
+		Command.Params.NumIteration = Component->GetNumIteration();
 
 		VertexBuffers.SetAccelerations(Component->GetAccelerations());
 
-		Params.PositionVertexBufferUAV = VertexBuffers.PositionVertexBuffer.GetUAV();
-		Params.TangentVertexBufferUAV = VertexBuffers.DeformableMeshVertexBuffer.GetTangentsUAV();
-		Params.PrevPositionVertexBufferUAV = VertexBuffers.PrevPositionVertexBuffer.GetUAV();
-		Params.AccelerationVertexBufferSRV = VertexBuffers.AcceralationVertexBuffer.GetSRV();
+		Command.PositionVertexBufferUAV = VertexBuffers.PositionVertexBuffer.GetUAV();
+		Command.TangentVertexBufferUAV = VertexBuffers.DeformableMeshVertexBuffer.GetTangentsUAV();
+		Command.PrevPositionVertexBufferUAV = VertexBuffers.PrevPositionVertexBuffer.GetUAV();
+		Command.AccelerationVertexBufferSRV = VertexBuffers.AcceralationVertexBuffer.GetSRV();
 
 		TArray<class USphereCollisionComponent*> SphereCollisions = ClothManager->GetSphereCollisions();
 
@@ -197,9 +197,9 @@ public:
 			const FVector& RelativeCenter = Component->GetComponentTransform().InverseTransformPosition(SphereCollision->GetComponentLocation());
 			SphereCollisionParams.Emplace(RelativeCenter, SphereCollision->GetRadius());
 		}
-		Params.SphereCollisionParams = SphereCollisionParams;
+		Command.Params.SphereCollisionParams = SphereCollisionParams;
 
-		ClothManager->EnqueueSimulateClothTask(Params);
+		ClothManager->EnqueueSimulateClothCommand(Command);
 	}
 
 private:

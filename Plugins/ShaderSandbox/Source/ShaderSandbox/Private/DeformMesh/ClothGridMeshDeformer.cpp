@@ -116,18 +116,18 @@ public:
 
 IMPLEMENT_GLOBAL_SHADER(FClothGridMeshTangentCS, "/Plugin/ShaderSandbox/Private/GridMeshTangent.usf", "MainCS", SF_Compute);
 
-void FClothGridMeshDeformer::EnqueueDeformTask(const FGridClothParameters& Param)
+void FClothGridMeshDeformer::EnqueueDeformCommand(const FClothGridMeshDeformCommand& Command)
 {
-	DeformTaskQueue.Add(Param);
+	DeformCommandQueue.Add(Command);
 }
 
-void FClothGridMeshDeformer::FlushDeformTaskQueue(FRHICommandListImmediate& RHICmdList, FRHIUnorderedAccessView* WorkAccelerationVertexBufferUAV, FRHIUnorderedAccessView* WorkPrevVertexBufferUAV, FRHIUnorderedAccessView* WorkVertexBufferUAV)
+void FClothGridMeshDeformer::FlushDeformCommandQueue(FRHICommandListImmediate& RHICmdList, FRHIUnorderedAccessView* WorkAccelerationVertexBufferUAV, FRHIUnorderedAccessView* WorkPrevVertexBufferUAV, FRHIUnorderedAccessView* WorkVertexBufferUAV)
 {
 	FRDGBuilder GraphBuilder(RHICmdList);
 
 	TShaderMap<FGlobalShaderType>* ShaderMap = GetGlobalShaderMap(ERHIFeatureLevel::SM5);
 
-	uint32 NumClothMesh = DeformTaskQueue.Num();
+	uint32 NumClothMesh = DeformCommandQueue.Num();
 	// TODO:どこかでバリデーションしたい
 	check(NumClothMesh > 0);
 	check(NumClothMesh <= FClothSimulationCS::MAX_CLOTH_MESH);
@@ -140,15 +140,15 @@ void FClothGridMeshDeformer::FlushDeformTaskQueue(FRHICommandListImmediate& RHIC
 			TShaderMapRef<FClothMeshCopyToWorkBufferCS> ClothMeshCopyToWorkBufferCS(ShaderMap);
 			FClothMeshCopyToWorkBufferCS::FParameters* ClothCopyToWorkParams = GraphBuilder.AllocParameters<FClothMeshCopyToWorkBufferCS::FParameters>();
 
-			const FGridClothParameters& GridClothParams = DeformTaskQueue[MeshIdx];
+			const FClothGridMeshDeformCommand& DeformCommand = DeformCommandQueue[MeshIdx];
 			ClothCopyToWorkParams->VertexIndexOffset = Offset;
-			Offset += GridClothParams.NumVertex;
-			ClothCopyToWorkParams->NumVertex = GridClothParams.NumVertex;
-			ClothCopyToWorkParams->AccelerationVertexBuffer = GridClothParams.AccelerationVertexBufferSRV;
+			Offset += DeformCommand.Params.NumVertex;
+			ClothCopyToWorkParams->NumVertex = DeformCommand.Params.NumVertex;
+			ClothCopyToWorkParams->AccelerationVertexBuffer = DeformCommand.AccelerationVertexBufferSRV;
 			ClothCopyToWorkParams->WorkAccelerationBuffer = WorkAccelerationVertexBufferUAV;
-			ClothCopyToWorkParams->PrevPositionVertexBuffer = GridClothParams.PrevPositionVertexBufferUAV;
+			ClothCopyToWorkParams->PrevPositionVertexBuffer = DeformCommand.PrevPositionVertexBufferUAV;
 			ClothCopyToWorkParams->WorkPrevPositionBuffer = WorkPrevVertexBufferUAV;
-			ClothCopyToWorkParams->PositionVertexBuffer = GridClothParams.PositionVertexBufferUAV;
+			ClothCopyToWorkParams->PositionVertexBuffer = DeformCommand.PositionVertexBufferUAV;
 			ClothCopyToWorkParams->WorkPositionBuffer = WorkVertexBufferUAV;
 
 			FComputeShaderUtils::AddPass(
@@ -167,7 +167,8 @@ void FClothGridMeshDeformer::FlushDeformTaskQueue(FRHICommandListImmediate& RHIC
 		uint32 Offset = 0;
 		for (uint32 MeshIdx = 0; MeshIdx < NumClothMesh; MeshIdx++)
 		{
-			const FGridClothParameters& GridClothParams = DeformTaskQueue[MeshIdx];
+			const FClothGridMeshDeformCommand& DeformCommand = DeformCommandQueue[MeshIdx];
+			const FGridClothParameters& GridClothParams = DeformCommand.Params;
 
 			float DeltaTimePerIterate = GridClothParams.DeltaTime / GridClothParams.NumIteration;
 			float SquareDeltaTime = DeltaTimePerIterate * DeltaTimePerIterate;
@@ -189,9 +190,9 @@ void FClothGridMeshDeformer::FlushDeformTaskQueue(FRHICommandListImmediate& RHIC
 			ClothSimParams->FluidDensity[MeshIdx] = GridClothParams.FluidDensity / (100.0f * 100.0f * 100.0f); // シェーダの計算がMKS単位系基準なのでそれに入れるFluidDensityはすごく小さくせねばならずユーザが入力しにくいので、MKS単位系で入れさせておいてここでスケールする
 			ClothSimParams->DeltaTime[MeshIdx] = DeltaTimePerIterate;
 			ClothSimParams->VertexRadius[MeshIdx] = GridClothParams.VertexRadius;
-			ClothSimParams->NumSphereCollision[MeshIdx] = DeformTaskQueue[MeshIdx].SphereCollisionParams.Num(); //TODO:とりあえず総当たり前提でクロス0にすべてのコリジョンが設定されてる前提
+			ClothSimParams->NumSphereCollision[MeshIdx] = GridClothParams.SphereCollisionParams.Num(); //TODO:とりあえず総当たり前提でクロス0にすべてのコリジョンが設定されてる前提
 
-			check(DeformTaskQueue[MeshIdx].SphereCollisionParams.Num() <= FClothSimulationCS::MAX_SPHERE_COLLISION_PER_MESH);
+			check(GridClothParams.SphereCollisionParams.Num() <= FClothSimulationCS::MAX_SPHERE_COLLISION_PER_MESH);
 			for (uint32 CollisionIdx = 0; CollisionIdx < FClothSimulationCS::MAX_SPHERE_COLLISION_PER_MESH; CollisionIdx++)
 			{
 				if (CollisionIdx < ClothSimParams->NumSphereCollision[MeshIdx]) //TODO:とりあえず総当たり前提でクロス0にすべてのコリジョンが設定されてる前提
@@ -229,13 +230,14 @@ void FClothGridMeshDeformer::FlushDeformTaskQueue(FRHICommandListImmediate& RHIC
 			TShaderMapRef<FClothMeshCopyFromWorkBufferCS> ClothMeshCopyFromWorkBufferCS(ShaderMap);
 
 			FClothMeshCopyFromWorkBufferCS::FParameters* ClothCopyFromWorkParams = GraphBuilder.AllocParameters<FClothMeshCopyFromWorkBufferCS::FParameters>();
-			const FGridClothParameters& GridClothParams = DeformTaskQueue[MeshIdx];
+			const FClothGridMeshDeformCommand& DeformCommand = DeformCommandQueue[MeshIdx];
+
 			ClothCopyFromWorkParams->VertexIndexOffset = Offset;
-			Offset += GridClothParams.NumVertex;
-			ClothCopyFromWorkParams->NumVertex = GridClothParams.NumVertex;
-			ClothCopyFromWorkParams->PrevPositionVertexBuffer = GridClothParams.PrevPositionVertexBufferUAV;
+			Offset += DeformCommand.Params.NumVertex;
+			ClothCopyFromWorkParams->NumVertex = DeformCommand.Params.NumVertex;
+			ClothCopyFromWorkParams->PrevPositionVertexBuffer = DeformCommand.PrevPositionVertexBufferUAV;
 			ClothCopyFromWorkParams->WorkPrevPositionBuffer = WorkPrevVertexBufferUAV;
-			ClothCopyFromWorkParams->PositionVertexBuffer = GridClothParams.PositionVertexBufferUAV;
+			ClothCopyFromWorkParams->PositionVertexBuffer = DeformCommand.PositionVertexBufferUAV;
 			ClothCopyFromWorkParams->WorkPositionBuffer = WorkVertexBufferUAV;
 
 			FComputeShaderUtils::AddPass(
@@ -249,16 +251,18 @@ void FClothGridMeshDeformer::FlushDeformTaskQueue(FRHICommandListImmediate& RHIC
 	}
 
 	{
-		for (const FGridClothParameters& GridClothParams : DeformTaskQueue)
+		for (const FClothGridMeshDeformCommand& DeformCommand : DeformCommandQueue)
 		{
 			TShaderMapRef<FClothGridMeshTangentCS> GridMeshTangentCS(ShaderMap);
 
 			FClothGridMeshTangentCS::FParameters* GridMeshTangentParams = GraphBuilder.AllocParameters<FClothGridMeshTangentCS::FParameters>();
+
+			const FGridClothParameters& GridClothParams = DeformCommand.Params;
 			GridMeshTangentParams->NumRow = GridClothParams.NumRow;
 			GridMeshTangentParams->NumColumn = GridClothParams.NumColumn;
 			GridMeshTangentParams->NumVertex = GridClothParams.NumVertex;
-			GridMeshTangentParams->InPositionVertexBuffer = GridClothParams.PositionVertexBufferUAV;
-			GridMeshTangentParams->OutTangentVertexBuffer = GridClothParams.TangentVertexBufferUAV;
+			GridMeshTangentParams->InPositionVertexBuffer = DeformCommand.PositionVertexBufferUAV;
+			GridMeshTangentParams->OutTangentVertexBuffer = DeformCommand.TangentVertexBufferUAV;
 
 			const uint32 DispatchCount = FMath::DivideAndRoundUp(GridClothParams.NumVertex, (uint32)32);
 			check(DispatchCount <= 65535);
@@ -275,6 +279,6 @@ void FClothGridMeshDeformer::FlushDeformTaskQueue(FRHICommandListImmediate& RHIC
 
 	GraphBuilder.Execute();
 
-	DeformTaskQueue.Reset();
+	DeformCommandQueue.Reset();
 }
 

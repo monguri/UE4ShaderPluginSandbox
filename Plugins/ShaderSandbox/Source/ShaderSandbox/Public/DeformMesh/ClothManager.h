@@ -14,7 +14,7 @@ class SHADERSANDBOX_API UClothManagerComponent : public UPrimitiveComponent
 public:
 	void RegisterClothMesh(class UClothGridMeshComponent* ClothMesh);
 	void UnregisterClothMesh(class UClothGridMeshComponent* ClothMesh);
-	void EnqueueSimulateClothTask(const FGridClothParameters& Task);
+	void EnqueueSimulateClothCommand(const FClothGridMeshDeformCommand& Command);
 
 	//~ Begin UPrimitiveComponent Interface.
 	virtual FPrimitiveSceneProxy* CreateSceneProxy() override;
@@ -45,7 +45,7 @@ public:
 	void UnregisterSphereCollision(class USphereCollisionComponent* SphereCollision);
 
 	// Don't make Dequeue method because this method execute all tasks and clear que when the number of task become equal to that of cloth mesh. 
-	void EnqueueSimulateClothTask(const FGridClothParameters& Task);
+	void EnqueueSimulateClothCommand(const FClothGridMeshDeformCommand& Command);
 
 private:
 	TArray<class USphereCollisionComponent*> SphereCollisions;

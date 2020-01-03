@@ -74,15 +74,15 @@ public:
 	}
 
 	// TODO:1メッシュにまとめる前の処理を維持するため仮に作った
-	void EnqueueSimulateClothTask(FRHICommandListImmediate& RHICmdList, const FGridClothParameters& Task)
+	void EnqueueSimulateClothCommand(FRHICommandListImmediate& RHICmdList, const FClothGridMeshDeformCommand& Command)
 	{
-		NumTask++;
-		VertexDeformer.EnqueueDeformTask(Task);
+		NumCommand++;
+		VertexDeformer.EnqueueDeformCommand(Command);
 
-		if ((int32)NumTask >= ClothMeshDataMap.Num())
+		if ((int32)NumCommand >= ClothMeshDataMap.Num())
 		{
-			VertexDeformer.FlushDeformTaskQueue(RHICmdList, WorkAccelerationVertexBuffer.GetUAV(), WorkPrevPositionVertexBuffer.GetUAV(), WorkPositionVertexBuffer.GetUAV());
-			NumTask = 0;
+			VertexDeformer.FlushDeformCommandQueue(RHICmdList, WorkAccelerationVertexBuffer.GetUAV(), WorkPrevPositionVertexBuffer.GetUAV(), WorkPositionVertexBuffer.GetUAV());
+			NumCommand = 0;
 		}
 	}
 
@@ -94,7 +94,7 @@ private:
 		int32 NumVertex;
 	};
 
-	int32 NumTask = 0;
+	int32 NumCommand = 0;
 	TMap<class UClothGridMeshComponent*, FMergeData> ClothMeshDataMap;
 	FClothGridMeshDeformer VertexDeformer;
 	// vertex buffer to simulate all clothes by one dispatch by merging all vertex buffers.
@@ -131,15 +131,15 @@ void UClothManagerComponent::UnregisterClothMesh(UClothGridMeshComponent* ClothM
 }
 
 // TODO:1メッシュにまとめる前の処理を維持するため仮に作った
-void UClothManagerComponent::EnqueueSimulateClothTask(const FGridClothParameters& Task)
+void UClothManagerComponent::EnqueueSimulateClothCommand(const FClothGridMeshDeformCommand& Command)
 {
 	if (SceneProxy != nullptr)
 	{
 		FClothManagerSceneProxy* ClothManagerSceneProxy = (FClothManagerSceneProxy*)SceneProxy;
 		ENQUEUE_RENDER_COMMAND(UnregisterClothMesh)(
-			[ClothManagerSceneProxy, Task](FRHICommandListImmediate& RHICmdList)
+			[ClothManagerSceneProxy, Command](FRHICommandListImmediate& RHICmdList)
 			{
-				ClothManagerSceneProxy->EnqueueSimulateClothTask(RHICmdList, Task);
+				ClothManagerSceneProxy->EnqueueSimulateClothCommand(RHICmdList, Command);
 			});
 	}
 }
@@ -191,8 +191,8 @@ void AClothManager::UnregisterSphereCollision(USphereCollisionComponent* SphereC
 }
 
 // TODO:1メッシュにまとめる前の処理を維持するため仮に作った
-void AClothManager::EnqueueSimulateClothTask(const FGridClothParameters& Task)
+void AClothManager::EnqueueSimulateClothCommand(const FClothGridMeshDeformCommand& Command)
 {
-	Cast<UClothManagerComponent>(RootComponent)->EnqueueSimulateClothTask(Task);
+	Cast<UClothManagerComponent>(RootComponent)->EnqueueSimulateClothCommand(Command);
 }
 
