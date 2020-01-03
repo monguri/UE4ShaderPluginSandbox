@@ -15,19 +15,19 @@ struct FSphereCollisionParameters
 
 struct FGridClothParameters
 {
-	uint32 NumRow;
-	uint32 NumColumn;
-	uint32 NumVertex;
-	float GridWidth;
-	float GridHeight;
-	float DeltaTime;
-	float Stiffness;
-	float Damping;
+	uint32 NumRow = 0;
+	uint32 NumColumn = 0;
+	uint32 NumVertex = 0;
+	float GridWidth = 0.0f;
+	float GridHeight = 0.0f;
+	float DeltaTime = 0.0f;
+	float Stiffness = 0.0f;
+	float Damping = 0.0f;
 	FVector WindVelocity;
-	float FluidDensity;
-	FVector PreviousInertia;
-	float VertexRadius;
-	uint32 NumIteration;
+	float FluidDensity = 0.0f;
+	FVector PreviousInertia = FVector::ZeroVector;
+	float VertexRadius = 0.0f;
+	uint32 NumIteration = 0;
 
 	class FRHIUnorderedAccessView* PositionVertexBufferUAV;
 	class FRHIUnorderedAccessView* TangentVertexBufferUAV;
@@ -39,7 +39,7 @@ struct FGridClothParameters
 struct FClothGridMeshDeformer
 {
 	void EnqueueDeformTask(const FGridClothParameters& Param);
-	void FlushDeformTaskQueue(FRHICommandListImmediate& RHICmdList, FRHIUnorderedAccessView* WorkVertexBufferUAV);
+	void FlushDeformTaskQueue(FRHICommandListImmediate& RHICmdList, FRHIUnorderedAccessView* WorkAccelerationVertexBufferUAV, FRHIUnorderedAccessView* WorkPrevVertexBufferUAV, FRHIUnorderedAccessView* WorkVertexBufferUAV);
 
 	TArray<FGridClothParameters> DeformTaskQueue;
 };

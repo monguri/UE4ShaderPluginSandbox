@@ -31,6 +31,8 @@ public:
 
 	virtual ~FClothManagerSceneProxy()
 	{
+		WorkAccelerationVertexBuffer.ReleaseResource();
+		WorkPrevPositionVertexBuffer.ReleaseResource();
 		WorkPositionVertexBuffer.ReleaseResource();
 	}
 
@@ -56,8 +58,12 @@ public:
 
 		// TODO:クロスの回数だけInitしてUpdateRHIしてるのはもったいない
 		// Initは再入可能。中でReallocしている
+		WorkAccelerationVertexBuffer.Init(MergeData.Offset + MergeData.NumVertex);
+		WorkPrevPositionVertexBuffer.Init(MergeData.Offset + MergeData.NumVertex);
 		WorkPositionVertexBuffer.Init(MergeData.Offset + MergeData.NumVertex);
 
+		InitOrUpdateResourceMacroClothManager(&WorkAccelerationVertexBuffer);
+		InitOrUpdateResourceMacroClothManager(&WorkPrevPositionVertexBuffer);
 		InitOrUpdateResourceMacroClothManager(&WorkPositionVertexBuffer);
 	}
 
@@ -75,7 +81,7 @@ public:
 
 		if ((int32)NumTask >= ClothMeshDataMap.Num())
 		{
-			VertexDeformer.FlushDeformTaskQueue(RHICmdList, WorkPositionVertexBuffer.GetUAV());
+			VertexDeformer.FlushDeformTaskQueue(RHICmdList, WorkAccelerationVertexBuffer.GetUAV(), WorkPrevPositionVertexBuffer.GetUAV(), WorkPositionVertexBuffer.GetUAV());
 			NumTask = 0;
 		}
 	}
@@ -92,6 +98,9 @@ private:
 	TMap<class UClothGridMeshComponent*, FMergeData> ClothMeshDataMap;
 	FClothGridMeshDeformer VertexDeformer;
 	// vertex buffer to simulate all clothes by one dispatch by merging all vertex buffers.
+	// TODO:UAVだけでよく、SRVがあるのが無駄
+	FDeformablePositionVertexBuffer WorkAccelerationVertexBuffer;
+	FDeformablePositionVertexBuffer WorkPrevPositionVertexBuffer;
 	FDeformablePositionVertexBuffer WorkPositionVertexBuffer;
 };
 
