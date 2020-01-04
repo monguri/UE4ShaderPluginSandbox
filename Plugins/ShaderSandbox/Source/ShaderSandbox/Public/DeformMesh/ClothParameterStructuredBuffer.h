@@ -4,7 +4,7 @@
 
 struct FGridClothParameters
 {
-	static const uint32 MAX_SPHERE_COLLISION_PER_MESH = 4;
+	static const uint32 MAX_SPHERE_COLLISION_PER_MESH = 16;
 
 	uint32 NumIteration = 0;
 	uint32 NumRow = 0;

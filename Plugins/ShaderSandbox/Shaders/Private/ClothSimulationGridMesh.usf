@@ -1,7 +1,7 @@
 #include "/Engine/Public/Platform.ush"
 
-static const uint MAX_CLOTH_MESH = 8;
-static const uint MAX_SPHERE_COLLISION = 4;
+static const uint MAX_CLOTH_MESH = 16;
+static const uint MAX_SPHERE_COLLISION = 16;
 static const float SMALL_NUMBER = 0.0001f;
 
 struct FGridClothParameters

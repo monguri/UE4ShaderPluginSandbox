@@ -55,8 +55,7 @@ IMPLEMENT_GLOBAL_SHADER(FClothMeshCopyFromWorkBufferCS, "/Plugin/ShaderSandbox/P
 class FClothSimulationCS : public FGlobalShader
 {
 public:
-	// TODO:定数バッファを使っているうちはサイズ上限がありあまり大きくできない。StructuredBufferに置き換えよう
-	static const uint32 MAX_CLOTH_MESH = 8;
+	static const uint32 MAX_CLOTH_MESH = 16;
 
 	DECLARE_GLOBAL_SHADER(FClothSimulationCS);
 	SHADER_USE_PARAMETER_STRUCT(FClothSimulationCS, FGlobalShader);
