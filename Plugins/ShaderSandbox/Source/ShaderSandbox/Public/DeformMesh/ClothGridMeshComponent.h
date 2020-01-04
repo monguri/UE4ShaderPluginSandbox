@@ -58,6 +58,6 @@ private:
 	FVector _CurLinearVelocity;
 	FVector _PrevLinearVelocity;
 
-	void UpdateParamsFromCurrentLocation();
+	void MakeDeformCommand(struct FClothGridMeshDeformCommand& Command);
 };
 

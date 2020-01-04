@@ -288,45 +288,16 @@ void UClothGridMeshComponent::SendRenderDynamicData_Concurrent()
 
 	if (SceneProxy != nullptr && ClothManager != nullptr) // ClothManagerは早期retrunのために取得しているだけ
 	{
-		// 現在位置から加速度などのパラメータを更新する
-		UpdateParamsFromCurrentLocation();
-
-		float DeltaTimePerIterate = _DeltaTime / _NumIteration;
-		float SquareDeltaTime = DeltaTimePerIterate * DeltaTimePerIterate;
-
 		FClothGridMeshDeformCommand Command;
-		Command.Params.NumIteration = _NumIteration;
-		Command.Params.NumRow = _NumRow;
-		Command.Params.NumColumn = _NumColumn;
-		Command.Params.NumVertex = GetVertices().Num();
-		Command.Params.GridWidth = _GridWidth;
-		Command.Params.GridHeight = _GridHeight;
-		Command.Params.SquareDeltaTime = DeltaTimePerIterate * DeltaTimePerIterate;
-		Command.Params.Stiffness = _Stiffness;
-		Command.Params.Damping = _Damping;
-		Command.Params.PreviousInertia = _PreviousInertia;
-		Command.Params.WindVelocity = ClothManager->WindVelocity;
-		Command.Params.FluidDensity = _FluidDensity;
-		Command.Params.DeltaTime = DeltaTimePerIterate;
-		Command.Params.VertexRadius = _VertexRadius;
-
-		TArray<USphereCollisionComponent*> SphereCollisions = ClothManager->GetSphereCollisions();
-		Command.Params.NumSphereCollision = SphereCollisions.Num();
-
-		for (uint32 i = 0; i < Command.Params.NumSphereCollision; i++)
-		{
-			Command.Params.SphereCollisionParams[i] = FVector4(
-				GetComponentTransform().InverseTransformPosition(SphereCollisions[i]->GetComponentLocation()),
-				SphereCollisions[i]->GetRadius()
-			);
-		}
 
 		((FClothGridMeshSceneProxy*)SceneProxy)->EnqueClothGridMeshRenderCommand(this, Command);
 	}
 }
 
-void UClothGridMeshComponent::UpdateParamsFromCurrentLocation()
+void UClothGridMeshComponent::MakeDeformCommand(FClothGridMeshDeformCommand& Command)
 {
+	AClothManager* ClothManager = AClothManager::GetInstance();
+
 	_PrevLinearVelocity = _CurLinearVelocity;
 	const FVector& CurLocation = GetComponentLocation();
 
@@ -341,14 +312,40 @@ void UClothGridMeshComponent::UpdateParamsFromCurrentLocation()
 
 	float IterDeltaTime = GetDeltaTime() / _NumIteration;
 
-	// このアルファ値の計算はNvClothのものを使っている。なぜこの式なのかは不明。
 	float LinearAlpha = 0.5f * (_NumIteration + 1) / _NumIteration;
 
 	const FVector& CurInertia = IterDeltaTime * (_PrevLinearVelocity - _CurLinearVelocity) * LinearAlpha;
 	_PreviousInertia = IterDeltaTime * (_PrevLinearVelocity - _CurLinearVelocity) * (1.0f - LinearAlpha);
 
+	// TODO:_Accelerationsを設定してるのは関数名に合ってない
 	for (uint32 i = 0; i < (_NumRow + 1) * (_NumColumn + 1); i++)
 	{
 		_Accelerations[i] = CurInertia + UClothGridMeshComponent::GRAVITY;
+	}
+
+	Command.Params.NumIteration = _NumIteration;
+	Command.Params.NumRow = _NumRow;
+	Command.Params.NumColumn = _NumColumn;
+	Command.Params.NumVertex = GetVertices().Num();
+	Command.Params.GridWidth = _GridWidth;
+	Command.Params.GridHeight = _GridHeight;
+	Command.Params.SquareDeltaTime = IterDeltaTime * IterDeltaTime;
+	Command.Params.Stiffness = _Stiffness;
+	Command.Params.Damping = _Damping;
+	Command.Params.PreviousInertia = _PreviousInertia;
+	Command.Params.WindVelocity = ClothManager->WindVelocity;
+	Command.Params.FluidDensity = _FluidDensity;
+	Command.Params.DeltaTime = IterDeltaTime;
+	Command.Params.VertexRadius = _VertexRadius;
+
+	TArray<USphereCollisionComponent*> SphereCollisions = ClothManager->GetSphereCollisions();
+	Command.Params.NumSphereCollision = SphereCollisions.Num();
+
+	for (uint32 i = 0; i < Command.Params.NumSphereCollision; i++)
+	{
+		Command.Params.SphereCollisionParams[i] = FVector4(
+			GetComponentTransform().InverseTransformPosition(SphereCollisions[i]->GetComponentLocation()),
+			SphereCollisions[i]->GetRadius()
+		);
 	}
 }
