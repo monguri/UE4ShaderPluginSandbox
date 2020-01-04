@@ -6,75 +6,61 @@ static const float SMALL_NUMBER = 0.0001f;
 
 struct FGridClothParameters
 {
+	uint NumIteration;
 	uint NumRow;
 	uint NumColumn;
+	uint VertexIndexOffset;
 	uint NumVertex;
 	float GridWidth;
 	float GridHeight;
-	float DeltaTime;
+	float SquareDeltaTime;
 	float Stiffness;
 	float Damping;
+	float3 PreviousInertia;
 	float3 WindVelocity;
 	float FluidDensity;
-	float3 PreviousInertia;
+	float DeltaTime;
 	float VertexRadius;
-	uint NumIteration;
 	uint NumSphereCollision;
 	// xyz : RelativeCenter, w : Radius;
 	float4 SphereCollisionParams[MAX_SPHERE_COLLISION];
 };
-
-uint NumIteration[MAX_CLOTH_MESH];
-uint NumRow[MAX_CLOTH_MESH];
-uint NumColumn[MAX_CLOTH_MESH];
-uint VertexIndexOffset[MAX_CLOTH_MESH];
-uint NumVertex[MAX_CLOTH_MESH];
-float GridWidth[MAX_CLOTH_MESH];
-float GridHeight[MAX_CLOTH_MESH];
-float SquareDeltaTime[MAX_CLOTH_MESH];
-float Stiffness[MAX_CLOTH_MESH];
-float Damping[MAX_CLOTH_MESH];
-float3 PreviousInertia[MAX_CLOTH_MESH];
-float3 WindVelocity[MAX_CLOTH_MESH];
-float FluidDensity[MAX_CLOTH_MESH];
-float DeltaTime[MAX_CLOTH_MESH];
-float VertexRadius[MAX_CLOTH_MESH];
-uint NumSphereCollision[MAX_CLOTH_MESH];
-float4 SphereCenterAndRadiusArray[MAX_CLOTH_MESH * MAX_SPHERE_COLLISION];
 
 StructuredBuffer<FGridClothParameters> Params;
 RWBuffer<float> WorkAccelerationVertexBuffer;
 RWBuffer<float> WorkPrevPositionVertexBuffer;
 RWBuffer<float> WorkPositionVertexBuffer;
 
-float GetCurrentInvMass(uint MeshIdx, uint VertIdx)
+groupshared FGridClothParameters ClothParam;
+
+float GetCurrentInvMass(uint VertIdx)
 {
-	return WorkPositionVertexBuffer[4 * (VertexIndexOffset[MeshIdx] + VertIdx) + 3];
+	return WorkPositionVertexBuffer[4 * (ClothParam.VertexIndexOffset + VertIdx) + 3];
 }
 
-float3 GetCurrentVBPosition(uint MeshIdx, uint VertIdx)
+float3 GetCurrentVBPosition(uint VertIdx)
 {
-	uint Idx = VertexIndexOffset[MeshIdx] + VertIdx;
+	uint Idx = ClothParam.VertexIndexOffset + VertIdx;
 	return float3(WorkPositionVertexBuffer[4 * Idx + 0], WorkPositionVertexBuffer[4 * Idx + 1], WorkPositionVertexBuffer[4 * Idx + 2]);
 }
 
-float3 GetPreviousVBPosition(uint MeshIdx, uint VertIdx)
+float3 GetPreviousVBPosition(uint VertIdx)
 {
-	uint Idx = VertexIndexOffset[MeshIdx] + VertIdx;
+	uint Idx = ClothParam.VertexIndexOffset + VertIdx;
 	return float3(WorkPrevPositionVertexBuffer[4 * Idx + 0], WorkPrevPositionVertexBuffer[4 * Idx + 1], WorkPrevPositionVertexBuffer[4 * Idx + 2]);
 }
 
-void SetCurrentVBPosition(uint MeshIdx, uint VertIdx, float3 Pos)
+void SetCurrentVBPosition(uint VertIdx, float3 Pos)
 {
-	uint Idx = VertexIndexOffset[MeshIdx] + VertIdx;
+	uint Idx = ClothParam.VertexIndexOffset + VertIdx;
 	WorkPositionVertexBuffer[4 * Idx + 0] = Pos.x;
 	WorkPositionVertexBuffer[4 * Idx + 1] = Pos.y;
 	WorkPositionVertexBuffer[4 * Idx + 2] = Pos.z;
 }
 
-void SetPreviousVBPosition(uint MeshIdx, uint VertIdx, float3 Pos)
+void SetPreviousVBPosition(uint VertIdx, float3 Pos)
 {
-	uint Idx = VertexIndexOffset[MeshIdx] + VertIdx;
+	uint Idx = ClothParam.VertexIndexOffset + VertIdx;
 	WorkPrevPositionVertexBuffer[4 * Idx + 0] = Pos.x;
 	WorkPrevPositionVertexBuffer[4 * Idx + 1] = Pos.y;
 	WorkPrevPositionVertexBuffer[4 * Idx + 2] = Pos.z;
@@ -82,17 +68,17 @@ void SetPreviousVBPosition(uint MeshIdx, uint VertIdx, float3 Pos)
 
 static const uint NUM_THREAD_X = 32;
 
-void Integrate(uint MeshIdx, uint ThreadId)
+void Integrate(uint ThreadId)
 {
-	for (uint VertIdx = ThreadId; VertIdx < NumVertex[MeshIdx]; VertIdx += NUM_THREAD_X)
+	for (uint VertIdx = ThreadId; VertIdx < ClothParam.NumVertex; VertIdx += NUM_THREAD_X)
 	{
-		float3 CurrPos = GetCurrentVBPosition(MeshIdx, VertIdx);
-		float3 PrevPos = GetPreviousVBPosition(MeshIdx, VertIdx);
+		float3 CurrPos = GetCurrentVBPosition(VertIdx);
+		float3 PrevPos = GetPreviousVBPosition(VertIdx);
 
 		float3 NextPos;
 
 		// 質量は変わらないという前提を置いている
-		float CurrInvMass = GetCurrentInvMass(MeshIdx, VertIdx);
+		float CurrInvMass = GetCurrentInvMass(VertIdx);
 		if (CurrInvMass < SMALL_NUMBER)
 		{
 			NextPos = CurrPos;
@@ -101,18 +87,18 @@ void Integrate(uint MeshIdx, uint ThreadId)
 		else
 		{
 			// とりあえずDampingは0.1にして0.9をかける
-			uint Idx = VertexIndexOffset[MeshIdx] + VertIdx;
+			uint Idx = ClothParam.VertexIndexOffset + VertIdx;
 			float3 Acceleration = float3(-WorkAccelerationVertexBuffer[4 * Idx + 0], -WorkAccelerationVertexBuffer[4 * Idx + 1], WorkAccelerationVertexBuffer[4 * Idx + 2]); // TODO:なぜXとYの符号を反転すべきかは理解できていない
-			NextPos = CurrPos + (CurrPos - PrevPos) * (1.0f - Damping[MeshIdx]) + Acceleration * SquareDeltaTime[MeshIdx];
-			CurrPos = CurrPos + float3(-PreviousInertia[MeshIdx].x, -PreviousInertia[MeshIdx].y, PreviousInertia[MeshIdx].z); // TODO:なぜXとYの符号を反転すべきかは理解できていない
+			NextPos = CurrPos + (CurrPos - PrevPos) * (1.0f - ClothParam.Damping) + Acceleration * ClothParam.SquareDeltaTime;
+			CurrPos = CurrPos + float3(-ClothParam.PreviousInertia.x, -ClothParam.PreviousInertia.y, ClothParam.PreviousInertia.z); // TODO:なぜXとYの符号を反転すべきかは理解できていない
 		}
 
-		SetCurrentVBPosition(MeshIdx, VertIdx, NextPos);
-		SetPreviousVBPosition(MeshIdx, VertIdx, CurrPos);
+		SetCurrentVBPosition(VertIdx, NextPos);
+		SetPreviousVBPosition(VertIdx, CurrPos);
 	}
 }
 
-void ApplyWind(uint MeshIdx, uint ThreadId)
+void ApplyWind(uint ThreadId)
 {
 	const float LIFT_COEFFICIENT = 0.2f / 100.0f; // 式がMKS単位系なので100で割る
 	const float DRAG_COEFFICIENT = 0.2f / 100.0f; // 式がMKS単位系なので100で割る
@@ -128,30 +114,30 @@ void ApplyWind(uint MeshIdx, uint ThreadId)
 		return;
 	}
 
-	for (uint RowColumnIndex = 0; RowColumnIndex < NumRow[MeshIdx] * NumColumn[MeshIdx]; RowColumnIndex++)
+	for (uint RowColumnIndex = 0; RowColumnIndex < ClothParam.NumRow * ClothParam.NumColumn; RowColumnIndex++)
 #endif
 	{
-		uint RowIndex = RowColumnIndex / NumColumn[MeshIdx];
-		uint ColumnIndex = RowColumnIndex % NumColumn[MeshIdx];
-		uint LeftUpperVertIdx = RowIndex * (NumColumn[MeshIdx] + 1) + ColumnIndex;
+		uint RowIndex = RowColumnIndex / ClothParam.NumColumn;
+		uint ColumnIndex = RowColumnIndex % ClothParam.NumColumn;
+		uint LeftUpperVertIdx = RowIndex * (ClothParam.NumColumn + 1) + ColumnIndex;
 		uint RightUpperVertIdx = LeftUpperVertIdx + 1;
-		uint LeftLowerVertIdx = LeftUpperVertIdx + NumColumn[MeshIdx] + 1;
+		uint LeftLowerVertIdx = LeftUpperVertIdx + ClothParam.NumColumn + 1;
 		uint RightLowerVertIdx = LeftLowerVertIdx + 1;
 
-		float3 CurrLeftUpperVertPos = GetCurrentVBPosition(MeshIdx, LeftUpperVertIdx);
-		float3 CurrRightUpperVertPos = GetCurrentVBPosition(MeshIdx, RightUpperVertIdx);
-		float3 CurrLeftLowerVertPos = GetCurrentVBPosition(MeshIdx, LeftLowerVertIdx);
-		float3 CurrRightLowerVertPos = GetCurrentVBPosition(MeshIdx, RightLowerVertIdx);
+		float3 CurrLeftUpperVertPos = GetCurrentVBPosition(LeftUpperVertIdx);
+		float3 CurrRightUpperVertPos = GetCurrentVBPosition(RightUpperVertIdx);
+		float3 CurrLeftLowerVertPos = GetCurrentVBPosition(LeftLowerVertIdx);
+		float3 CurrRightLowerVertPos = GetCurrentVBPosition(RightLowerVertIdx);
 
-		float3 PrevLeftUpperVertPos = GetPreviousVBPosition(MeshIdx, LeftUpperVertIdx);
-		float3 PrevRightUpperVertPos = GetPreviousVBPosition(MeshIdx, RightUpperVertIdx);
-		float3 PrevLeftLowerVertPos = GetPreviousVBPosition(MeshIdx, LeftLowerVertIdx);
-		float3 PrevRightLowerVertPos = GetPreviousVBPosition(MeshIdx, RightLowerVertIdx);
+		float3 PrevLeftUpperVertPos = GetPreviousVBPosition(LeftUpperVertIdx);
+		float3 PrevRightUpperVertPos = GetPreviousVBPosition(RightUpperVertIdx);
+		float3 PrevLeftLowerVertPos = GetPreviousVBPosition(LeftLowerVertIdx);
+		float3 PrevRightLowerVertPos = GetPreviousVBPosition(RightLowerVertIdx);
 
-		float CurrLeftUpperVertInvMass = GetCurrentInvMass(MeshIdx, LeftUpperVertIdx);
-		float CurrRightUpperVertInvMass = GetCurrentInvMass(MeshIdx, RightUpperVertIdx);
-		float CurrLeftLowerVertInvMass = GetCurrentInvMass(MeshIdx, LeftLowerVertIdx);
-		float CurrRightLowerVertInvMass = GetCurrentInvMass(MeshIdx, RightLowerVertIdx);
+		float CurrLeftUpperVertInvMass = GetCurrentInvMass(LeftUpperVertIdx);
+		float CurrRightUpperVertInvMass = GetCurrentInvMass(RightUpperVertIdx);
+		float CurrLeftLowerVertInvMass = GetCurrentInvMass(LeftLowerVertIdx);
+		float CurrRightLowerVertInvMass = GetCurrentInvMass(RightLowerVertIdx);
 
 		// Right Upper Triangle
 		{
@@ -159,7 +145,7 @@ void ApplyWind(uint MeshIdx, uint ThreadId)
 			float3 CurrCoG = (CurrLeftUpperVertPos + CurrRightUpperVertPos + CurrRightLowerVertPos) / 3.0f;
 			float3 PrevCoG = (PrevLeftUpperVertPos + PrevRightUpperVertPos + PrevRightLowerVertPos) / 3.0f;
 
-			float3 WindDelta = WindVelocity[MeshIdx] * DeltaTime[MeshIdx];
+			float3 WindDelta = ClothParam.WindVelocity * ClothParam.DeltaTime;
 
 				// 環境の風および自分自身の移動で受ける空気抵抗の風を合わせたDeltaTimeでの移動量。
 			float3 Delta = -(CurrCoG - PrevCoG) + WindDelta;
@@ -182,8 +168,8 @@ void ApplyWind(uint MeshIdx, uint ThreadId)
 
 			float3 LiftDir = cross(cross(DeltaDir, Normal), DeltaDir);
 
-			float3 LiftImplulse = LIFT_COEFFICIENT * FluidDensity[MeshIdx] * Area * Sin2 * LiftDir * DeltaLength * DeltaLength / DeltaTime[MeshIdx];
-			float3 DragImplulse = DRAG_COEFFICIENT * FluidDensity[MeshIdx] * Area * abs(Cos) * DeltaDir * DeltaLength * DeltaLength / DeltaTime[MeshIdx];
+			float3 LiftImplulse = LIFT_COEFFICIENT * ClothParam.FluidDensity * Area * Sin2 * LiftDir * DeltaLength * DeltaLength / ClothParam.DeltaTime;
+			float3 DragImplulse = DRAG_COEFFICIENT * ClothParam.FluidDensity * Area * abs(Cos) * DeltaDir * DeltaLength * DeltaLength / ClothParam.DeltaTime;
 
 			float3 NextLeftUpperVertPos;
 
@@ -197,7 +183,7 @@ void ApplyWind(uint MeshIdx, uint ThreadId)
 				NextLeftUpperVertPos = CurrLeftUpperVertPos + LiftImplulse + DragImplulse;
 			}
 
-			SetCurrentVBPosition(MeshIdx, LeftUpperVertIdx, NextLeftUpperVertPos);
+			SetCurrentVBPosition(LeftUpperVertIdx, NextLeftUpperVertPos);
 
 			float3 NextRightUpperVertPos;
 
@@ -211,7 +197,7 @@ void ApplyWind(uint MeshIdx, uint ThreadId)
 				NextRightUpperVertPos = CurrRightUpperVertPos + LiftImplulse + DragImplulse;
 			}
 
-			SetCurrentVBPosition(MeshIdx, RightUpperVertIdx, NextRightUpperVertPos);
+			SetCurrentVBPosition(RightUpperVertIdx, NextRightUpperVertPos);
 
 			float3 NextRightLowerVertPos;
 
@@ -225,7 +211,7 @@ void ApplyWind(uint MeshIdx, uint ThreadId)
 				NextRightLowerVertPos = CurrRightLowerVertPos + LiftImplulse + DragImplulse;
 			}
 
-			SetCurrentVBPosition(MeshIdx, RightLowerVertIdx, NextRightLowerVertPos);
+			SetCurrentVBPosition(RightLowerVertIdx, NextRightLowerVertPos);
 		}
 
 		// Left Lower Triangle
@@ -234,7 +220,7 @@ void ApplyWind(uint MeshIdx, uint ThreadId)
 			float3 CurrCoG = (CurrLeftUpperVertPos + CurrLeftLowerVertPos + CurrRightLowerVertPos) / 3.0f;
 			float3 PrevCoG = (PrevLeftUpperVertPos + PrevLeftLowerVertPos + PrevRightLowerVertPos) / 3.0f;
 
-			float3 WindDelta = WindVelocity[MeshIdx] * DeltaTime[MeshIdx];
+			float3 WindDelta = ClothParam.WindVelocity * ClothParam.DeltaTime;
 
 				// 環境の風および自分自身の移動で受ける空気抵抗の風を合わせたDeltaTimeでの移動量。
 			float3 Delta = -(CurrCoG - PrevCoG) + WindDelta;
@@ -261,8 +247,8 @@ void ApplyWind(uint MeshIdx, uint ThreadId)
 
 			float3 LiftDir = cross(cross(DeltaDir, Normal), DeltaDir);
 
-			float3 LiftImplulse = LIFT_COEFFICIENT * FluidDensity[MeshIdx] * Area * Sin2 * LiftDir * DeltaLength * DeltaLength / DeltaTime[MeshIdx];
-			float3 DragImplulse = DRAG_COEFFICIENT * FluidDensity[MeshIdx] * Area * abs(Cos) * DeltaDir * DeltaLength * DeltaLength / DeltaTime[MeshIdx];
+			float3 LiftImplulse = LIFT_COEFFICIENT * ClothParam.FluidDensity * Area * Sin2 * LiftDir * DeltaLength * DeltaLength / ClothParam.DeltaTime;
+			float3 DragImplulse = DRAG_COEFFICIENT * ClothParam.FluidDensity * Area * abs(Cos) * DeltaDir * DeltaLength * DeltaLength / ClothParam.DeltaTime;
 
 			float3 NextLeftUpperVertPos;
 
@@ -276,7 +262,7 @@ void ApplyWind(uint MeshIdx, uint ThreadId)
 				NextLeftUpperVertPos = CurrLeftUpperVertPos + LiftImplulse + DragImplulse;
 			}
 
-			SetCurrentVBPosition(MeshIdx, LeftUpperVertIdx, NextLeftUpperVertPos);
+			SetCurrentVBPosition(LeftUpperVertIdx, NextLeftUpperVertPos);
 
 			float3 NextLeftLowerVertPos;
 
@@ -290,7 +276,7 @@ void ApplyWind(uint MeshIdx, uint ThreadId)
 				NextLeftLowerVertPos = CurrLeftLowerVertPos + LiftImplulse + DragImplulse;
 			}
 
-			SetCurrentVBPosition(MeshIdx, LeftLowerVertIdx, NextLeftLowerVertPos);
+			SetCurrentVBPosition(LeftLowerVertIdx, NextLeftLowerVertPos);
 
 			float3 NextRightLowerVertPos;
 
@@ -304,12 +290,12 @@ void ApplyWind(uint MeshIdx, uint ThreadId)
 				NextRightLowerVertPos = CurrRightLowerVertPos + LiftImplulse + DragImplulse;
 			}
 
-			SetCurrentVBPosition(MeshIdx, RightLowerVertIdx, NextRightLowerVertPos);
+			SetCurrentVBPosition(RightLowerVertIdx, NextRightLowerVertPos);
 		}
 	}
 }
 
-void SolveDistanceConstraint(uint MeshIdx, uint ThreadId)
+void SolveDistanceConstraint(uint ThreadId)
 {
 #if 0
 	// TODO:マルチスレッドをすると動きが壊れるとりあえずマルチスレッド対応は後回し
@@ -320,75 +306,75 @@ void SolveDistanceConstraint(uint MeshIdx, uint ThreadId)
 		return;
 	}
 
-	for (uint VertIdx = 0; VertIdx < NumVertex[MeshIdx]; VertIdx++)
+	for (uint VertIdx = 0; VertIdx < ClothParam.NumVertex; VertIdx++)
 #endif
 	{
-		uint RowIndex = VertIdx / (NumColumn[MeshIdx] + 1);
-		uint ColumnIndex = VertIdx % (NumColumn[MeshIdx] + 1);
+		uint RowIndex = VertIdx / (ClothParam.NumColumn + 1);
+		uint ColumnIndex = VertIdx % (ClothParam.NumColumn + 1);
 
-		float3 CurrVertexPos = GetCurrentVBPosition(MeshIdx, VertIdx);
-		float CurrVertexInvMass = GetCurrentInvMass(MeshIdx, VertIdx);
+		float3 CurrVertexPos = GetCurrentVBPosition(VertIdx);
+		float CurrVertexInvMass = GetCurrentInvMass(VertIdx);
 
-	// グリッドなので右方向の隣頂点と下方向の隣頂点との間のみ考慮するようにしていれば重複なくコンストレイントを処理できる
+		// グリッドなので右方向の隣頂点と下方向の隣頂点との間のみ考慮するようにしていれば重複なくコンストレイントを処理できる
 
-		if (ColumnIndex < NumColumn[MeshIdx])
+		if (ColumnIndex < ClothParam.NumColumn)
 		{
 			uint RightVertIdx = VertIdx + 1;
-			float RightVertexInvMass = GetCurrentInvMass(MeshIdx, RightVertIdx);
+			float RightVertexInvMass = GetCurrentInvMass(RightVertIdx);
 			if (CurrVertexInvMass > SMALL_NUMBER || RightVertexInvMass > SMALL_NUMBER)
 			{
-				float3 RightVertexPos = GetCurrentVBPosition(MeshIdx, RightVertIdx);
+				float3 RightVertexPos = GetCurrentVBPosition(RightVertIdx);
 
 				float RightEdgeLength = max(length(RightVertexPos - CurrVertexPos), SMALL_NUMBER); // to avoid 0 division
-				float Diff = RightEdgeLength - GridWidth[MeshIdx];
+				float Diff = RightEdgeLength - ClothParam.GridWidth;
 
 				float3 RightEdgeAxis = (RightVertexPos - CurrVertexPos) / RightEdgeLength;
 
-				CurrVertexPos += CurrVertexInvMass / (CurrVertexInvMass + RightVertexInvMass) * Diff * RightEdgeAxis * Stiffness[MeshIdx];
-				RightVertexPos -= RightVertexInvMass / (CurrVertexInvMass + RightVertexInvMass) * Diff * RightEdgeAxis * Stiffness[MeshIdx];
+				CurrVertexPos += CurrVertexInvMass / (CurrVertexInvMass + RightVertexInvMass) * Diff * RightEdgeAxis * ClothParam.Stiffness;
+				RightVertexPos -= RightVertexInvMass / (CurrVertexInvMass + RightVertexInvMass) * Diff * RightEdgeAxis * ClothParam.Stiffness;
 
-				SetCurrentVBPosition(MeshIdx, RightVertIdx, RightVertexPos);
+				SetCurrentVBPosition(RightVertIdx, RightVertexPos);
 			}
 		}
 
-		if (RowIndex < NumRow[MeshIdx])
+		if (RowIndex < ClothParam.NumRow)
 		{
-			uint LowerVertIdx = VertIdx + NumColumn[MeshIdx] + 1;
-			float LowerVertexInvMass = GetCurrentInvMass(MeshIdx, LowerVertIdx);
+			uint LowerVertIdx = VertIdx + ClothParam.NumColumn + 1;
+			float LowerVertexInvMass = GetCurrentInvMass(LowerVertIdx);
 			if (CurrVertexInvMass > SMALL_NUMBER || LowerVertexInvMass > SMALL_NUMBER)
 			{
-				float3 LowerVertexPos = GetCurrentVBPosition(MeshIdx, LowerVertIdx);
+				float3 LowerVertexPos = GetCurrentVBPosition(LowerVertIdx);
 
 				float LowerEdgeLength = max(length(LowerVertexPos - CurrVertexPos), SMALL_NUMBER); // to avoid 0 division
-				float Diff = LowerEdgeLength - GridHeight[MeshIdx];
+				float Diff = LowerEdgeLength - ClothParam.GridHeight;
 
 				float3 LowerEdgeAxis = (LowerVertexPos - CurrVertexPos) / LowerEdgeLength;
 
-				CurrVertexPos += CurrVertexInvMass / (CurrVertexInvMass + LowerVertexInvMass) * Diff * LowerEdgeAxis * Stiffness[MeshIdx];
-				LowerVertexPos -= LowerVertexInvMass / (CurrVertexInvMass + LowerVertexInvMass) * Diff * LowerEdgeAxis * Stiffness[MeshIdx];
+				CurrVertexPos += CurrVertexInvMass / (CurrVertexInvMass + LowerVertexInvMass) * Diff * LowerEdgeAxis * ClothParam.Stiffness;
+				LowerVertexPos -= LowerVertexInvMass / (CurrVertexInvMass + LowerVertexInvMass) * Diff * LowerEdgeAxis * ClothParam.Stiffness;
 
-				SetCurrentVBPosition(MeshIdx, LowerVertIdx, LowerVertexPos);
+				SetCurrentVBPosition(LowerVertIdx, LowerVertexPos);
 			}
 		}
 
-		SetCurrentVBPosition(MeshIdx, VertIdx, CurrVertexPos);
+		SetCurrentVBPosition(VertIdx, CurrVertexPos);
 	}
 }
 
-void SolveCollision(uint MeshIdx, uint ThreadId)
+void SolveCollision(uint ThreadId)
 {
 	const float SMALL_NUMBER = 0.0001f;
 
 	// TODO:複数のコリジョンが重なっていることによるめりこみ押し出しの競合についてはとりあえず考えない
-	for (uint VertIdx = ThreadId; VertIdx < NumVertex[MeshIdx]; VertIdx += NUM_THREAD_X)
+	for (uint VertIdx = ThreadId; VertIdx < ClothParam.NumVertex; VertIdx += NUM_THREAD_X)
 	{
-		float3 CurrVertexPos = GetCurrentVBPosition(MeshIdx, VertIdx);
+		float3 CurrVertexPos = GetCurrentVBPosition(VertIdx);
 
-		for (uint CollisionIdx = 0; CollisionIdx < NumSphereCollision[MeshIdx]; CollisionIdx++)
+		for (uint CollisionIdx = 0; CollisionIdx < ClothParam.NumSphereCollision; CollisionIdx++)
 		{
-			float4 SphereCenterAndRadius = SphereCenterAndRadiusArray[MeshIdx * MAX_SPHERE_COLLISION + CollisionIdx];
+			float4 SphereCenterAndRadius = ClothParam.SphereCollisionParams[CollisionIdx];
 			// 計算をシンプルにするために頂点の半径は0にしてコリジョン側の半径に頂点半径をプラスして扱う
-			float SphereRadius = SphereCenterAndRadius.w + VertexRadius[MeshIdx];
+			float SphereRadius = SphereCenterAndRadius.w + ClothParam.VertexRadius;
 			if (SphereRadius < SMALL_NUMBER)
 			{
 				continue;
@@ -404,28 +390,34 @@ void SolveCollision(uint MeshIdx, uint ThreadId)
 			}
 		}
 
-		SetCurrentVBPosition(MeshIdx, VertIdx, CurrVertexPos);
+		SetCurrentVBPosition(VertIdx, CurrVertexPos);
 	}
 }
 
 [numthreads(NUM_THREAD_X, 1, 1)]
 void Main(uint MeshIdx : SV_GroupID, uint ThreadId : SV_GroupThreadID)
 {
-	for (uint IterCount = 0; IterCount < NumIteration[MeshIdx]; IterCount++)
+	if (ThreadId == 0)
 	{
-		Integrate(MeshIdx, ThreadId);
+		ClothParam = Params[MeshIdx];
+	}
+	GroupMemoryBarrierWithGroupSync();
+
+	for (uint IterCount = 0; IterCount < ClothParam.NumIteration; IterCount++)
+	{
+		Integrate(ThreadId);
 		GroupMemoryBarrierWithGroupSync();
 
-		if (FluidDensity[MeshIdx] > 0.0f)
+		if (ClothParam.FluidDensity > 0.0f)
 		{
-			ApplyWind(MeshIdx, ThreadId);
+			ApplyWind(ThreadId);
 			GroupMemoryBarrierWithGroupSync();
 		}
 
-		SolveDistanceConstraint(MeshIdx, ThreadId);
+		SolveDistanceConstraint(ThreadId);
 		GroupMemoryBarrierWithGroupSync();
 
-		SolveCollision(MeshIdx, ThreadId);
+		SolveCollision(ThreadId);
 		GroupMemoryBarrierWithGroupSync();
 	}
 }

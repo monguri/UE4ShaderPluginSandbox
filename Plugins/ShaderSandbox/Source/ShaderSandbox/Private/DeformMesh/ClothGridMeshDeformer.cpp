@@ -62,23 +62,6 @@ public:
 	SHADER_USE_PARAMETER_STRUCT(FClothSimulationCS, FGlobalShader);
 
 	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
-		SHADER_PARAMETER_ARRAY(uint32, NumIteration, [MAX_CLOTH_MESH])
-		SHADER_PARAMETER_ARRAY(uint32, NumRow, [MAX_CLOTH_MESH])
-		SHADER_PARAMETER_ARRAY(uint32, NumColumn, [MAX_CLOTH_MESH])
-		SHADER_PARAMETER_ARRAY(uint32, VertexIndexOffset, [MAX_CLOTH_MESH])
-		SHADER_PARAMETER_ARRAY(uint32, NumVertex, [MAX_CLOTH_MESH])
-		SHADER_PARAMETER_ARRAY(float, GridWidth, [MAX_CLOTH_MESH])
-		SHADER_PARAMETER_ARRAY(float, GridHeight, [MAX_CLOTH_MESH])
-		SHADER_PARAMETER_ARRAY(float, SquareDeltaTime, [MAX_CLOTH_MESH])
-		SHADER_PARAMETER_ARRAY(float, Stiffness, [MAX_CLOTH_MESH])
-		SHADER_PARAMETER_ARRAY(float, Damping, [MAX_CLOTH_MESH])
-		SHADER_PARAMETER_ARRAY(FVector, PreviousInertia, [MAX_CLOTH_MESH])
-		SHADER_PARAMETER_ARRAY(FVector, WindVelocity, [MAX_CLOTH_MESH])
-		SHADER_PARAMETER_ARRAY(float, FluidDensity, [MAX_CLOTH_MESH])
-		SHADER_PARAMETER_ARRAY(float, DeltaTime, [MAX_CLOTH_MESH])
-		SHADER_PARAMETER_ARRAY(float, VertexRadius, [MAX_CLOTH_MESH])
-		SHADER_PARAMETER_ARRAY(uint32, NumSphereCollision, [MAX_CLOTH_MESH])
-		SHADER_PARAMETER_ARRAY(FVector4, SphereCenterAndRadiusArray, [MAX_CLOTH_MESH * FGridClothParameters::MAX_SPHERE_COLLISION_PER_MESH])
 		SHADER_PARAMETER_SRV(StructuredBuffer<FGridClothParameters>, Params)
 		SHADER_PARAMETER_UAV(RWBuffer<float>, WorkAccelerationVertexBuffer)
 		SHADER_PARAMETER_UAV(RWBuffer<float>, WorkPrevPositionVertexBuffer)
@@ -168,53 +151,38 @@ void FClothGridMeshDeformer::FlushDeformCommandQueue(FRHICommandListImmediate& R
 		ClothParams.Reserve(NumClothMesh);
 
 		// TODO:Stiffness、Dampingの効果がNumIterationやフレームレートに依存してしまっているのでどうにかせねば
+
+		// 実行時に決まるクロスパラメータの設定とStructuredBuffer用のTArrayの作成
 		uint32 Offset = 0;
 		for (uint32 MeshIdx = 0; MeshIdx < NumClothMesh; MeshIdx++)
 		{
-			const FClothGridMeshDeformCommand& DeformCommand = DeformCommandQueue[MeshIdx];
-			const FGridClothParameters& GridClothParams = DeformCommand.Params;
+			FClothGridMeshDeformCommand& DeformCommand = DeformCommandQueue[MeshIdx];
+			FGridClothParameters& GridClothParams = DeformCommand.Params;
 
-			ClothParams.Add(GridClothParams);
+			GridClothParams.VertexIndexOffset = Offset;
+			Offset += GridClothParams.NumVertex;
 
 			float DeltaTimePerIterate = GridClothParams.DeltaTime / GridClothParams.NumIteration;
-			float SquareDeltaTime = DeltaTimePerIterate * DeltaTimePerIterate;
-			const FVector& WindVelocity = GridClothParams.WindVelocity * FMath::FRandRange(0.0f, 2.0f); //毎フレーム、風力にランダムなゆらぎをつける
+			GridClothParams.DeltaTime = DeltaTimePerIterate;
 
-			ClothSimParams->NumIteration[MeshIdx] = GridClothParams.NumIteration;
-			ClothSimParams->NumRow[MeshIdx] = GridClothParams.NumRow;
-			ClothSimParams->NumColumn[MeshIdx] = GridClothParams.NumColumn;
-			ClothSimParams->VertexIndexOffset[MeshIdx] = Offset;
-			Offset += GridClothParams.NumVertex;
-			ClothSimParams->NumVertex[MeshIdx] = GridClothParams.NumVertex;
-			ClothSimParams->GridWidth[MeshIdx] = GridClothParams.GridWidth;
-			ClothSimParams->GridHeight[MeshIdx] = GridClothParams.GridHeight;
-			ClothSimParams->SquareDeltaTime[MeshIdx] = SquareDeltaTime;
-			ClothSimParams->Stiffness[MeshIdx] = GridClothParams.Stiffness;
-			ClothSimParams->Damping[MeshIdx] = GridClothParams.Damping;
-			ClothSimParams->PreviousInertia[MeshIdx] = GridClothParams.PreviousInertia;
-			ClothSimParams->WindVelocity[MeshIdx] = WindVelocity;
-			ClothSimParams->FluidDensity[MeshIdx] = GridClothParams.FluidDensity / (100.0f * 100.0f * 100.0f); // シェーダの計算がMKS単位系基準なのでそれに入れるFluidDensityはすごく小さくせねばならずユーザが入力しにくいので、MKS単位系で入れさせておいてここでスケールする
-			ClothSimParams->DeltaTime[MeshIdx] = DeltaTimePerIterate;
-			ClothSimParams->VertexRadius[MeshIdx] = GridClothParams.VertexRadius;
-			ClothSimParams->NumSphereCollision[MeshIdx] = GridClothParams.NumSphereCollision; //TODO:とりあえず総当たり前提でクロス0にすべてのコリジョンが設定されてる前提
+			float SquareDeltaTime = DeltaTimePerIterate * DeltaTimePerIterate;
+			GridClothParams.SquareDeltaTime = SquareDeltaTime;
+
+			const FVector& WindVelocity = GridClothParams.WindVelocity * FMath::FRandRange(0.0f, 2.0f); //毎フレーム、風力にランダムなゆらぎをつける
+			GridClothParams.WindVelocity = WindVelocity;
+
+			GridClothParams.FluidDensity = GridClothParams.FluidDensity / (100.0f * 100.0f * 100.0f); // シェーダの計算がMKS単位系基準なのでそれに入れるFluidDensityはすごく小さくせねばならずユーザが入力しにくいので、MKS単位系で入れさせておいてここでスケールする
 
 			check(GridClothParams.NumSphereCollision <= FGridClothParameters::MAX_SPHERE_COLLISION_PER_MESH);
-			for (uint32 CollisionIdx = 0; CollisionIdx < FGridClothParameters::MAX_SPHERE_COLLISION_PER_MESH; CollisionIdx++)
-			{
-				if (CollisionIdx < ClothSimParams->NumSphereCollision[MeshIdx]) //TODO:とりあえず総当たり前提でクロス0にすべてのコリジョンが設定されてる前提
-				{
-					ClothSimParams->SphereCenterAndRadiusArray[MeshIdx * FGridClothParameters::MAX_SPHERE_COLLISION_PER_MESH + CollisionIdx]
-						= GridClothParams.SphereCollisionParams[CollisionIdx];
-				}
-				else
-				{
-					ClothSimParams->SphereCenterAndRadiusArray[MeshIdx * FGridClothParameters::MAX_SPHERE_COLLISION_PER_MESH + CollisionIdx]
-						= FVector4(0.0f, 0.0f, 0.0f, 0.0f);
-				}
-			}
+			
+			ClothParams.Add(GridClothParams);
 		}
 
-		ClothSimParams->Params = (new FClothParameterStructuredBuffer(ClothParams))->GetSRV();
+		// TODO:今は毎フレーム生成でBUF_Volatileにしてるけど、BUF_Staticにして、毎フレーム書き換えあるいはreallocにしたい
+		FClothParameterStructuredBuffer* ClothParameterStructuredBuffer = new FClothParameterStructuredBuffer(ClothParams);
+		ClothParameterStructuredBuffer->InitResource();
+
+		ClothSimParams->Params = ClothParameterStructuredBuffer->GetSRV();
 		ClothSimParams->WorkAccelerationVertexBuffer = WorkAccelerationVertexBufferUAV;
 		ClothSimParams->WorkPrevPositionVertexBuffer = WorkPrevVertexBufferUAV;
 		ClothSimParams->WorkPositionVertexBuffer = WorkVertexBufferUAV;

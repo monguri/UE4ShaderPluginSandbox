@@ -166,19 +166,30 @@ public:
 		check(ClothManager != nullptr);
 
 		FClothGridMeshDeformCommand Command;
+		Command.Params.NumIteration = Component->GetNumIteration();
 		Command.Params.NumRow = Component->GetNumRow();
 		Command.Params.NumColumn = Component->GetNumColumn();
 		Command.Params.NumVertex = Component->GetVertices().Num();
 		Command.Params.GridWidth = Component->GetGridWidth();
 		Command.Params.GridHeight = Component->GetGridHeight();
-		Command.Params.DeltaTime = Component->GetDeltaTime();
 		Command.Params.Stiffness = Component->GetStiffness();
 		Command.Params.Damping = Component->GetDamping();
+		Command.Params.PreviousInertia = Component->GetPreviousInertia();
 		Command.Params.WindVelocity = ClothManager->WindVelocity;
 		Command.Params.FluidDensity = Component->GetFluidDensity();
-		Command.Params.PreviousInertia = Component->GetPreviousInertia();
+		Command.Params.DeltaTime = Component->GetDeltaTime();
 		Command.Params.VertexRadius = Component->GetVertexRadius();
-		Command.Params.NumIteration = Component->GetNumIteration();
+
+		TArray<USphereCollisionComponent*> SphereCollisions = ClothManager->GetSphereCollisions();
+		Command.Params.NumSphereCollision = SphereCollisions.Num();
+
+		for (uint32 i = 0; i < Command.Params.NumSphereCollision; i++)
+		{
+			Command.Params.SphereCollisionParams[i] = FVector4(
+				Component->GetComponentTransform().InverseTransformPosition(SphereCollisions[i]->GetComponentLocation()),
+				SphereCollisions[i]->GetRadius()
+			);
+		}
 
 		VertexBuffers.SetAccelerations(Component->GetAccelerations());
 
@@ -186,19 +197,6 @@ public:
 		Command.TangentVertexBufferUAV = VertexBuffers.DeformableMeshVertexBuffer.GetTangentsUAV();
 		Command.PrevPositionVertexBufferUAV = VertexBuffers.PrevPositionVertexBuffer.GetUAV();
 		Command.AccelerationVertexBufferSRV = VertexBuffers.AcceralationVertexBuffer.GetSRV();
-
-		TArray<USphereCollisionComponent*> SphereCollisions = ClothManager->GetSphereCollisions();
-		Command.Params.NumSphereCollision = SphereCollisions.Num();
-
-		for (uint32 i = 0; i < Command.Params.NumSphereCollision; i++)
-		{
-			USphereCollisionComponent* SphereCollision = SphereCollisions[i];
-
-			Command.Params.SphereCollisionParams[i] = FVector4(
-				Component->GetComponentTransform().InverseTransformPosition(SphereCollision->GetComponentLocation()),
-				SphereCollision->GetRadius()
-			);
-		}
 
 		ClothManager->EnqueueSimulateClothCommand(Command);
 	}
