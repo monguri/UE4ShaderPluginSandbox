@@ -159,41 +159,8 @@ public:
 
 	uint32 GetAllocatedSize( void ) const { return( FPrimitiveSceneProxy::GetAllocatedSize() ); }
 
-	void EnqueClothGridMeshRenderCommand(UClothGridMeshComponent* Component)
+	void EnqueClothGridMeshRenderCommand(UClothGridMeshComponent* Component, FClothGridMeshDeformCommand& Command)
 	{
-		AClothManager* ClothManager = AClothManager::GetInstance();
-		check(ClothManager != nullptr);
-
-		float DeltaTimePerIterate = Component->GetDeltaTime() / Component->GetNumIteration();
-		float SquareDeltaTime = DeltaTimePerIterate * DeltaTimePerIterate;
-
-		FClothGridMeshDeformCommand Command;
-		Command.Params.NumIteration = Component->GetNumIteration();
-		Command.Params.NumRow = Component->GetNumRow();
-		Command.Params.NumColumn = Component->GetNumColumn();
-		Command.Params.NumVertex = Component->GetVertices().Num();
-		Command.Params.GridWidth = Component->GetGridWidth();
-		Command.Params.GridHeight = Component->GetGridHeight();
-		Command.Params.SquareDeltaTime = DeltaTimePerIterate * DeltaTimePerIterate;
-		Command.Params.Stiffness = Component->GetStiffness();
-		Command.Params.Damping = Component->GetDamping();
-		Command.Params.PreviousInertia = Component->GetPreviousInertia();
-		Command.Params.WindVelocity = ClothManager->WindVelocity;
-		Command.Params.FluidDensity = Component->GetFluidDensity();
-		Command.Params.DeltaTime = Component->GetDeltaTime() / Command.Params.NumIteration;
-		Command.Params.VertexRadius = Component->GetVertexRadius();
-
-		TArray<USphereCollisionComponent*> SphereCollisions = ClothManager->GetSphereCollisions();
-		Command.Params.NumSphereCollision = SphereCollisions.Num();
-
-		for (uint32 i = 0; i < Command.Params.NumSphereCollision; i++)
-		{
-			Command.Params.SphereCollisionParams[i] = FVector4(
-				Component->GetComponentTransform().InverseTransformPosition(SphereCollisions[i]->GetComponentLocation()),
-				SphereCollisions[i]->GetRadius()
-			);
-		}
-
 		VertexBuffers.SetAccelerations(Component->GetAccelerations());
 
 		Command.PositionVertexBufferUAV = VertexBuffers.PositionVertexBuffer.GetUAV();
@@ -201,7 +168,7 @@ public:
 		Command.PrevPositionVertexBufferUAV = VertexBuffers.PrevPositionVertexBuffer.GetUAV();
 		Command.AccelerationVertexBufferSRV = VertexBuffers.AcceralationVertexBuffer.GetSRV();
 
-		ClothManager->EnqueueSimulateClothCommand(Command);
+		AClothManager::GetInstance()->EnqueueSimulateClothCommand(Command);
 	}
 
 private:
@@ -324,7 +291,37 @@ void UClothGridMeshComponent::SendRenderDynamicData_Concurrent()
 		// 現在位置から加速度などのパラメータを更新する
 		UpdateParamsFromCurrentLocation();
 
-		((FClothGridMeshSceneProxy*)SceneProxy)->EnqueClothGridMeshRenderCommand(this);
+		float DeltaTimePerIterate = _DeltaTime / _NumIteration;
+		float SquareDeltaTime = DeltaTimePerIterate * DeltaTimePerIterate;
+
+		FClothGridMeshDeformCommand Command;
+		Command.Params.NumIteration = _NumIteration;
+		Command.Params.NumRow = _NumRow;
+		Command.Params.NumColumn = _NumColumn;
+		Command.Params.NumVertex = GetVertices().Num();
+		Command.Params.GridWidth = _GridWidth;
+		Command.Params.GridHeight = _GridHeight;
+		Command.Params.SquareDeltaTime = DeltaTimePerIterate * DeltaTimePerIterate;
+		Command.Params.Stiffness = _Stiffness;
+		Command.Params.Damping = _Damping;
+		Command.Params.PreviousInertia = _PreviousInertia;
+		Command.Params.WindVelocity = ClothManager->WindVelocity;
+		Command.Params.FluidDensity = _FluidDensity;
+		Command.Params.DeltaTime = DeltaTimePerIterate;
+		Command.Params.VertexRadius = _VertexRadius;
+
+		TArray<USphereCollisionComponent*> SphereCollisions = ClothManager->GetSphereCollisions();
+		Command.Params.NumSphereCollision = SphereCollisions.Num();
+
+		for (uint32 i = 0; i < Command.Params.NumSphereCollision; i++)
+		{
+			Command.Params.SphereCollisionParams[i] = FVector4(
+				GetComponentTransform().InverseTransformPosition(SphereCollisions[i]->GetComponentLocation()),
+				SphereCollisions[i]->GetRadius()
+			);
+		}
+
+		((FClothGridMeshSceneProxy*)SceneProxy)->EnqueClothGridMeshRenderCommand(this, Command);
 	}
 }
 
