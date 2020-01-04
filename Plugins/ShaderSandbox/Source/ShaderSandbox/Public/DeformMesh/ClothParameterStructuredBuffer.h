@@ -2,12 +2,6 @@
 
 #include "RenderResource.h"
 
-struct FSphereCollisionParameters
-{
-	FVector RelativeCenter;
-	float Radius;
-};
-
 struct FGridClothParameters
 {
 	static const uint32 MAX_SPHERE_COLLISION_PER_MESH = 4;
@@ -20,14 +14,14 @@ struct FGridClothParameters
 	float DeltaTime = 0.0f;
 	float Stiffness = 0.0f;
 	float Damping = 0.0f;
-	FVector WindVelocity;
+	FVector WindVelocity = FVector::ZeroVector;
 	float FluidDensity = 0.0f;
 	FVector PreviousInertia = FVector::ZeroVector;
 	float VertexRadius = 0.0f;
 	uint32 NumIteration = 0;
 	uint32 NumSphereCollision = 0;
-
-	FSphereCollisionParameters SphereCollisionParams[MAX_SPHERE_COLLISION_PER_MESH];
+	// xyz : RelativeCenter, w : Radius;
+	FVector4 SphereCollisionParams[MAX_SPHERE_COLLISION_PER_MESH];
 };
 
 struct FClothParameterStructuredBuffer : public FRenderResource
@@ -40,6 +34,7 @@ public:
 	virtual void ReleaseDynamicRHI() override;
 
 	int32 GetComponentsDataCount() const { return OriginalComponentsData.Num(); };
+	FRHIShaderResourceView* GetSRV() const { return ComponentsDataSRV; }
 
 private:
 	FStructuredBufferRHIRef ComponentsData;

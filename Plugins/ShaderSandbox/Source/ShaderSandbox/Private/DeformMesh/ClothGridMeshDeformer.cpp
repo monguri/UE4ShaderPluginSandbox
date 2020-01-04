@@ -79,6 +79,7 @@ public:
 		SHADER_PARAMETER_ARRAY(float, VertexRadius, [MAX_CLOTH_MESH])
 		SHADER_PARAMETER_ARRAY(uint32, NumSphereCollision, [MAX_CLOTH_MESH])
 		SHADER_PARAMETER_ARRAY(FVector4, SphereCenterAndRadiusArray, [MAX_CLOTH_MESH * FGridClothParameters::MAX_SPHERE_COLLISION_PER_MESH])
+		SHADER_PARAMETER_SRV(StructuredBuffer<FGridClothParameters>, Params)
 		SHADER_PARAMETER_UAV(RWBuffer<float>, WorkAccelerationVertexBuffer)
 		SHADER_PARAMETER_UAV(RWBuffer<float>, WorkPrevPositionVertexBuffer)
 		SHADER_PARAMETER_UAV(RWBuffer<float>, WorkPositionVertexBuffer)
@@ -162,12 +163,18 @@ void FClothGridMeshDeformer::FlushDeformCommandQueue(FRHICommandListImmediate& R
 
 	{
 		FClothSimulationCS::FParameters* ClothSimParams = GraphBuilder.AllocParameters<FClothSimulationCS::FParameters>();
+
+		TArray<FGridClothParameters> ClothParams;
+		ClothParams.Reserve(NumClothMesh);
+
 		// TODO:Stiffness、Dampingの効果がNumIterationやフレームレートに依存してしまっているのでどうにかせねば
 		uint32 Offset = 0;
 		for (uint32 MeshIdx = 0; MeshIdx < NumClothMesh; MeshIdx++)
 		{
 			const FClothGridMeshDeformCommand& DeformCommand = DeformCommandQueue[MeshIdx];
 			const FGridClothParameters& GridClothParams = DeformCommand.Params;
+
+			ClothParams.Add(GridClothParams);
 
 			float DeltaTimePerIterate = GridClothParams.DeltaTime / GridClothParams.NumIteration;
 			float SquareDeltaTime = DeltaTimePerIterate * DeltaTimePerIterate;
@@ -197,7 +204,7 @@ void FClothGridMeshDeformer::FlushDeformCommandQueue(FRHICommandListImmediate& R
 				if (CollisionIdx < ClothSimParams->NumSphereCollision[MeshIdx]) //TODO:とりあえず総当たり前提でクロス0にすべてのコリジョンが設定されてる前提
 				{
 					ClothSimParams->SphereCenterAndRadiusArray[MeshIdx * FGridClothParameters::MAX_SPHERE_COLLISION_PER_MESH + CollisionIdx]
-						= FVector4(GridClothParams.SphereCollisionParams[CollisionIdx].RelativeCenter, GridClothParams.SphereCollisionParams[CollisionIdx].Radius);
+						= GridClothParams.SphereCollisionParams[CollisionIdx];
 				}
 				else
 				{
@@ -207,6 +214,7 @@ void FClothGridMeshDeformer::FlushDeformCommandQueue(FRHICommandListImmediate& R
 			}
 		}
 
+		ClothSimParams->Params = (new FClothParameterStructuredBuffer(ClothParams))->GetSRV();
 		ClothSimParams->WorkAccelerationVertexBuffer = WorkAccelerationVertexBufferUAV;
 		ClothSimParams->WorkPrevPositionVertexBuffer = WorkPrevVertexBufferUAV;
 		ClothSimParams->WorkPositionVertexBuffer = WorkVertexBufferUAV;

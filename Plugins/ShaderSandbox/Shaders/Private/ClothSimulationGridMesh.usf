@@ -4,6 +4,26 @@ static const uint MAX_CLOTH_MESH = 8;
 static const uint MAX_SPHERE_COLLISION = 4;
 static const float SMALL_NUMBER = 0.0001f;
 
+struct FGridClothParameters
+{
+	uint NumRow;
+	uint NumColumn;
+	uint NumVertex;
+	float GridWidth;
+	float GridHeight;
+	float DeltaTime;
+	float Stiffness;
+	float Damping;
+	float3 WindVelocity;
+	float FluidDensity;
+	float3 PreviousInertia;
+	float VertexRadius;
+	uint NumIteration;
+	uint NumSphereCollision;
+	// xyz : RelativeCenter, w : Radius;
+	float4 SphereCollisionParams[MAX_SPHERE_COLLISION];
+};
+
 uint NumIteration[MAX_CLOTH_MESH];
 uint NumRow[MAX_CLOTH_MESH];
 uint NumColumn[MAX_CLOTH_MESH];
@@ -22,6 +42,7 @@ float VertexRadius[MAX_CLOTH_MESH];
 uint NumSphereCollision[MAX_CLOTH_MESH];
 float4 SphereCenterAndRadiusArray[MAX_CLOTH_MESH * MAX_SPHERE_COLLISION];
 
+StructuredBuffer<FGridClothParameters> Params;
 RWBuffer<float> WorkAccelerationVertexBuffer;
 RWBuffer<float> WorkPrevPositionVertexBuffer;
 RWBuffer<float> WorkPositionVertexBuffer;

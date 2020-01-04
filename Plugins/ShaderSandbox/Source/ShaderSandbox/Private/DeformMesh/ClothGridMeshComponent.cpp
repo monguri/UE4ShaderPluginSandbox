@@ -194,11 +194,10 @@ public:
 		{
 			USphereCollisionComponent* SphereCollision = SphereCollisions[i];
 
-			FSphereCollisionParameters Param;
-			Param.RelativeCenter = Component->GetComponentTransform().InverseTransformPosition(SphereCollision->GetComponentLocation());
-			Param.Radius = SphereCollision->GetRadius();
-
-			Command.Params.SphereCollisionParams[i] = Param;
+			Command.Params.SphereCollisionParams[i] = FVector4(
+				Component->GetComponentTransform().InverseTransformPosition(SphereCollision->GetComponentLocation()),
+				SphereCollision->GetRadius()
+			);
 		}
 
 		ClothManager->EnqueueSimulateClothCommand(Command);
