@@ -289,6 +289,7 @@ void UClothGridMeshComponent::SendRenderDynamicData_Concurrent()
 	if (SceneProxy != nullptr && ClothManager != nullptr) // ClothManager‚Í‘Šúretrun‚Ì‚½‚ß‚ÉŽæ“¾‚µ‚Ä‚¢‚é‚¾‚¯
 	{
 		FClothGridMeshDeformCommand Command;
+		MakeDeformCommand(Command);
 
 		((FClothGridMeshSceneProxy*)SceneProxy)->EnqueClothGridMeshRenderCommand(this, Command);
 	}
