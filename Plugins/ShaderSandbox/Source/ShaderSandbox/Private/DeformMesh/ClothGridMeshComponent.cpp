@@ -12,9 +12,8 @@
 #include "DynamicMeshBuilder.h"
 #include "EngineGlobals.h"
 #include "Engine/Engine.h"
-#include "ClothVertexBuffers.h"
-#include "ClothGridMeshDeformer.h"
-#include "RayTracingInstance.h"
+#include "DeformMesh/ClothVertexBuffers.h"
+#include "DeformMesh/ClothGridMeshDeformer.h"
 #include "DeformMesh/ClothManager.h"
 #include "DeformMesh/SphereCollisionComponent.h"
 

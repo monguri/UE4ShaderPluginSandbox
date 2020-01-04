@@ -13,8 +13,7 @@
 #include "EngineGlobals.h"
 #include "Engine/Engine.h"
 #include "Common/DeformableVertexBuffers.h"
-#include "SinWaveGridMeshDeformer.h"
-#include "RayTracingInstance.h"
+#include "DeformMesh/SinWaveGridMeshDeformer.h"
 
 /** almost all is copy of FCustomMeshSceneProxy. */
 class FSinWaveGridMeshSceneProxy final : public FPrimitiveSceneProxy

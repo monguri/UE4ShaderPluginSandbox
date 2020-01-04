@@ -1,4 +1,4 @@
-#include "SinWaveGridMeshDeformer.h"
+#include "DeformMesh/SinWaveGridMeshDeformer.h"
 #include "GlobalShader.h"
 #include "RHIResources.h"
 #include "RenderGraphBuilder.h"
