@@ -164,6 +164,9 @@ public:
 		AClothManager* ClothManager = AClothManager::GetInstance();
 		check(ClothManager != nullptr);
 
+		float DeltaTimePerIterate = Component->GetDeltaTime() / Component->GetNumIteration();
+		float SquareDeltaTime = DeltaTimePerIterate * DeltaTimePerIterate;
+
 		FClothGridMeshDeformCommand Command;
 		Command.Params.NumIteration = Component->GetNumIteration();
 		Command.Params.NumRow = Component->GetNumRow();
@@ -171,12 +174,13 @@ public:
 		Command.Params.NumVertex = Component->GetVertices().Num();
 		Command.Params.GridWidth = Component->GetGridWidth();
 		Command.Params.GridHeight = Component->GetGridHeight();
+		Command.Params.SquareDeltaTime = DeltaTimePerIterate * DeltaTimePerIterate;
 		Command.Params.Stiffness = Component->GetStiffness();
 		Command.Params.Damping = Component->GetDamping();
 		Command.Params.PreviousInertia = Component->GetPreviousInertia();
 		Command.Params.WindVelocity = ClothManager->WindVelocity;
 		Command.Params.FluidDensity = Component->GetFluidDensity();
-		Command.Params.DeltaTime = Component->GetDeltaTime();
+		Command.Params.DeltaTime = Component->GetDeltaTime() / Command.Params.NumIteration;
 		Command.Params.VertexRadius = Component->GetVertexRadius();
 
 		TArray<USphereCollisionComponent*> SphereCollisions = ClothManager->GetSphereCollisions();

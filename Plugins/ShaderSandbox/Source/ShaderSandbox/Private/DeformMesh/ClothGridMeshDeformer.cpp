@@ -161,12 +161,7 @@ void FClothGridMeshDeformer::FlushDeformCommandQueue(FRHICommandListImmediate& R
 			GridClothParams.VertexIndexOffset = Offset;
 			Offset += GridClothParams.NumVertex;
 
-			float DeltaTimePerIterate = GridClothParams.DeltaTime / GridClothParams.NumIteration;
-			GridClothParams.DeltaTime = DeltaTimePerIterate;
-
-			float SquareDeltaTime = DeltaTimePerIterate * DeltaTimePerIterate;
-			GridClothParams.SquareDeltaTime = SquareDeltaTime;
-
+			// Wind系の入力パラメータを使用に際し調整
 			const FVector& WindVelocity = GridClothParams.WindVelocity * FMath::FRandRange(0.0f, 2.0f); //毎フレーム、風力にランダムなゆらぎをつける
 			GridClothParams.WindVelocity = WindVelocity;
 
