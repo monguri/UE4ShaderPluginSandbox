@@ -5,6 +5,9 @@
 // StructuredBuffer用の構造体は128bit（16Byte）単位でないとデバイスロストやおかしな挙動になるので注意すること
 struct FGridClothParameters
 {
+	// TODO:この構造体は、この定数を含めていろんなところで使うのでこのヘッダから出すべき
+	// あるいはこのヘッダとcppをまるごとClothVertexBuffers.h/cppに入れるか
+	static const FVector GRAVITY;
 	static const uint32 MAX_SPHERE_COLLISION_PER_MESH = 16;
 	static const float BASE_FREQUENCY;
 

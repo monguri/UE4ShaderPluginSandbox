@@ -1,4 +1,5 @@
 #include "DeformMesh/ClothVertexBuffers.h"
+#include "DeformMesh/ClothParameterStructuredBuffer.h"
 #include "DynamicMeshBuilder.h"
 
 static inline void InitOrUpdateResourceMacroCloth(FRenderResource* Resource)
@@ -58,7 +59,11 @@ void FClothVertexBuffers::InitFromClothVertexAttributes(FLocalVertexFactory* Ver
 		DeformableMeshVertexBuffer.SetVertexUV(0, 0, FVector2D(0, 0));
 		ColorVertexBuffer.VertexColor(0) = FColor(1,1,1,1);
 		PrevPositionVertexBuffer.VertexPosition(0) = FVector4(0, 0, 0, 0);
-		AcceralationVertexBuffer.VertexPosition(0) = FVector(0, 0, -980.0f);
+
+		float IterDeltaTime = 1.0f / FGridClothParameters::BASE_FREQUENCY;
+		float SqrIterDeltaTime = IterDeltaTime * IterDeltaTime;
+
+		AcceralationVertexBuffer.VertexPosition(0) = FGridClothParameters::GRAVITY * SqrIterDeltaTime;
 		NumTexCoords = 1;
 		LightMapIndex = 0;
 	}

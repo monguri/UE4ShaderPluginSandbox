@@ -33,8 +33,6 @@ protected:
 	//~ End UActorComponent Interface
 
 private:
-	static const FVector GRAVITY;
-
 	bool _IgnoreVelocityDiscontinuityNextFrame = false;
 
 	TArray<FVector> _Accelerations;
