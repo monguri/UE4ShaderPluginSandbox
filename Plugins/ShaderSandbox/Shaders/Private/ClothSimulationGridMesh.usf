@@ -4,6 +4,7 @@ static const uint MAX_CLOTH_MESH = 16;
 static const uint MAX_SPHERE_COLLISION = 16;
 static const float SMALL_NUMBER = 0.0001f;
 
+// StructuredBuffer用の構造体は128bit（16Byte）単位でないとデバイスロストやおかしな挙動になるので注意すること
 struct FGridClothParameters
 {
 	uint NumIteration;

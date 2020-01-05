@@ -2,6 +2,7 @@
 
 #include "RenderResource.h"
 
+// StructuredBuffer用の構造体は128bit（16Byte）単位でないとデバイスロストやおかしな挙動になるので注意すること
 struct FGridClothParameters
 {
 	static const uint32 MAX_SPHERE_COLLISION_PER_MESH = 16;
