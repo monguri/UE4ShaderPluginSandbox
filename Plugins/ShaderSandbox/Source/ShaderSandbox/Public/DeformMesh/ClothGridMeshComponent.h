@@ -26,12 +26,6 @@ public:
 	//~ End UPrimitiveComponent Interface.
 
 	const TArray<FVector>& GetAccelerations() const { return _Accelerations; }
-	float GetStiffness() const { return _Stiffness; }
-	float GetDamping() const { return _Damping; }
-	float GetFluidDensity() const { return _FluidDensity; }
-	FVector GetPreviousInertia() const { return _PreviousInertia; }
-	float GetVertexRadius() const { return _VertexRadius; }
-	int32 GetNumIteration() const { return _NumIteration; }
 
 protected:
 	//~ Begin UActorComponent Interface
@@ -47,7 +41,7 @@ private:
 	float _Stiffness;
 	float _Damping;
 	float _FluidDensity;
-	FVector _PreviousInertia;
+	FVector _PreviousInertiaMove;
 	float _VertexRadius;
 	int32 _NumIteration;
 

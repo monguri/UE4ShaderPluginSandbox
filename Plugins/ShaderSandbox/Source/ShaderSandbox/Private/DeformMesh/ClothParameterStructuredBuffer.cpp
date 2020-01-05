@@ -1,5 +1,7 @@
 #include "DeformMesh/ClothParameterStructuredBuffer.h"
 
+const float FGridClothParameters::BASE_FREQUENCY = 60.0f;
+
 FClothParameterStructuredBuffer::FClothParameterStructuredBuffer(const TArray<FGridClothParameters>& ComponentsData)
 : OriginalComponentsData(ComponentsData)
 {

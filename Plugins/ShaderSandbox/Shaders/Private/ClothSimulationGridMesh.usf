@@ -13,13 +13,13 @@ struct FGridClothParameters
 	uint NumVertex;
 	float GridWidth;
 	float GridHeight;
-	float SquareDeltaTime;
+	float SqrIterDeltaTime;
 	float Stiffness;
 	float Damping;
-	float3 PreviousInertia;
+	float3 PreviousInertiaMove;
 	float3 WindVelocity;
 	float FluidDensity;
-	float DeltaTime;
+	float IterDeltaTime;
 	float VertexRadius;
 	uint NumSphereCollision;
 	// xyz : RelativeCenter, w : Radius;
@@ -89,8 +89,8 @@ void Integrate(uint ThreadId)
 			// ‚Æ‚è‚ ‚¦‚¸Damping‚Í0.1‚É‚µ‚Ä0.9‚ğ‚©‚¯‚é
 			uint Idx = ClothParam.VertexIndexOffset + VertIdx;
 			float3 Acceleration = float3(-WorkAccelerationVertexBuffer[4 * Idx + 0], -WorkAccelerationVertexBuffer[4 * Idx + 1], WorkAccelerationVertexBuffer[4 * Idx + 2]); // TODO:‚È‚ºX‚ÆY‚Ì•„†‚ğ”½“]‚·‚×‚«‚©‚Í—‰ğ‚Å‚«‚Ä‚¢‚È‚¢
-			NextPos = CurrPos + (CurrPos - PrevPos) * (1.0f - ClothParam.Damping) + Acceleration * ClothParam.SquareDeltaTime;
-			CurrPos = CurrPos + float3(-ClothParam.PreviousInertia.x, -ClothParam.PreviousInertia.y, ClothParam.PreviousInertia.z); // TODO:‚È‚ºX‚ÆY‚Ì•„†‚ğ”½“]‚·‚×‚«‚©‚Í—‰ğ‚Å‚«‚Ä‚¢‚È‚¢
+			NextPos = CurrPos + (CurrPos - PrevPos) * (1.0f - ClothParam.Damping) + Acceleration * ClothParam.SqrIterDeltaTime;
+			CurrPos = CurrPos + float3(-ClothParam.PreviousInertiaMove.x, -ClothParam.PreviousInertiaMove.y, ClothParam.PreviousInertiaMove.z); // TODO:‚È‚ºX‚ÆY‚Ì•„†‚ğ”½“]‚·‚×‚«‚©‚Í—‰ğ‚Å‚«‚Ä‚¢‚È‚¢
 		}
 
 		SetCurrentVBPosition(VertIdx, NextPos);
@@ -145,7 +145,7 @@ void ApplyWind(uint ThreadId)
 			float3 CurrCoG = (CurrLeftUpperVertPos + CurrRightUpperVertPos + CurrRightLowerVertPos) / 3.0f;
 			float3 PrevCoG = (PrevLeftUpperVertPos + PrevRightUpperVertPos + PrevRightLowerVertPos) / 3.0f;
 
-			float3 WindDelta = ClothParam.WindVelocity * ClothParam.DeltaTime;
+			float3 WindDelta = ClothParam.WindVelocity * ClothParam.IterDeltaTime;
 
 				// ŠÂ‹«‚Ì•—‚¨‚æ‚Ñ©•ª©g‚ÌˆÚ“®‚Åó‚¯‚é‹ó‹C’ïR‚Ì•—‚ğ‡‚í‚¹‚½DeltaTime‚Å‚ÌˆÚ“®—ÊB
 			float3 Delta = -(CurrCoG - PrevCoG) + WindDelta;
@@ -168,8 +168,8 @@ void ApplyWind(uint ThreadId)
 
 			float3 LiftDir = cross(cross(DeltaDir, Normal), DeltaDir);
 
-			float3 LiftImplulse = LIFT_COEFFICIENT * ClothParam.FluidDensity * Area * Sin2 * LiftDir * DeltaLength * DeltaLength / ClothParam.DeltaTime;
-			float3 DragImplulse = DRAG_COEFFICIENT * ClothParam.FluidDensity * Area * abs(Cos) * DeltaDir * DeltaLength * DeltaLength / ClothParam.DeltaTime;
+			float3 LiftImplulse = LIFT_COEFFICIENT * ClothParam.FluidDensity * Area * Sin2 * LiftDir * DeltaLength * DeltaLength / ClothParam.IterDeltaTime;
+			float3 DragImplulse = DRAG_COEFFICIENT * ClothParam.FluidDensity * Area * abs(Cos) * DeltaDir * DeltaLength * DeltaLength / ClothParam.IterDeltaTime;
 
 			float3 NextLeftUpperVertPos;
 
@@ -220,7 +220,7 @@ void ApplyWind(uint ThreadId)
 			float3 CurrCoG = (CurrLeftUpperVertPos + CurrLeftLowerVertPos + CurrRightLowerVertPos) / 3.0f;
 			float3 PrevCoG = (PrevLeftUpperVertPos + PrevLeftLowerVertPos + PrevRightLowerVertPos) / 3.0f;
 
-			float3 WindDelta = ClothParam.WindVelocity * ClothParam.DeltaTime;
+			float3 WindDelta = ClothParam.WindVelocity * ClothParam.IterDeltaTime;
 
 				// ŠÂ‹«‚Ì•—‚¨‚æ‚Ñ©•ª©g‚ÌˆÚ“®‚Åó‚¯‚é‹ó‹C’ïR‚Ì•—‚ğ‡‚í‚¹‚½DeltaTime‚Å‚ÌˆÚ“®—ÊB
 			float3 Delta = -(CurrCoG - PrevCoG) + WindDelta;
@@ -247,8 +247,8 @@ void ApplyWind(uint ThreadId)
 
 			float3 LiftDir = cross(cross(DeltaDir, Normal), DeltaDir);
 
-			float3 LiftImplulse = LIFT_COEFFICIENT * ClothParam.FluidDensity * Area * Sin2 * LiftDir * DeltaLength * DeltaLength / ClothParam.DeltaTime;
-			float3 DragImplulse = DRAG_COEFFICIENT * ClothParam.FluidDensity * Area * abs(Cos) * DeltaDir * DeltaLength * DeltaLength / ClothParam.DeltaTime;
+			float3 LiftImplulse = LIFT_COEFFICIENT * ClothParam.FluidDensity * Area * Sin2 * LiftDir * DeltaLength * DeltaLength / ClothParam.IterDeltaTime;
+			float3 DragImplulse = DRAG_COEFFICIENT * ClothParam.FluidDensity * Area * abs(Cos) * DeltaDir * DeltaLength * DeltaLength / ClothParam.IterDeltaTime;
 
 			float3 NextLeftUpperVertPos;
 

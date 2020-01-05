@@ -312,16 +312,18 @@ void UClothGridMeshComponent::MakeDeformCommand(FClothGridMeshDeformCommand& Com
 	_IgnoreVelocityDiscontinuityNextFrame = false;
 
 	float IterDeltaTime = GetDeltaTime() / _NumIteration;
+	float SqrIterDeltaTime = IterDeltaTime * IterDeltaTime;
 
 	float LinearAlpha = 0.5f * (_NumIteration + 1) / _NumIteration;
 
-	const FVector& CurInertia = IterDeltaTime * (_PrevLinearVelocity - _CurLinearVelocity) * LinearAlpha;
-	_PreviousInertia = IterDeltaTime * (_PrevLinearVelocity - _CurLinearVelocity) * (1.0f - LinearAlpha);
+	const FVector& CurInertiaMove = IterDeltaTime * (_PrevLinearVelocity - _CurLinearVelocity) * LinearAlpha;
+	_PreviousInertiaMove = IterDeltaTime * (_PrevLinearVelocity - _CurLinearVelocity) * (1.0f - LinearAlpha);
 
 	// TODO:_AccelerationsÇê›íËÇµÇƒÇÈÇÃÇÕä÷êîñºÇ…çáÇ¡ÇƒÇ»Ç¢
 	for (uint32 i = 0; i < (_NumRow + 1) * (_NumColumn + 1); i++)
 	{
-		_Accelerations[i] = CurInertia + UClothGridMeshComponent::GRAVITY;
+		//TODO: linearDragÇ™ì¸Ç¡ÇƒÇ»Ç¢
+		_Accelerations[i] = CurInertiaMove + UClothGridMeshComponent::GRAVITY;
 	}
 
 	Command.Params.NumIteration = _NumIteration;
@@ -330,13 +332,13 @@ void UClothGridMeshComponent::MakeDeformCommand(FClothGridMeshDeformCommand& Com
 	Command.Params.NumVertex = GetVertices().Num();
 	Command.Params.GridWidth = _GridWidth;
 	Command.Params.GridHeight = _GridHeight;
-	Command.Params.SquareDeltaTime = IterDeltaTime * IterDeltaTime;
+	Command.Params.SqrIterDeltaTime = SqrIterDeltaTime;
 	Command.Params.Stiffness = _Stiffness;
 	Command.Params.Damping = _Damping;
-	Command.Params.PreviousInertia = _PreviousInertia;
+	Command.Params.PreviousInertiaMove = _PreviousInertiaMove;
 	Command.Params.WindVelocity = ClothManager->WindVelocity;
 	Command.Params.FluidDensity = _FluidDensity;
-	Command.Params.DeltaTime = IterDeltaTime;
+	Command.Params.IterDeltaTime = IterDeltaTime;
 	Command.Params.VertexRadius = _VertexRadius;
 
 	TArray<USphereCollisionComponent*> SphereCollisions = ClothManager->GetSphereCollisions();
