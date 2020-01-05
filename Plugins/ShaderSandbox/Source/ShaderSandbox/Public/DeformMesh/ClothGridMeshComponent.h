@@ -41,7 +41,7 @@ private:
 	float _Stiffness;
 	float _Damping;
 	float _FluidDensity;
-	FVector _PreviousInertiaMove;
+	FVector _PreviousInertia;
 	float _VertexRadius;
 	int32 _NumIteration;
 

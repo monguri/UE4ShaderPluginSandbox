@@ -17,7 +17,7 @@ struct FGridClothParameters
 	float SqrIterDeltaTime = 0.0f;
 	float Stiffness = 0.0f;
 	float Damping = 0.0f;
-	FVector PreviousInertiaMove = FVector::ZeroVector;
+	FVector PreviousInertia = FVector::ZeroVector;
 	FVector WindVelocity = FVector::ZeroVector;
 	float FluidDensity = 0.0f;
 	float IterDeltaTime = 0.0f;

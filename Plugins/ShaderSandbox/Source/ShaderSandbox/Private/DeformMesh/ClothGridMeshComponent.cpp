@@ -316,14 +316,14 @@ void UClothGridMeshComponent::MakeDeformCommand(FClothGridMeshDeformCommand& Com
 
 	float LinearAlpha = 0.5f * (_NumIteration + 1) / _NumIteration;
 
-	const FVector& CurInertiaMove = IterDeltaTime * (_PrevLinearVelocity - _CurLinearVelocity) * LinearAlpha;
-	_PreviousInertiaMove = IterDeltaTime * (_PrevLinearVelocity - _CurLinearVelocity) * (1.0f - LinearAlpha);
+	const FVector& CurInertia = (_PrevLinearVelocity - _CurLinearVelocity) * LinearAlpha / GetDeltaTime();
+	_PreviousInertia = (_PrevLinearVelocity - _CurLinearVelocity) * (1.0f - LinearAlpha) / GetDeltaTime();
 
 	// TODO:_Accelerations‚ğİ’è‚µ‚Ä‚é‚Ì‚ÍŠÖ”–¼‚É‡‚Á‚Ä‚È‚¢
 	for (uint32 i = 0; i < (_NumRow + 1) * (_NumColumn + 1); i++)
 	{
 		//TODO: linearDrag‚ª“ü‚Á‚Ä‚È‚¢
-		_Accelerations[i] = CurInertiaMove + UClothGridMeshComponent::GRAVITY;
+		_Accelerations[i] = CurInertia + UClothGridMeshComponent::GRAVITY;
 	}
 
 	Command.Params.NumIteration = _NumIteration;
@@ -335,7 +335,7 @@ void UClothGridMeshComponent::MakeDeformCommand(FClothGridMeshDeformCommand& Com
 	Command.Params.SqrIterDeltaTime = SqrIterDeltaTime;
 	Command.Params.Stiffness = _Stiffness;
 	Command.Params.Damping = _Damping;
-	Command.Params.PreviousInertiaMove = _PreviousInertiaMove;
+	Command.Params.PreviousInertia = _PreviousInertia;
 	Command.Params.WindVelocity = ClothManager->WindVelocity;
 	Command.Params.FluidDensity = _FluidDensity;
 	Command.Params.IterDeltaTime = IterDeltaTime;

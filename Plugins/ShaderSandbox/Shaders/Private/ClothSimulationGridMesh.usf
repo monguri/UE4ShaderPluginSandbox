@@ -16,7 +16,7 @@ struct FGridClothParameters
 	float SqrIterDeltaTime;
 	float Stiffness;
 	float Damping;
-	float3 PreviousInertiaMove;
+	float3 PreviousInertia;
 	float3 WindVelocity;
 	float FluidDensity;
 	float IterDeltaTime;
@@ -90,7 +90,7 @@ void Integrate(uint ThreadId)
 			uint Idx = ClothParam.VertexIndexOffset + VertIdx;
 			float3 Acceleration = float3(-WorkAccelerationVertexBuffer[4 * Idx + 0], -WorkAccelerationVertexBuffer[4 * Idx + 1], WorkAccelerationVertexBuffer[4 * Idx + 2]); // TODO:‚È‚ºX‚ÆY‚Ì•„†‚ğ”½“]‚·‚×‚«‚©‚Í—‰ğ‚Å‚«‚Ä‚¢‚È‚¢
 			NextPos = CurrPos + (CurrPos - PrevPos) * (1.0f - ClothParam.Damping) + Acceleration * ClothParam.SqrIterDeltaTime;
-			CurrPos = CurrPos + float3(-ClothParam.PreviousInertiaMove.x, -ClothParam.PreviousInertiaMove.y, ClothParam.PreviousInertiaMove.z); // TODO:‚È‚ºX‚ÆY‚Ì•„†‚ğ”½“]‚·‚×‚«‚©‚Í—‰ğ‚Å‚«‚Ä‚¢‚È‚¢
+			CurrPos = CurrPos + float3(-ClothParam.PreviousInertia.x, -ClothParam.PreviousInertia.y, ClothParam.PreviousInertia.z) * ClothParam.SqrIterDeltaTime; // TODO:‚È‚ºX‚ÆY‚Ì•„†‚ğ”½“]‚·‚×‚«‚©‚Í—‰ğ‚Å‚«‚Ä‚¢‚È‚¢
 		}
 
 		SetCurrentVBPosition(VertIdx, NextPos);
