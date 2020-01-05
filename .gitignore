@@ -154,6 +154,8 @@ Engine/Binaries/DotNET/AutomationScripts/BuildGraph.Automation.xml
 # Ignore intermediate folders
 Intermediate/
 obj/
+enc_temp_folder/
+Binaries/
 
 # Ignore any saved local files
 Saved/
