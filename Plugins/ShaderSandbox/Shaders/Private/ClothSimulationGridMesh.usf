@@ -149,24 +149,27 @@ void ApplyWind(uint ThreadId)
 
 			float3 WindDelta = ClothParam.WindVelocity * ClothParam.IterDeltaTime;
 
-				// 環境の風および自分自身の移動で受ける空気抵抗の風を合わせたDeltaTimeでの移動量。
+			// 環境の風および自分自身の移動で受ける空気抵抗の風を合わせたDeltaTimeでの移動量。
 			float3 Delta = -(CurrCoG - PrevCoG) + WindDelta;
 
-				// 正規化
+			// 正規化
 			float3 DeltaLength = length(Delta);
 			float3 DeltaDir = Delta / max(DeltaLength, SMALL_NUMBER);
 
 			float3 Normal = cross(CurrLeftUpperVertPos - CurrRightUpperVertPos, CurrRightLowerVertPos - CurrRightUpperVertPos);
 			float NormalLength = length(Normal);
-				// cross積の結果のベクトルの長さは平行四辺形の面積と同じになるので
+			// cross積の結果のベクトルの長さは平行四辺形の面積と同じになるので
 			float3 Area = NormalLength / 2;
 			Normal = Normal / NormalLength;
 
 			float Cos = dot(Normal, DeltaDir);
 			float Sin = sqrt(max(0.0f, 1.0f - Cos * Cos));
+			// NvClothではLiftの係数にSin2Thetaを使うが、論文を見てもSinThetaを使っているし、そっちが計算式として妥当に感じる。
+			// しかしSin2Thetaの方が結果が今のところ綺麗なのでそちらを使う。
+			// TODO:謎
 			float Sin2 = Cos * Sin * 0.5f;
 
-				// Delta方向と、Delta-Normal平面内でDeltaに垂直な方向の2つの力積を計算する。前者をDrag、後者をLiftと呼ぶ。
+			// Delta方向と、Delta-Normal平面内でDeltaに垂直な方向の2つの力積を計算する。前者をDrag、後者をLiftと呼ぶ。
 
 			float3 LiftDir = cross(cross(DeltaDir, Normal), DeltaDir);
 
@@ -178,7 +181,7 @@ void ApplyWind(uint ThreadId)
 			if (CurrLeftUpperVertInvMass < SMALL_NUMBER)
 			{
 				NextLeftUpperVertPos = CurrLeftUpperVertPos;
-					// CurrPosは変えない
+				// CurrPosは変えない
 			}
 			else
 			{
@@ -192,7 +195,7 @@ void ApplyWind(uint ThreadId)
 			if (CurrRightUpperVertInvMass < SMALL_NUMBER)
 			{
 				NextRightUpperVertPos = CurrRightUpperVertPos;
-					// CurrPosは変えない
+				// CurrPosは変えない
 			}
 			else
 			{
@@ -206,7 +209,7 @@ void ApplyWind(uint ThreadId)
 			if (CurrRightLowerVertInvMass < SMALL_NUMBER)
 			{
 				NextRightLowerVertPos = CurrRightLowerVertPos;
-					// CurrPosは変えない
+				// CurrPosは変えない
 			}
 			else
 			{
@@ -224,28 +227,28 @@ void ApplyWind(uint ThreadId)
 
 			float3 WindDelta = ClothParam.WindVelocity * ClothParam.IterDeltaTime;
 
-				// 環境の風および自分自身の移動で受ける空気抵抗の風を合わせたDeltaTimeでの移動量。
+			// 環境の風および自分自身の移動で受ける空気抵抗の風を合わせたDeltaTimeでの移動量。
 			float3 Delta = -(CurrCoG - PrevCoG) + WindDelta;
 
-				// 正規化
+			// 正規化
 			float3 DeltaLength = length(Delta);
 			float3 DeltaDir = Delta / max(DeltaLength, SMALL_NUMBER);
 
-				// Right Upperブロックと同じ方向になるように負の符号をつけている
+			// Right Upperブロックと同じ方向になるように負の符号をつけている
 			float3 Normal = -cross(CurrLeftUpperVertPos - CurrLeftLowerVertPos, CurrRightLowerVertPos - CurrLeftLowerVertPos);
 			float NormalLength = length(Normal);
-				// cross積の結果のベクトルの長さは平行四辺形の面積と同じになるので
+			// cross積の結果のベクトルの長さは平行四辺形の面積と同じになるので
 			float3 Area = NormalLength / 2;
 			Normal = Normal / NormalLength;
 
 			float Cos = dot(Normal, DeltaDir);
 			float Sin = sqrt(max(0.0f, 1.0f - Cos * Cos));
-				// NvClothではLiftの係数にSin2Thetaを使うが、論文を見てもSinThetaを使っているし、そっちが計算式として妥当に感じる。
-				// しかしSin2Thetaの方が結果が今のところ綺麗なのでそちらを使う。
-				// TODO:謎
+			// NvClothではLiftの係数にSin2Thetaを使うが、論文を見てもSinThetaを使っているし、そっちが計算式として妥当に感じる。
+			// しかしSin2Thetaの方が結果が今のところ綺麗なのでそちらを使う。
+			// TODO:謎
 			float Sin2 = Cos * Sin * 0.5f;
 
-				// Delta方向と、Delta-Normal平面内でDeltaに垂直な方向の2つの力積を計算する。前者をDrag、後者をLiftと呼ぶ。
+			// Delta方向と、Delta-Normal平面内でDeltaに垂直な方向の2つの力積を計算する。前者をDrag、後者をLiftと呼ぶ。
 
 			float3 LiftDir = cross(cross(DeltaDir, Normal), DeltaDir);
 
@@ -257,7 +260,7 @@ void ApplyWind(uint ThreadId)
 			if (CurrLeftUpperVertInvMass < SMALL_NUMBER)
 			{
 				NextLeftUpperVertPos = CurrLeftUpperVertPos;
-					// CurrPosは変えない
+				// CurrPosは変えない
 			}
 			else
 			{
@@ -271,7 +274,7 @@ void ApplyWind(uint ThreadId)
 			if (CurrLeftLowerVertInvMass < SMALL_NUMBER)
 			{
 				NextLeftLowerVertPos = CurrLeftLowerVertPos;
-					// CurrPosは変えない
+				// CurrPosは変えない
 			}
 			else
 			{
@@ -285,7 +288,7 @@ void ApplyWind(uint ThreadId)
 			if (CurrRightLowerVertInvMass < SMALL_NUMBER)
 			{
 				NextRightLowerVertPos = CurrRightLowerVertPos;
-					// CurrPosは変えない
+				// CurrPosは変えない
 			}
 			else
 			{
