@@ -340,7 +340,6 @@ void UClothGridMeshComponent::MakeDeformCommand(FClothGridMeshDeformCommand& Com
 	Command.Params.NumVertex = GetVertices().Num();
 	Command.Params.GridWidth = _GridWidth;
 	Command.Params.GridHeight = _GridHeight;
-	Command.Params.SqrIterDeltaTime = SqrIterDeltaTime;
 	Command.Params.Stiffness = (1.0f - FMath::Exp(_LogStiffness * DampStiffnessExp));
 	Command.Params.Damping = (1.0f - FMath::Exp(_LogDamping * DampStiffnessExp));
 	Command.Params.PreviousInertia = _PreviousInertia;
