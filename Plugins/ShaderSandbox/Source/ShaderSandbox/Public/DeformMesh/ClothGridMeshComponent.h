@@ -39,7 +39,7 @@ private:
 
 	TArray<FVector> _Accelerations;
 	float _Stiffness;
-	float _Damping;
+	float _LogDamping;
 	float _LinearLogDrag;
 	float _FluidDensity;
 	FVector _PreviousInertia;

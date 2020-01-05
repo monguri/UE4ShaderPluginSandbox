@@ -203,7 +203,7 @@ void UClothGridMeshComponent::InitClothSettings(int32 NumRow, int32 NumColumn, f
 	_Indices.Reset(NumRow * NumColumn * 2 * 3); // ひとつのグリッドには3つのTriangle、6つの頂点インデックス指定がある
 	_Accelerations.Reset((NumRow + 1) * (NumColumn + 1));
 	_Stiffness = Stiffness;
-	_Damping = Damping;
+	_LogDamping = FMath::Loge(1.0f - Damping);
 	_LinearLogDrag = FMath::Loge(1.0f - LinearDrag);
 	_FluidDensity = FluidDensity;
 	_VertexRadius = VertexRadius;
@@ -318,8 +318,9 @@ void UClothGridMeshComponent::MakeDeformCommand(FClothGridMeshDeformCommand& Com
 
 	float LinearAlpha = 0.5f * (_NumIteration + 1) / _NumIteration;
 
-	const FVector& CurInertia = (_PrevLinearVelocity - _CurLinearVelocity) * LinearAlpha / GetDeltaTime();
-	_PreviousInertia = (_PrevLinearVelocity - _CurLinearVelocity) * (1.0f - LinearAlpha) / GetDeltaTime();
+	const FVector& LinearVelocityDiff = _CurLinearVelocity - _PrevLinearVelocity;
+	const FVector& CurInertia = -LinearVelocityDiff * LinearAlpha / GetDeltaTime(); // 非慣性系のクロスの座標ではワールド座標での加速度とは逆方向の加速度がかかる
+	_PreviousInertia = -LinearVelocityDiff * (1.0f - LinearAlpha) / GetDeltaTime();
 
 	const FVector& Translation = _CurLinearVelocity * IterDeltaTime;
 	const FVector& LinearDrag = Translation * (1.0f - FMath::Exp(_LinearLogDrag * DampStiffnessExp));
@@ -338,7 +339,7 @@ void UClothGridMeshComponent::MakeDeformCommand(FClothGridMeshDeformCommand& Com
 	Command.Params.GridHeight = _GridHeight;
 	Command.Params.SqrIterDeltaTime = SqrIterDeltaTime;
 	Command.Params.Stiffness = _Stiffness;
-	Command.Params.Damping = _Damping;
+	Command.Params.Damping = (1.0f - FMath::Exp(_LogDamping * DampStiffnessExp));
 	Command.Params.PreviousInertia = _PreviousInertia;
 	Command.Params.WindVelocity = ClothManager->WindVelocity;
 	Command.Params.FluidDensity = _FluidDensity;
