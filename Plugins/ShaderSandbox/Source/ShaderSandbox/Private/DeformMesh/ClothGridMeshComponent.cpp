@@ -336,6 +336,9 @@ void UClothGridMeshComponent::MakeDeformCommand(FClothGridMeshDeformCommand& Com
 		_Accelerations[i] = CurInertia + UClothGridMeshComponent::GRAVITY - LinearDrag / SqrIterDeltaTime;
 	}
 
+	// クロス座標系で受ける風速度。
+	const FVector& WindVeclocity = ClothManager->WindVelocity - _CurLinearVelocity;
+
 	Command.Params.NumIteration = _NumIteration;
 	Command.Params.NumRow = _NumRow;
 	Command.Params.NumColumn = _NumColumn;
@@ -346,7 +349,7 @@ void UClothGridMeshComponent::MakeDeformCommand(FClothGridMeshDeformCommand& Com
 	Command.Params.Stiffness = (1.0f - FMath::Exp(_LogStiffness * DampStiffnessExp));
 	Command.Params.Damping = (1.0f - FMath::Exp(_LogDamping * DampStiffnessExp));
 	Command.Params.PreviousInertia = _PreviousInertia;
-	Command.Params.WindVelocity = ClothManager->WindVelocity;
+	Command.Params.WindVelocity = WindVeclocity;
 	Command.Params.FluidDensity = _FluidDensity;
 	Command.Params.LiftCoefficient = (1.0f - FMath::Exp(_LiftLogCoefficient * DampStiffnessExp));;
 	Command.Params.DragCoefficient = (1.0f - FMath::Exp(_DragLogCoefficient * DampStiffnessExp));;
