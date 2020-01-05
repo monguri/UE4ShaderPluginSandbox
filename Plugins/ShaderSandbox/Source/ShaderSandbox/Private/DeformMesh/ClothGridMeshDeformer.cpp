@@ -1,4 +1,5 @@
 #include "DeformMesh/ClothGridMeshDeformer.h"
+#include "DeformMesh/ClothVertexBuffers.h"
 #include "GlobalShader.h"
 #include "RHIResources.h"
 #include "RenderGraphBuilder.h"
@@ -126,11 +127,11 @@ void FClothGridMeshDeformer::FlushDeformCommandQueue(FRHICommandListImmediate& R
 			ClothCopyToWorkParams->VertexIndexOffset = Offset;
 			Offset += DeformCommand.Params.NumVertex;
 			ClothCopyToWorkParams->NumVertex = DeformCommand.Params.NumVertex;
-			ClothCopyToWorkParams->AccelerationVertexBuffer = DeformCommand.AccelerationVertexBufferSRV;
+			ClothCopyToWorkParams->AccelerationVertexBuffer = DeformCommand.VertexBuffers->AcceralationVertexBuffer.GetSRV();
 			ClothCopyToWorkParams->WorkAccelerationBuffer = WorkAccelerationVertexBufferUAV;
-			ClothCopyToWorkParams->PrevPositionVertexBuffer = DeformCommand.PrevPositionVertexBufferUAV;
+			ClothCopyToWorkParams->PrevPositionVertexBuffer = DeformCommand.VertexBuffers->PrevPositionVertexBuffer.GetUAV();
 			ClothCopyToWorkParams->WorkPrevPositionBuffer = WorkPrevVertexBufferUAV;
-			ClothCopyToWorkParams->PositionVertexBuffer = DeformCommand.PositionVertexBufferUAV;
+			ClothCopyToWorkParams->PositionVertexBuffer = DeformCommand.VertexBuffers->PositionVertexBuffer.GetUAV();
 			ClothCopyToWorkParams->WorkPositionBuffer = WorkVertexBufferUAV;
 
 			FComputeShaderUtils::AddPass(
@@ -198,9 +199,9 @@ void FClothGridMeshDeformer::FlushDeformCommandQueue(FRHICommandListImmediate& R
 			ClothCopyFromWorkParams->VertexIndexOffset = Offset;
 			Offset += DeformCommand.Params.NumVertex;
 			ClothCopyFromWorkParams->NumVertex = DeformCommand.Params.NumVertex;
-			ClothCopyFromWorkParams->PrevPositionVertexBuffer = DeformCommand.PrevPositionVertexBufferUAV;
+			ClothCopyFromWorkParams->PrevPositionVertexBuffer = DeformCommand.VertexBuffers->PrevPositionVertexBuffer.GetUAV();
 			ClothCopyFromWorkParams->WorkPrevPositionBuffer = WorkPrevVertexBufferUAV;
-			ClothCopyFromWorkParams->PositionVertexBuffer = DeformCommand.PositionVertexBufferUAV;
+			ClothCopyFromWorkParams->PositionVertexBuffer = DeformCommand.VertexBuffers->PositionVertexBuffer.GetUAV();
 			ClothCopyFromWorkParams->WorkPositionBuffer = WorkVertexBufferUAV;
 
 			FComputeShaderUtils::AddPass(
@@ -224,8 +225,8 @@ void FClothGridMeshDeformer::FlushDeformCommandQueue(FRHICommandListImmediate& R
 			GridMeshTangentParams->NumRow = GridClothParams.NumRow;
 			GridMeshTangentParams->NumColumn = GridClothParams.NumColumn;
 			GridMeshTangentParams->NumVertex = GridClothParams.NumVertex;
-			GridMeshTangentParams->InPositionVertexBuffer = DeformCommand.PositionVertexBufferUAV;
-			GridMeshTangentParams->OutTangentVertexBuffer = DeformCommand.TangentVertexBufferUAV;
+			GridMeshTangentParams->InPositionVertexBuffer = DeformCommand.VertexBuffers->PositionVertexBuffer.GetUAV();
+			GridMeshTangentParams->OutTangentVertexBuffer = DeformCommand.VertexBuffers->DeformableMeshVertexBuffer.GetTangentsUAV();
 
 			const uint32 DispatchCount = FMath::DivideAndRoundUp(GridClothParams.NumVertex, (uint32)32);
 			check(DispatchCount <= 65535);

@@ -93,9 +93,10 @@ void Integrate(uint ThreadId)
 		{
 			// ‚Æ‚è‚ ‚¦‚¸Damping‚Í0.1‚É‚µ‚Ä0.9‚ğ‚©‚¯‚é
 			uint Idx = ClothParam.VertexIndexOffset + VertIdx;
-			float3 Acceleration = float3(-WorkAccelerationVertexBuffer[4 * Idx + 0], -WorkAccelerationVertexBuffer[4 * Idx + 1], WorkAccelerationVertexBuffer[4 * Idx + 2]); // TODO:‚È‚ºX‚ÆY‚Ì•„†‚ğ”½“]‚·‚×‚«‚©‚Í—‰ğ‚Å‚«‚Ä‚¢‚È‚¢
+			float3 Acceleration = float3(WorkAccelerationVertexBuffer[4 * Idx + 0], WorkAccelerationVertexBuffer[4 * Idx + 1], WorkAccelerationVertexBuffer[4 * Idx + 2]);
 			NextPos = CurrPos + (CurrPos - PrevPos) * (1.0f - ClothParam.Damping) + Acceleration * ClothParam.SqrIterDeltaTime;
-			CurrPos = CurrPos + float3(-ClothParam.PreviousInertia.x, -ClothParam.PreviousInertia.y, ClothParam.PreviousInertia.z) * ClothParam.SqrIterDeltaTime; // TODO:‚È‚ºX‚ÆY‚Ì•„†‚ğ”½“]‚·‚×‚«‚©‚Í—‰ğ‚Å‚«‚Ä‚¢‚È‚¢
+			//NextPos = CurrPos + (CurrPos - PrevPos) * (1.0f - ClothParam.Damping) + Acceleration;
+			CurrPos = CurrPos + float3(ClothParam.PreviousInertia.x, ClothParam.PreviousInertia.y, ClothParam.PreviousInertia.z) * ClothParam.SqrIterDeltaTime; // TODO:‚È‚ºX‚ÆY‚Ì•„†‚ğ”½“]‚·‚×‚«‚©‚Í—‰ğ‚Å‚«‚Ä‚¢‚È‚¢
 		}
 
 		SetCurrentVBPosition(VertIdx, NextPos);

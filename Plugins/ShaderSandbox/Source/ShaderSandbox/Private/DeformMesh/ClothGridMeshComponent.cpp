@@ -162,12 +162,7 @@ public:
 	void EnqueClothGridMeshRenderCommand(UClothGridMeshComponent* Component, FClothGridMeshDeformCommand& Command)
 	{
 		VertexBuffers.SetAccelerations(Component->GetAccelerations());
-
-		Command.PositionVertexBufferUAV = VertexBuffers.PositionVertexBuffer.GetUAV();
-		Command.TangentVertexBufferUAV = VertexBuffers.DeformableMeshVertexBuffer.GetTangentsUAV();
-		Command.PrevPositionVertexBufferUAV = VertexBuffers.PrevPositionVertexBuffer.GetUAV();
-		Command.AccelerationVertexBufferSRV = VertexBuffers.AcceralationVertexBuffer.GetSRV();
-
+		Command.VertexBuffers = &VertexBuffers;
 		AClothManager::GetInstance()->EnqueueSimulateClothCommand(Command);
 	}
 
@@ -234,10 +229,14 @@ void UClothGridMeshComponent::InitClothSettings(int32 NumRow, int32 NumColumn, f
 	}
 
 	//TODO:とりあえず加速度はZ方向の重力を一律に入れるのみ
+	//float IterDeltaTime = 1.0f / FGridClothParameters::BASE_FREQUENCY;
+	//float SqrIterDeltaTime = IterDeltaTime * IterDeltaTime;
+
 	for (int32 y = 0; y < NumRow + 1; y++)
 	{
 		for (int32 x = 0; x < NumColumn + 1; x++)
 		{
+			//_Accelerations.Emplace(UClothGridMeshComponent::GRAVITY * SqrIterDeltaTime);
 			_Accelerations.Emplace(UClothGridMeshComponent::GRAVITY);
 		}
 	}
@@ -326,6 +325,7 @@ void UClothGridMeshComponent::MakeDeformCommand(FClothGridMeshDeformCommand& Com
 	const FVector& LinearVelocityDiff = _CurLinearVelocity - _PrevLinearVelocity;
 	const FVector& CurInertia = -LinearVelocityDiff * LinearAlpha / GetDeltaTime(); // 非慣性系のクロスの座標ではワールド座標での加速度とは逆方向の加速度がかかる
 	_PreviousInertia = -LinearVelocityDiff * (1.0f - LinearAlpha) / GetDeltaTime();
+	//_PreviousInertia *= SqrIterDeltaTime;
 
 	const FVector& Translation = _CurLinearVelocity * IterDeltaTime;
 	const FVector& LinearDrag = Translation * (1.0f - FMath::Exp(_LinearLogDrag * DampStiffnessExp));
@@ -334,6 +334,7 @@ void UClothGridMeshComponent::MakeDeformCommand(FClothGridMeshDeformCommand& Com
 	for (uint32 i = 0; i < (_NumRow + 1) * (_NumColumn + 1); i++)
 	{
 		_Accelerations[i] = CurInertia + UClothGridMeshComponent::GRAVITY - LinearDrag / SqrIterDeltaTime;
+		//_Accelerations[i] = (CurInertia + UClothGridMeshComponent::GRAVITY) * SqrIterDeltaTime - LinearDrag;
 	}
 
 	// クロス座標系で受ける風速度。毎フレーム、グローバルな風力にはランダムなゆらぎを乗算する

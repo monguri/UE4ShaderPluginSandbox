@@ -92,5 +92,12 @@ void FClothVertexBuffers::SetAccelerations(const TArray<FVector>& Accelerations)
 	{
 		AcceralationVertexBuffer.VertexPosition(i) = Accelerations[i];
 	}
+
+	FClothVertexBuffers* Self = this;
+	ENQUEUE_RENDER_COMMAND(UpdateAccelerationVertexBuffers)(
+		[Self](FRHICommandListImmediate& RHICmdList)
+		{
+			InitOrUpdateResourceMacroCloth(&Self->AcceralationVertexBuffer);
+		});
 }
 

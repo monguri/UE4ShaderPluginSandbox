@@ -9,11 +9,7 @@
 struct FClothGridMeshDeformCommand
 {
 	FGridClothParameters Params;
-
-	class FRHIUnorderedAccessView* PositionVertexBufferUAV;
-	class FRHIUnorderedAccessView* TangentVertexBufferUAV;
-	class FRHIUnorderedAccessView* PrevPositionVertexBufferUAV;
-	class FRHIShaderResourceView* AccelerationVertexBufferSRV;
+	struct FClothVertexBuffers* VertexBuffers = nullptr;
 };
 
 struct FClothGridMeshDeformer
