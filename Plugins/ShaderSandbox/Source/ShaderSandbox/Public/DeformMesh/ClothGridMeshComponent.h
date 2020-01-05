@@ -25,7 +25,7 @@ public:
 	virtual FPrimitiveSceneProxy* CreateSceneProxy() override;
 	//~ End UPrimitiveComponent Interface.
 
-	const TArray<FVector>& GetAccelerations() const { return _Accelerations; }
+	const TArray<FVector>& GetAccelerationMoves() const { return _AccelerationMoves; }
 
 protected:
 	//~ Begin UActorComponent Interface
@@ -35,7 +35,7 @@ protected:
 private:
 	bool _IgnoreVelocityDiscontinuityNextFrame = false;
 
-	TArray<FVector> _Accelerations;
+	TArray<FVector> _AccelerationMoves;
 	float _LogStiffness;
 	float _LogDamping;
 	float _LinearLogDrag;

@@ -15,7 +15,7 @@ struct FClothGridMeshDeformCommand
 struct FClothGridMeshDeformer
 {
 	void EnqueueDeformCommand(const FClothGridMeshDeformCommand& Command);
-	void FlushDeformCommandQueue(FRHICommandListImmediate& RHICmdList, FRHIUnorderedAccessView* WorkAccelerationVertexBufferUAV, FRHIUnorderedAccessView* WorkPrevVertexBufferUAV, FRHIUnorderedAccessView* WorkVertexBufferUAV);
+	void FlushDeformCommandQueue(FRHICommandListImmediate& RHICmdList, FRHIUnorderedAccessView* WorkAccelerationMoveVertexBufferUAV, FRHIUnorderedAccessView* WorkPrevVertexBufferUAV, FRHIUnorderedAccessView* WorkVertexBufferUAV);
 
 	TArray<FClothGridMeshDeformCommand> DeformCommandQueue;
 };

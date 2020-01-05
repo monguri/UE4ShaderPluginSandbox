@@ -2,8 +2,8 @@
 
 uint VertexIndexOffset;
 uint NumVertex;
-Buffer<float> AccelerationVertexBuffer;
-RWBuffer<float> WorkAccelerationBuffer;
+Buffer<float> AccelerationMoveVertexBuffer;
+RWBuffer<float> WorkAccelerationMoveBuffer;
 RWBuffer<float> PrevPositionVertexBuffer;
 RWBuffer<float> WorkPrevPositionBuffer;
 RWBuffer<float> PositionVertexBuffer;
@@ -20,9 +20,9 @@ void CopyToWorkBuffer(uint ThreadId : SV_GroupThreadID)
 	{
 		uint Idx = VertexIndexOffset + VertIdx;
 
-		WorkAccelerationBuffer[4 * Idx + 0] = AccelerationVertexBuffer[3 * VertIdx + 0];
-		WorkAccelerationBuffer[4 * Idx + 1] = AccelerationVertexBuffer[3 * VertIdx + 1];
-		WorkAccelerationBuffer[4 * Idx + 2] = AccelerationVertexBuffer[3 * VertIdx + 2];
+		WorkAccelerationMoveBuffer[4 * Idx + 0] = AccelerationMoveVertexBuffer[3 * VertIdx + 0];
+		WorkAccelerationMoveBuffer[4 * Idx + 1] = AccelerationMoveVertexBuffer[3 * VertIdx + 1];
+		WorkAccelerationMoveBuffer[4 * Idx + 2] = AccelerationMoveVertexBuffer[3 * VertIdx + 2];
 
 		WorkPrevPositionBuffer[4 * Idx + 0] = PrevPositionVertexBuffer[4 * VertIdx + 0];
 		WorkPrevPositionBuffer[4 * Idx + 1] = PrevPositionVertexBuffer[4 * VertIdx + 1];

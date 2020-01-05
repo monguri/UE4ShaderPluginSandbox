@@ -30,7 +30,7 @@ struct FGridClothParameters
 };
 
 StructuredBuffer<FGridClothParameters> Params;
-RWBuffer<float> WorkAccelerationVertexBuffer;
+RWBuffer<float> WorkAccelerationMoveVertexBuffer;
 RWBuffer<float> WorkPrevPositionVertexBuffer;
 RWBuffer<float> WorkPositionVertexBuffer;
 
@@ -90,7 +90,7 @@ void Integrate(uint ThreadId)
 		else
 		{
 			uint Idx = ClothParam.VertexIndexOffset + VertIdx;
-			float3 Acceleration = float3(WorkAccelerationVertexBuffer[4 * Idx + 0], WorkAccelerationVertexBuffer[4 * Idx + 1], WorkAccelerationVertexBuffer[4 * Idx + 2]);
+			float3 Acceleration = float3(WorkAccelerationMoveVertexBuffer[4 * Idx + 0], WorkAccelerationMoveVertexBuffer[4 * Idx + 1], WorkAccelerationMoveVertexBuffer[4 * Idx + 2]);
 			NextPos = CurrPos + (CurrPos - PrevPos) * (1.0f - ClothParam.Damping) + Acceleration;
 			CurrPos = CurrPos + float3(ClothParam.PreviousInertia.x, ClothParam.PreviousInertia.y, ClothParam.PreviousInertia.z);
 		}

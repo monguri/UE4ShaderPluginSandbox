@@ -14,12 +14,12 @@ static inline void InitOrUpdateResourceMacroCloth(FRenderResource* Resource)
 	}
 }
 
-void FClothVertexBuffers::InitFromClothVertexAttributes(FLocalVertexFactory* VertexFactory, const TArray<FDynamicMeshVertex>& Vertices, const TArray<float>& InvMasses, const TArray<FVector>& Accelerations, uint32 NumTexCoords, uint32 LightMapIndex)
+void FClothVertexBuffers::InitFromClothVertexAttributes(FLocalVertexFactory* VertexFactory, const TArray<FDynamicMeshVertex>& Vertices, const TArray<float>& InvMasses, const TArray<FVector>& AccelerationMoves, uint32 NumTexCoords, uint32 LightMapIndex)
 {
 	check(NumTexCoords < MAX_STATIC_TEXCOORDS && NumTexCoords > 0);
 	check(LightMapIndex < NumTexCoords);
 	check(Vertices.Num() == InvMasses.Num());
-	check(Vertices.Num() == Accelerations.Num());
+	check(Vertices.Num() == AccelerationMoves.Num());
 
 	if (Vertices.Num())
 	{
@@ -27,7 +27,7 @@ void FClothVertexBuffers::InitFromClothVertexAttributes(FLocalVertexFactory* Ver
 		DeformableMeshVertexBuffer.Init(Vertices.Num(), NumTexCoords);
 		ColorVertexBuffer.Init(Vertices.Num());
 		PrevPositionVertexBuffer.Init(Vertices.Num());
-		AcceralationVertexBuffer.Init(Vertices.Num());
+		AccelerationMoveVertexBuffer.Init(Vertices.Num());
 
 		for (int32 i = 0; i < Vertices.Num(); i++)
 		{
@@ -43,7 +43,7 @@ void FClothVertexBuffers::InitFromClothVertexAttributes(FLocalVertexFactory* Ver
 			ColorVertexBuffer.VertexColor(i) = Vertex.Color;
 			// 前フレームの位置は初期化では現フレームと同じにする
 			PrevPositionVertexBuffer.VertexPosition(i) = FVector4(Vertex.Position, InvMass);
-			AcceralationVertexBuffer.VertexPosition(i) = Accelerations[i];
+			AccelerationMoveVertexBuffer.VertexPosition(i) = AccelerationMoves[i];
 		}
 	}
 	else
@@ -52,7 +52,7 @@ void FClothVertexBuffers::InitFromClothVertexAttributes(FLocalVertexFactory* Ver
 		DeformableMeshVertexBuffer.Init(1, 1);
 		ColorVertexBuffer.Init(1);
 		PrevPositionVertexBuffer.Init(1);
-		AcceralationVertexBuffer.Init(1);
+		AccelerationMoveVertexBuffer.Init(1);
 
 		PositionVertexBuffer.VertexPosition(0) = FVector4(0, 0, 0, 0);
 		DeformableMeshVertexBuffer.SetVertexTangents(0, FVector(1, 0, 0), FVector(0, 1, 0), FVector(0, 0, 1));
@@ -63,7 +63,7 @@ void FClothVertexBuffers::InitFromClothVertexAttributes(FLocalVertexFactory* Ver
 		float IterDeltaTime = 1.0f / FGridClothParameters::BASE_FREQUENCY;
 		float SqrIterDeltaTime = IterDeltaTime * IterDeltaTime;
 
-		AcceralationVertexBuffer.VertexPosition(0) = FGridClothParameters::GRAVITY * SqrIterDeltaTime;
+		AccelerationMoveVertexBuffer.VertexPosition(0) = FGridClothParameters::GRAVITY * SqrIterDeltaTime;
 		NumTexCoords = 1;
 		LightMapIndex = 0;
 	}
@@ -76,7 +76,7 @@ void FClothVertexBuffers::InitFromClothVertexAttributes(FLocalVertexFactory* Ver
 			InitOrUpdateResourceMacroCloth(&Self->DeformableMeshVertexBuffer);
 			InitOrUpdateResourceMacroCloth(&Self->ColorVertexBuffer);
 			InitOrUpdateResourceMacroCloth(&Self->PrevPositionVertexBuffer);
-			InitOrUpdateResourceMacroCloth(&Self->AcceralationVertexBuffer);
+			InitOrUpdateResourceMacroCloth(&Self->AccelerationMoveVertexBuffer);
 
 			FLocalVertexFactory::FDataType Data;
 			Self->PositionVertexBuffer.BindPositionVertexBuffer(VertexFactory, Data);
@@ -84,25 +84,25 @@ void FClothVertexBuffers::InitFromClothVertexAttributes(FLocalVertexFactory* Ver
 			Self->DeformableMeshVertexBuffer.BindPackedTexCoordVertexBuffer(VertexFactory, Data);
 			Self->DeformableMeshVertexBuffer.BindLightMapVertexBuffer(VertexFactory, Data, LightMapIndex);
 			Self->ColorVertexBuffer.BindColorVertexBuffer(VertexFactory, Data);
-			// PrevPositionVertexBuffer、AcceralationVertexBufferはシミュレーション用のデータなのでLocalVertexFactoryとバインドする必要はない
+			// PrevPositionVertexBuffer、AccelerationMoveVertexBufferはシミュレーション用のデータなのでLocalVertexFactoryとバインドする必要はない
 			VertexFactory->SetData(Data);
 
 			InitOrUpdateResourceMacroCloth(VertexFactory);
 		});
 }
 
-void FClothVertexBuffers::SetAccelerations(const TArray<FVector>& Accelerations)
+void FClothVertexBuffers::SetAccelerationMoves(const TArray<FVector>& AccelerationMoves)
 {
-	for (int32 i = 0; i < Accelerations.Num(); i++)
+	for (int32 i = 0; i < AccelerationMoves.Num(); i++)
 	{
-		AcceralationVertexBuffer.VertexPosition(i) = Accelerations[i];
+		AccelerationMoveVertexBuffer.VertexPosition(i) = AccelerationMoves[i];
 	}
 
 	FClothVertexBuffers* Self = this;
 	ENQUEUE_RENDER_COMMAND(UpdateAccelerationVertexBuffers)(
 		[Self](FRHICommandListImmediate& RHICmdList)
 		{
-			InitOrUpdateResourceMacroCloth(&Self->AcceralationVertexBuffer);
+			InitOrUpdateResourceMacroCloth(&Self->AccelerationMoveVertexBuffer);
 		});
 }
 

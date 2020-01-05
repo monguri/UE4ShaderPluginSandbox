@@ -46,14 +46,14 @@ public:
 			Vertices.Emplace(Component->GetVertices()[VertIdx]);
 			InvMasses.Emplace(Component->GetVertices()[VertIdx].W);
 		}
-		VertexBuffers.InitFromClothVertexAttributes(&VertexFactory, Vertices, InvMasses, Component->GetAccelerations());
+		VertexBuffers.InitFromClothVertexAttributes(&VertexFactory, Vertices, InvMasses, Component->GetAccelerationMoves());
 
 		// Enqueue initialization of render resource
 		BeginInitResource(&VertexBuffers.PositionVertexBuffer);
 		BeginInitResource(&VertexBuffers.DeformableMeshVertexBuffer);
 		BeginInitResource(&VertexBuffers.ColorVertexBuffer);
 		BeginInitResource(&VertexBuffers.PrevPositionVertexBuffer);
-		BeginInitResource(&VertexBuffers.AcceralationVertexBuffer);
+		BeginInitResource(&VertexBuffers.AccelerationMoveVertexBuffer);
 		BeginInitResource(&IndexBuffer);
 		BeginInitResource(&VertexFactory);
 
@@ -71,7 +71,7 @@ public:
 		VertexBuffers.DeformableMeshVertexBuffer.ReleaseResource();
 		VertexBuffers.ColorVertexBuffer.ReleaseResource();
 		VertexBuffers.PrevPositionVertexBuffer.ReleaseResource();
-		VertexBuffers.AcceralationVertexBuffer.ReleaseResource();
+		VertexBuffers.AccelerationMoveVertexBuffer.ReleaseResource();
 		IndexBuffer.ReleaseResource();
 		VertexFactory.ReleaseResource();
 	}
@@ -161,7 +161,7 @@ public:
 
 	void EnqueClothGridMeshRenderCommand(UClothGridMeshComponent* Component, FClothGridMeshDeformCommand& Command)
 	{
-		VertexBuffers.SetAccelerations(Component->GetAccelerations());
+		VertexBuffers.SetAccelerationMoves(Component->GetAccelerationMoves());
 		Command.VertexBuffers = &VertexBuffers;
 		AClothManager::GetInstance()->EnqueueSimulateClothCommand(Command);
 	}
@@ -197,7 +197,7 @@ void UClothGridMeshComponent::InitClothSettings(int32 NumRow, int32 NumColumn, f
 	_GridHeight = GridHeight;
 	_Vertices.Reset((NumRow + 1) * (NumColumn + 1));
 	_Indices.Reset(NumRow * NumColumn * 2 * 3); // ひとつのグリッドには3つのTriangle、6つの頂点インデックス指定がある
-	_Accelerations.Reset((NumRow + 1) * (NumColumn + 1));
+	_AccelerationMoves.Reset((NumRow + 1) * (NumColumn + 1));
 	_LogStiffness = FMath::Loge(1.0f - Stiffness);
 	_LogDamping = FMath::Loge(1.0f - Damping);
 	_LinearLogDrag = FMath::Loge(1.0f - LinearDrag);
@@ -233,7 +233,7 @@ void UClothGridMeshComponent::InitClothSettings(int32 NumRow, int32 NumColumn, f
 	{
 		for (int32 x = 0; x < NumColumn + 1; x++)
 		{
-			_Accelerations.Emplace(FGridClothParameters::GRAVITY * SqrIterDeltaTime);
+			_AccelerationMoves.Emplace(FGridClothParameters::GRAVITY * SqrIterDeltaTime);
 		}
 	}
 
@@ -325,10 +325,10 @@ void UClothGridMeshComponent::MakeDeformCommand(FClothGridMeshDeformCommand& Com
 	const FVector& Translation = _CurLinearVelocity * IterDeltaTime;
 	const FVector& LinearDrag = Translation * (1.0f - FMath::Exp(_LinearLogDrag * DampStiffnessExp));
 
-	// TODO:_Accelerationsを設定してるのは関数名に合ってない
+	// TODO:_AccelerationMovesを設定してるのは関数名に合ってない
 	for (uint32 i = 0; i < (_NumRow + 1) * (_NumColumn + 1); i++)
 	{
-		_Accelerations[i] = (CurInertia + FGridClothParameters::GRAVITY) * SqrIterDeltaTime - LinearDrag;
+		_AccelerationMoves[i] = (CurInertia + FGridClothParameters::GRAVITY) * SqrIterDeltaTime - LinearDrag;
 	}
 
 	// クロス座標系で受ける風速度。毎フレーム、グローバルな風力にはランダムなゆらぎを乗算する
