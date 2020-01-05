@@ -1,5 +1,6 @@
 #include "DeformMesh/ClothGridMeshDeformer.h"
 #include "DeformMesh/ClothVertexBuffers.h"
+#include "DeformMesh/ClothParameterStructuredBuffer.h"
 #include "GlobalShader.h"
 #include "RHIResources.h"
 #include "RenderGraphBuilder.h"

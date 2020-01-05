@@ -4,7 +4,7 @@
 #include "UObject/ObjectMacros.h"
 #include "Engine/EngineTypes.h"
 #include "RHICommandList.h"
-#include "ClothParameterStructuredBuffer.h"
+#include "ClothGridMeshParameters.h"
 
 struct FClothGridMeshDeformCommand
 {

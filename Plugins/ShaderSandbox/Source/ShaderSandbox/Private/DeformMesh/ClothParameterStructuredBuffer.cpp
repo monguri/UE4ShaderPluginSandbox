@@ -1,7 +1,5 @@
 #include "DeformMesh/ClothParameterStructuredBuffer.h"
-
-const FVector FGridClothParameters::GRAVITY = FVector(0.0f, 0.0f, -980.0f);
-const float FGridClothParameters::BASE_FREQUENCY = 60.0f;
+#include "DeformMesh/ClothGridMeshParameters.h"
 
 FClothParameterStructuredBuffer::FClothParameterStructuredBuffer(const TArray<FGridClothParameters>& ComponentsData)
 : OriginalComponentsData(ComponentsData)
@@ -32,3 +30,4 @@ void FClothParameterStructuredBuffer::ReleaseDynamicRHI()
 	ComponentsDataSRV.SafeRelease();
 	ComponentsData.SafeRelease();
 }
+
