@@ -193,7 +193,7 @@ UClothGridMeshComponent::~UClothGridMeshComponent()
 	}
 }
 
-void UClothGridMeshComponent::InitClothSettings(int32 NumRow, int32 NumColumn, float GridWidth, float GridHeight, float Stiffness, float Damping, float FluidDensity, float VertexRadius, int32 NumIteration)
+void UClothGridMeshComponent::InitClothSettings(int32 NumRow, int32 NumColumn, float GridWidth, float GridHeight, float Stiffness, float Damping, float LinearDrag, float FluidDensity, float VertexRadius, int32 NumIteration)
 {
 	_NumRow = NumRow;
 	_NumColumn = NumColumn;
@@ -204,6 +204,7 @@ void UClothGridMeshComponent::InitClothSettings(int32 NumRow, int32 NumColumn, f
 	_Accelerations.Reset((NumRow + 1) * (NumColumn + 1));
 	_Stiffness = Stiffness;
 	_Damping = Damping;
+	_LinearLogDrag = FMath::Loge(1.0f - LinearDrag);
 	_FluidDensity = FluidDensity;
 	_VertexRadius = VertexRadius;
 	_NumIteration = NumIteration;
@@ -313,17 +314,20 @@ void UClothGridMeshComponent::MakeDeformCommand(FClothGridMeshDeformCommand& Com
 
 	float IterDeltaTime = GetDeltaTime() / _NumIteration;
 	float SqrIterDeltaTime = IterDeltaTime * IterDeltaTime;
+	float DampStiffnessExp = FGridClothParameters::BASE_FREQUENCY * IterDeltaTime;
 
 	float LinearAlpha = 0.5f * (_NumIteration + 1) / _NumIteration;
 
 	const FVector& CurInertia = (_PrevLinearVelocity - _CurLinearVelocity) * LinearAlpha / GetDeltaTime();
 	_PreviousInertia = (_PrevLinearVelocity - _CurLinearVelocity) * (1.0f - LinearAlpha) / GetDeltaTime();
 
+	const FVector& Translation = _CurLinearVelocity * IterDeltaTime;
+	const FVector& LinearDrag = Translation * (1.0f - FMath::Exp(_LinearLogDrag * DampStiffnessExp));
+
 	// TODO:_AccelerationsÇê›íËÇµÇƒÇÈÇÃÇÕä÷êîñºÇ…çáÇ¡ÇƒÇ»Ç¢
 	for (uint32 i = 0; i < (_NumRow + 1) * (_NumColumn + 1); i++)
 	{
-		//TODO: linearDragÇ™ì¸Ç¡ÇƒÇ»Ç¢
-		_Accelerations[i] = CurInertia + UClothGridMeshComponent::GRAVITY;
+		_Accelerations[i] = CurInertia + UClothGridMeshComponent::GRAVITY - LinearDrag / SqrIterDeltaTime;
 	}
 
 	Command.Params.NumIteration = _NumIteration;
