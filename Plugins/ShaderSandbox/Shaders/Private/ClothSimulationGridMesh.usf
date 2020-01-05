@@ -20,6 +20,10 @@ struct FGridClothParameters
 	float3 PreviousInertia;
 	float3 WindVelocity;
 	float FluidDensity;
+	float LiftCoefficient;
+	float DragCoefficient;
+	float Dummy1;
+	float Dummy2;
 	float IterDeltaTime;
 	float VertexRadius;
 	uint NumSphereCollision;
@@ -101,9 +105,6 @@ void Integrate(uint ThreadId)
 
 void ApplyWind(uint ThreadId)
 {
-	const float LIFT_COEFFICIENT = 0.2f / 100.0f; // 式がMKS単位系なので100で割る
-	const float DRAG_COEFFICIENT = 0.2f / 100.0f; // 式がMKS単位系なので100で割る
-
 	// グリッドのトライアングル単位で処理するのでセルでループする
 
 #if 0
@@ -169,8 +170,8 @@ void ApplyWind(uint ThreadId)
 
 			float3 LiftDir = cross(cross(DeltaDir, Normal), DeltaDir);
 
-			float3 LiftImplulse = LIFT_COEFFICIENT * ClothParam.FluidDensity * Area * Sin2 * LiftDir * DeltaLength * DeltaLength / ClothParam.IterDeltaTime;
-			float3 DragImplulse = DRAG_COEFFICIENT * ClothParam.FluidDensity * Area * abs(Cos) * DeltaDir * DeltaLength * DeltaLength / ClothParam.IterDeltaTime;
+			float3 LiftImplulse = ClothParam.LiftCoefficient * ClothParam.FluidDensity * Area * Sin2 * LiftDir * DeltaLength * DeltaLength / ClothParam.IterDeltaTime;
+			float3 DragImplulse = ClothParam.DragCoefficient * ClothParam.FluidDensity * Area * abs(Cos) * DeltaDir * DeltaLength * DeltaLength / ClothParam.IterDeltaTime;
 
 			float3 NextLeftUpperVertPos;
 
@@ -248,8 +249,8 @@ void ApplyWind(uint ThreadId)
 
 			float3 LiftDir = cross(cross(DeltaDir, Normal), DeltaDir);
 
-			float3 LiftImplulse = LIFT_COEFFICIENT * ClothParam.FluidDensity * Area * Sin2 * LiftDir * DeltaLength * DeltaLength / ClothParam.IterDeltaTime;
-			float3 DragImplulse = DRAG_COEFFICIENT * ClothParam.FluidDensity * Area * abs(Cos) * DeltaDir * DeltaLength * DeltaLength / ClothParam.IterDeltaTime;
+			float3 LiftImplulse = ClothParam.LiftCoefficient * ClothParam.FluidDensity * Area * Sin2 * LiftDir * DeltaLength * DeltaLength / ClothParam.IterDeltaTime;
+			float3 DragImplulse = ClothParam.DragCoefficient * ClothParam.FluidDensity * Area * abs(Cos) * DeltaDir * DeltaLength * DeltaLength / ClothParam.IterDeltaTime;
 
 			float3 NextLeftUpperVertPos;
 

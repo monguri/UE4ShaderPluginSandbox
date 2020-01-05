@@ -21,6 +21,10 @@ struct FGridClothParameters
 	FVector PreviousInertia = FVector::ZeroVector;
 	FVector WindVelocity = FVector::ZeroVector;
 	float FluidDensity = 0.0f;
+	float LiftCoefficient = 0.0f;
+	float DragCoefficient = 0.0f;
+	float Dummy1 = 0.0f;
+	float Dummy2 = 0.0f;
 	float IterDeltaTime = 0.0f;
 	float VertexRadius = 0.0f;
 	uint32 NumSphereCollision = 0;

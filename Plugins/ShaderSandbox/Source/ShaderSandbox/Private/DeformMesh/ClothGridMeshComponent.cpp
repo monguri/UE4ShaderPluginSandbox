@@ -193,8 +193,11 @@ UClothGridMeshComponent::~UClothGridMeshComponent()
 	}
 }
 
-void UClothGridMeshComponent::InitClothSettings(int32 NumRow, int32 NumColumn, float GridWidth, float GridHeight, float Stiffness, float Damping, float LinearDrag, float FluidDensity, float VertexRadius, int32 NumIteration)
+void UClothGridMeshComponent::InitClothSettings(int32 NumRow, int32 NumColumn, float GridWidth, float GridHeight, float Stiffness, float Damping, float LinearDrag, float FluidDensity, float LiftCoefficient, float DragCoefficient, float VertexRadius, int32 NumIteration)
 {
+	// 多くの変数がlog(x)で保持しているのは、のちのち可変フレームレート対応でy乗するので、累乗計算をやるより
+	// exp(log(x)*y)をやった方が精度もパフォーマンスもいいから
+	// log(1-x)で保持しているのは、[0,1)の範囲の変数で0付近の精度を重視しているので
 	_NumRow = NumRow;
 	_NumColumn = NumColumn;
 	_GridWidth = GridWidth;
@@ -202,10 +205,12 @@ void UClothGridMeshComponent::InitClothSettings(int32 NumRow, int32 NumColumn, f
 	_Vertices.Reset((NumRow + 1) * (NumColumn + 1));
 	_Indices.Reset(NumRow * NumColumn * 2 * 3); // ひとつのグリッドには3つのTriangle、6つの頂点インデックス指定がある
 	_Accelerations.Reset((NumRow + 1) * (NumColumn + 1));
-	_Stiffness = Stiffness;
+	_LogStiffness = FMath::Loge(1.0f - Stiffness);
 	_LogDamping = FMath::Loge(1.0f - Damping);
 	_LinearLogDrag = FMath::Loge(1.0f - LinearDrag);
 	_FluidDensity = FluidDensity;
+	_LiftLogCoefficient = FMath::Loge(1.0f - LiftCoefficient);
+	_DragLogCoefficient = FMath::Loge(1.0f - DragCoefficient);
 	_VertexRadius = VertexRadius;
 	_NumIteration = NumIteration;
 
@@ -338,11 +343,13 @@ void UClothGridMeshComponent::MakeDeformCommand(FClothGridMeshDeformCommand& Com
 	Command.Params.GridWidth = _GridWidth;
 	Command.Params.GridHeight = _GridHeight;
 	Command.Params.SqrIterDeltaTime = SqrIterDeltaTime;
-	Command.Params.Stiffness = _Stiffness;
+	Command.Params.Stiffness = (1.0f - FMath::Exp(_LogStiffness * DampStiffnessExp));
 	Command.Params.Damping = (1.0f - FMath::Exp(_LogDamping * DampStiffnessExp));
 	Command.Params.PreviousInertia = _PreviousInertia;
 	Command.Params.WindVelocity = ClothManager->WindVelocity;
 	Command.Params.FluidDensity = _FluidDensity;
+	Command.Params.LiftCoefficient = (1.0f - FMath::Exp(_LiftLogCoefficient * DampStiffnessExp));;
+	Command.Params.DragCoefficient = (1.0f - FMath::Exp(_DragLogCoefficient * DampStiffnessExp));;
 	Command.Params.IterDeltaTime = IterDeltaTime;
 	Command.Params.VertexRadius = _VertexRadius;
 
