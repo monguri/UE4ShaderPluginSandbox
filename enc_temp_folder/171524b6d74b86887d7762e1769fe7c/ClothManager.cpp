@@ -73,6 +73,7 @@ public:
 		// TODO:Removeしても、今のところ連結したバーテックスバッファは縮めない。
 	}
 
+	// TODO:1メッシュにまとめる前の処理を維持するため仮に作った
 	void EnqueueSimulateClothCommand(FRHICommandListImmediate& RHICmdList, const FClothGridMeshDeformCommand& Command)
 	{
 		NumCommand++;
@@ -129,6 +130,7 @@ void UClothManagerComponent::UnregisterClothMesh(UClothGridMeshComponent* ClothM
 	}
 }
 
+// TODO:1メッシュにまとめる前の処理を維持するため仮に作った
 void UClothManagerComponent::EnqueueSimulateClothCommand(const FClothGridMeshDeformCommand& Command)
 {
 	if (SceneProxy != nullptr)
@@ -188,6 +190,7 @@ void AClothManager::UnregisterSphereCollision(USphereCollisionComponent* SphereC
 	SphereCollisions.Remove(SphereCollision);
 }
 
+// TODO:1メッシュにまとめる前の処理を維持するため仮に作った
 void AClothManager::EnqueueSimulateClothCommand(const FClothGridMeshDeformCommand& Command)
 {
 	Cast<UClothManagerComponent>(RootComponent)->EnqueueSimulateClothCommand(Command);

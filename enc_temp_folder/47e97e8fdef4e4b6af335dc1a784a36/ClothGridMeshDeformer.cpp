@@ -149,6 +149,8 @@ void FClothGridMeshDeformer::FlushDeformCommandQueue(FRHICommandListImmediate& R
 		TArray<FGridClothParameters> ClothParams;
 		ClothParams.Reserve(NumClothMesh);
 
+		// TODO:Stiffness、Dampingの効果がNumIterationやフレームレートに依存してしまっているのでどうにかせねば
+
 		// 実行時に決まるクロスパラメータの設定とStructuredBuffer用のTArrayの作成
 		uint32 Offset = 0;
 		for (uint32 MeshIdx = 0; MeshIdx < NumClothMesh; MeshIdx++)

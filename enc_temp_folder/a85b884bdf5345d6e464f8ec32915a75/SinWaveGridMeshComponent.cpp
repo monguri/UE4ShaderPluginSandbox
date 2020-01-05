@@ -36,7 +36,7 @@ public:
 
 		for (int32 VertIdx = 0; VertIdx < Component->GetVertices().Num(); VertIdx++)
 		{
-			// ColorとTangentはFDynamicMeshVertexのデフォルト値まかせにする
+			// TODO:ColorとTangentはとりあえずFDynamicMeshVertexのデフォルト値まかせにする
 			Vertices.Emplace(Component->GetVertices()[VertIdx]);
 		}
 		VertexBuffers.InitFromDynamicVertex(&VertexFactory, Vertices);
