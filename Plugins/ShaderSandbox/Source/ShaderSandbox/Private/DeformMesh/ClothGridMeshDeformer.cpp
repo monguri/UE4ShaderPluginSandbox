@@ -161,15 +161,6 @@ void FClothGridMeshDeformer::FlushDeformCommandQueue(FRHICommandListImmediate& R
 			GridClothParams.VertexIndexOffset = Offset;
 			Offset += GridClothParams.NumVertex;
 
-			// Wind系の入力パラメータを使用に際し調整
-			const FVector& WindVelocity = GridClothParams.WindVelocity * FMath::FRandRange(0.0f, 2.0f); //毎フレーム、風力にランダムなゆらぎをつける
-			GridClothParams.WindVelocity = WindVelocity;
-
-			//風系のパラメータはシェーダの計算がMKS単位系基準なのでそれに入れるFluidDensityはすごく小さくせねばならずユーザが入力しにくいので、MKS単位系で入れさせておいてここでスケールする
-			GridClothParams.FluidDensity = GridClothParams.FluidDensity / (100.0f * 100.0f * 100.0f);
-			GridClothParams.LiftCoefficient = GridClothParams.LiftCoefficient / 100.0f;
-			GridClothParams.DragCoefficient = GridClothParams.DragCoefficient / 100.0f;
-
 			check(GridClothParams.NumSphereCollision <= FGridClothParameters::MAX_SPHERE_COLLISION_PER_MESH);
 			
 			ClothParams.Add(GridClothParams);

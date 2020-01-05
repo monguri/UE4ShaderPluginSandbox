@@ -336,8 +336,8 @@ void UClothGridMeshComponent::MakeDeformCommand(FClothGridMeshDeformCommand& Com
 		_Accelerations[i] = CurInertia + UClothGridMeshComponent::GRAVITY - LinearDrag / SqrIterDeltaTime;
 	}
 
-	// クロス座標系で受ける風速度。
-	const FVector& WindVeclocity = ClothManager->WindVelocity - _CurLinearVelocity;
+	// クロス座標系で受ける風速度。毎フレーム、グローバルな風力にはランダムなゆらぎを乗算する
+	const FVector& WindVeclocity = ClothManager->WindVelocity* FMath::FRandRange(0.0f, 2.0f) - _CurLinearVelocity;
 
 	Command.Params.NumIteration = _NumIteration;
 	Command.Params.NumRow = _NumRow;
@@ -350,9 +350,10 @@ void UClothGridMeshComponent::MakeDeformCommand(FClothGridMeshDeformCommand& Com
 	Command.Params.Damping = (1.0f - FMath::Exp(_LogDamping * DampStiffnessExp));
 	Command.Params.PreviousInertia = _PreviousInertia;
 	Command.Params.WindVelocity = WindVeclocity;
-	Command.Params.FluidDensity = _FluidDensity;
-	Command.Params.LiftCoefficient = (1.0f - FMath::Exp(_LiftLogCoefficient * DampStiffnessExp));;
-	Command.Params.DragCoefficient = (1.0f - FMath::Exp(_DragLogCoefficient * DampStiffnessExp));;
+	//風系のパラメータはシェーダの計算がMKS単位系基準なのでそれに入れるFluidDensityはすごく小さくせねばならずユーザが入力しにくいので、MKS単位系で入れさせておいてここでスケールする
+	Command.Params.FluidDensity = _FluidDensity / (100.0f * 100.0f * 100.0f);
+	Command.Params.LiftCoefficient = (1.0f - FMath::Exp(_LiftLogCoefficient * DampStiffnessExp)) / 100.0f;
+	Command.Params.DragCoefficient = (1.0f - FMath::Exp(_DragLogCoefficient * DampStiffnessExp)) / 100.0f;
 	Command.Params.IterDeltaTime = IterDeltaTime;
 	Command.Params.VertexRadius = _VertexRadius;
 
