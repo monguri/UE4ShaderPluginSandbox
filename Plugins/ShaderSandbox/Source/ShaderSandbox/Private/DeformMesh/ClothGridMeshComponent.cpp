@@ -42,7 +42,7 @@ public:
 
 		for (int32 VertIdx = 0; VertIdx < Component->GetVertices().Num(); VertIdx++)
 		{
-			// ColorとTangentはFDynamicMeshVertexのデフォルト値まかせにする
+			// TODO:ColorとTangentはとりあえずFDynamicMeshVertexのデフォルト値まかせにする
 			Vertices.Emplace(Component->GetVertices()[VertIdx]);
 			InvMasses.Emplace(Component->GetVertices()[VertIdx].W);
 		}
@@ -218,13 +218,13 @@ void UClothGridMeshComponent::InitClothSettings(int32 NumRow, int32 NumColumn, f
 	_CurLinearVelocity = FVector::ZeroVector;
 	_PrevLinearVelocity = FVector::ZeroVector;
 
-	//y=0の一行目のみInvMass=0に
+	//TODO:とりあえずy=0の一行目のみInvMass=0に
 	for (int32 x = 0; x < NumColumn + 1; x++)
 	{
 		_Vertices.Emplace(x * GridWidth, 0.0f, 0.0f, 0.0f);
 	}
 
-	//y>0の二行目以降はInvMass=1に
+	//TODO:とりあえずy>0の二行目以降はInvMass=1に
 	for (int32 y = 1; y < NumRow + 1; y++)
 	{
 		for (int32 x = 0; x < NumColumn + 1; x++)
@@ -233,6 +233,7 @@ void UClothGridMeshComponent::InitClothSettings(int32 NumRow, int32 NumColumn, f
 		}
 	}
 
+	//TODO:とりあえず加速度はZ方向の重力を一律に入れるのみ
 	for (int32 y = 0; y < NumRow + 1; y++)
 	{
 		for (int32 x = 0; x < NumColumn + 1; x++)
