@@ -1,4 +1,4 @@
-#include "DeformMesh/ClothGridMeshComponent.h"
+#include "Cloth/ClothGridMeshComponent.h"
 #include "RenderingThread.h"
 #include "RenderResource.h"
 #include "PrimitiveViewRelevance.h"
@@ -12,10 +12,10 @@
 #include "DynamicMeshBuilder.h"
 #include "EngineGlobals.h"
 #include "Engine/Engine.h"
-#include "DeformMesh/ClothVertexBuffers.h"
-#include "DeformMesh/ClothGridMeshDeformer.h"
-#include "DeformMesh/ClothManager.h"
-#include "DeformMesh/SphereCollisionComponent.h"
+#include "Cloth/ClothVertexBuffers.h"
+#include "Cloth/ClothGridMeshDeformer.h"
+#include "Cloth/ClothManager.h"
+#include "Cloth/SphereCollisionComponent.h"
 
 //TODO:FDeformGridMeshSceneProxyとソースコードの共通化ができないか
 

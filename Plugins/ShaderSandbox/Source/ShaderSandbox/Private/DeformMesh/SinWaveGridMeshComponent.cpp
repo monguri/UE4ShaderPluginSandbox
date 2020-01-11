@@ -12,7 +12,7 @@
 #include "DynamicMeshBuilder.h"
 #include "EngineGlobals.h"
 #include "Engine/Engine.h"
-#include "Common/DeformableVertexBuffers.h"
+#include "DeformMesh/DeformableVertexBuffers.h"
 #include "DeformMesh/SinWaveGridMeshDeformer.h"
 
 /** almost all is copy of FCustomMeshSceneProxy. */

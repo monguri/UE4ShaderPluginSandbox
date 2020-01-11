@@ -7,7 +7,6 @@ static const float SMALL_NUMBER = 0.0001f;
 // StructuredBuffer用の構造体は128bit（16Byte）単位でないとデバイスロストやおかしな挙動になるので注意すること
 struct FGridClothParameters
 {
-	float3 AlignmentDummy;
 	uint NumIteration;
 	uint NumRow;
 	uint NumColumn;
@@ -24,6 +23,7 @@ struct FGridClothParameters
 	float DragCoefficient;
 	float IterDeltaTime;
 	float VertexRadius;
+	float3 AlignmentDummy;
 	uint NumSphereCollision;
 	// xyz : RelativeCenter, w : Radius;
 	float4 SphereCollisionParams[MAX_SPHERE_COLLISION];

@@ -1,5 +1,5 @@
-#include "DeformMesh/ClothParameterStructuredBuffer.h"
-#include "DeformMesh/ClothGridMeshParameters.h"
+#include "Cloth/ClothParameterStructuredBuffer.h"
+#include "Cloth/ClothGridMeshParameters.h"
 
 FClothParameterStructuredBuffer::FClothParameterStructuredBuffer(const TArray<FGridClothParameters>& ComponentsData)
 : OriginalComponentsData(ComponentsData)

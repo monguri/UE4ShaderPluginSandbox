@@ -1,5 +1,5 @@
-#include "DeformMesh/SphereCollisionComponent.h"
-#include "DeformMesh/ClothManager.h"
+#include "Cloth/SphereCollisionComponent.h"
+#include "Cloth/ClothManager.h"
 
 USphereCollisionComponent::~USphereCollisionComponent()
 {

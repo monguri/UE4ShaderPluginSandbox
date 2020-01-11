@@ -1,4 +1,4 @@
-#include "Common/DeformableVertexBuffers.h"
+#include "DeformMesh/DeformableVertexBuffers.h"
 #include "LocalVertexFactory.h"
 #include "DynamicMeshBuilder.h"
 #include "StaticMeshVertexData.h"

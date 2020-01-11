@@ -1,5 +1,5 @@
-#include "DeformMesh/ClothVertexBuffers.h"
-#include "DeformMesh/ClothGridMeshParameters.h"
+#include "Cloth/ClothVertexBuffers.h"
+#include "Cloth/ClothGridMeshParameters.h"
 #include "DynamicMeshBuilder.h"
 
 static inline void InitOrUpdateResourceMacroCloth(FRenderResource* Resource)

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Common/DeformableVertexBuffers.h"
+#include "DeformMesh/DeformableVertexBuffers.h"
 #include "Rendering/PositionVertexBuffer.h"
 
 struct FClothVertexBuffers : public FDeformableVertexBuffers 

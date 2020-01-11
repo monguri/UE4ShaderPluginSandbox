@@ -2,8 +2,8 @@
 
 #include "Components/PrimitiveComponent.h"
 #include "GameFramework/Actor.h"
-#include "DeformMesh/ClothGridMeshDeformer.h"
-#include "Common/DeformableVertexBuffers.h"
+#include "Cloth/ClothGridMeshDeformer.h"
+#include "DeformMesh/DeformableVertexBuffers.h"
 #include "ClothManager.generated.h"
 
 UCLASS(hidecategories=(Object,LOD, Physics, Collision), ClassGroup=Rendering)

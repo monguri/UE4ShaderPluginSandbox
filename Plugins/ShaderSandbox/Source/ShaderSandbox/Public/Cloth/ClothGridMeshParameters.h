@@ -9,7 +9,6 @@ struct FGridClothParameters
 	static const uint32 MAX_SPHERE_COLLISION_PER_MESH = 16;
 	static const float BASE_FREQUENCY;
 
-	FVector AlignmentDummy = FVector::ZeroVector;
 	uint32 NumIteration = 0;
 	uint32 NumRow = 0;
 	uint32 NumColumn = 0;
@@ -26,6 +25,7 @@ struct FGridClothParameters
 	float DragCoefficient = 0.0f;
 	float IterDeltaTime = 0.0f;
 	float VertexRadius = 0.0f;
+	FVector AlignmentDummy = FVector::ZeroVector;
 	uint32 NumSphereCollision = 0;
 	// xyz : RelativeCenter, w : Radius;
 	FVector4 SphereCollisionParams[MAX_SPHERE_COLLISION_PER_MESH];

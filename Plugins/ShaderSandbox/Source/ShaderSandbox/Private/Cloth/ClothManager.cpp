@@ -1,7 +1,7 @@
-#include "DeformMesh/ClothManager.h"
+#include "Cloth/ClothManager.h"
 #include "PrimitiveSceneProxy.h"
-#include "DeformMesh/ClothGridMeshComponent.h"
-#include "DeformMesh/SphereCollisionComponent.h"
+#include "Cloth/ClothGridMeshComponent.h"
+#include "Cloth/SphereCollisionComponent.h"
 
 static inline void InitOrUpdateResourceMacroClothManager(FRenderResource* Resource)
 {
