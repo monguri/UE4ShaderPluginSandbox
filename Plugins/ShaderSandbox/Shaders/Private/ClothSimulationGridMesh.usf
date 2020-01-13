@@ -161,7 +161,7 @@ void ApplyWind(uint ThreadId)
 
 			float Cos = dot(Normal, DeltaDir);
 			float Sin = sqrt(max(0.0f, 1.0f - Cos * Cos));
-			// NvClothではLiftの係数にSin2Thetaを使うが、論文を見てもSinThetaを使っているし、そっちが計算式として妥当に感じる。
+			// Liftの係数にSin2Thetaを使うが、論文を見てもSinThetaを使っているし、そっちが計算式として妥当に感じる。
 			// しかしSin2Thetaの方が結果が今のところ綺麗なのでそちらを使う。
 			// TODO:謎
 			float Sin2 = Cos * Sin * 0.5f;
@@ -240,7 +240,7 @@ void ApplyWind(uint ThreadId)
 
 			float Cos = dot(Normal, DeltaDir);
 			float Sin = sqrt(max(0.0f, 1.0f - Cos * Cos));
-			// NvClothではLiftの係数にSin2Thetaを使うが、論文を見てもSinThetaを使っているし、そっちが計算式として妥当に感じる。
+			// Liftの係数にSin2Thetaを使うが、論文を見てもSinThetaを使っているし、そっちが計算式として妥当に感じる。
 			// しかしSin2Thetaの方が結果が今のところ綺麗なのでそちらを使う。
 			// TODO:謎
 			float Sin2 = Cos * Sin * 0.5f;
