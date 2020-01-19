@@ -31,5 +31,36 @@ IMPLEMENT_GLOBAL_SHADER(FOceanSinWaveCS, "/Plugin/ShaderSandbox/Private/OceanSim
 
 void SimulateOcean(FRHICommandListImmediate& RHICmdList, const FOceanSinWaveParameters& Params, FUnorderedAccessViewRHIRef DisplacementMapUAV)
 {
+	FRDGBuilder GraphBuilder(RHICmdList);
+
+	TShaderMap<FGlobalShaderType>* ShaderMap = GetGlobalShaderMap(ERHIFeatureLevel::SM5);
+
+	uint32 DispatchCountX = FMath::DivideAndRoundUp(Params.MapWidth, (uint32)8);
+	uint32 DispatchCountY = FMath::DivideAndRoundUp(Params.MapHeight, (uint32)8);
+	check(DispatchCountX <= 65535);
+	check(DispatchCountY <= 65535);
+
+	TShaderMapRef<FOceanSinWaveCS> OceanSinWaveCS(ShaderMap);
+
+	FOceanSinWaveCS::FParameters* OceanSinWaveParams = GraphBuilder.AllocParameters<FOceanSinWaveCS::FParameters>();
+	OceanSinWaveParams->MeshWidth = Params.MeshWidth;
+	OceanSinWaveParams->MeshHeight = Params.MeshHeight;
+	OceanSinWaveParams->WaveLengthColumn = Params.WaveLengthColumn;
+	OceanSinWaveParams->WaveLengthRow = Params.WaveLengthRow;
+	OceanSinWaveParams->WaveLengthColumn = Params.WaveLengthColumn;
+	OceanSinWaveParams->Period = Params.Period;
+	OceanSinWaveParams->Amplitude = Params.Amplitude;
+	OceanSinWaveParams->Time = Params.AccumulatedTime;
+	OceanSinWaveParams->DisplacementMap = DisplacementMapUAV;
+
+	FComputeShaderUtils::AddPass(
+		GraphBuilder,
+		RDG_EVENT_NAME("SinWaveDisplacementMap"),
+		*OceanSinWaveCS,
+		OceanSinWaveParams,
+		FIntVector(DispatchCountX, DispatchCountY, 1)
+	);
+
+	GraphBuilder.Execute();
 }
 

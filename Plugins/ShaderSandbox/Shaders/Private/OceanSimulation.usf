@@ -9,8 +9,9 @@ float Amplitude;
 float Time;
 RWTexture2D<float4> DisplacementMap;
 
-[numthreads(32, 1, 1)]
+[numthreads(8, 8, 1)]
 void SinWaveDisplacementMap(uint2 DispatchThreadId : SV_DispatchThreadID)
 {
+    DisplacementMap[DispatchThreadId] = float4(0.0, 0.0, 100.0, 1.0);
 }
 
