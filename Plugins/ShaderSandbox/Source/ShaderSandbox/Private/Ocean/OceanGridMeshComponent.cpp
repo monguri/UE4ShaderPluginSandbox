@@ -14,6 +14,7 @@
 #include "Engine/Engine.h"
 #include "DeformMesh/DeformableVertexBuffers.h"
 #include "Ocean/OceanSimulator.h"
+#include "Engine/CanvasRenderTarget2D.h"
 
 /** almost all is copy of FCustomMeshSceneProxy. */
 class FOceanGridMeshSceneProxy final : public FPrimitiveSceneProxy
@@ -149,9 +150,26 @@ public:
 
 	uint32 GetAllocatedSize( void ) const { return( FPrimitiveSceneProxy::GetAllocatedSize() ); }
 
-	void EnqueOceanGridMeshRenderCommand(FRHICommandListImmediate& RHICmdList, UOceanGridMeshComponent* Component) const
+	void EnqueSimulateOceanCommand(FRHICommandListImmediate& RHICmdList, UOceanGridMeshComponent* Component) const
 	{
-		SimulateOcean(RHICmdList);
+		FTextureRenderTargetResource* TextureRenderTargetResource = Component->GetDisplacementMap()->GetRenderTargetResource();
+		if (TextureRenderTargetResource == nullptr)
+		{
+			return;
+		}
+
+		FOceanSinWaveParameters Params;
+		Params.MapWidth = TextureRenderTargetResource->GetSizeX();
+		Params.MapHeight = TextureRenderTargetResource->GetSizeY();
+		Params.MeshWidth = Component->GetGridWidth() * Component->GetNumColumn();
+		Params.MeshHeight = Component->GetGridHeight() * Component->GetNumRow();
+		Params.WaveLengthRow = Component->GetWaveLengthRow();
+		Params.WaveLengthColumn = Component->GetWaveLengthColumn();
+		Params.Period = Component->GetPeriod();
+		Params.Amplitude = Component->GetAmplitude();
+		Params.AccumulatedTime = Component->GetAccumulatedTime();
+
+		SimulateOcean(RHICmdList, Params, Component->GetDisplacementMapUAV());
 	}
 
 private:
@@ -171,6 +189,14 @@ UOceanGridMeshComponent::UOceanGridMeshComponent()
 	PrimaryComponentTick.bCanEverTick = true;
 }
 
+UOceanGridMeshComponent::~UOceanGridMeshComponent()
+{
+	if (_DisplacementMapUAV.IsValid())
+	{
+		_DisplacementMapUAV.SafeRelease();
+	}
+}
+
 FPrimitiveSceneProxy* UOceanGridMeshComponent::CreateSceneProxy()
 {
 	FPrimitiveSceneProxy* Proxy = NULL;
@@ -181,8 +207,22 @@ FPrimitiveSceneProxy* UOceanGridMeshComponent::CreateSceneProxy()
 	return Proxy;
 }
 
-void UOceanGridMeshComponent::SetOceanSettings()
+void UOceanGridMeshComponent::SetSinWaveSettings(float WaveLengthRow, float WaveLengthColumn, float Period, float Amplitude)
 {
+	_WaveLengthRow = WaveLengthRow;
+	_WaveLengthColumn = WaveLengthColumn;
+	_Period = Period;
+	_Amplitude = Amplitude;
+
+	if (_DisplacementMapUAV.IsValid())
+	{
+		_DisplacementMapUAV.SafeRelease();
+	}
+
+	if (DisplacementMap != nullptr)
+	{
+		_DisplacementMapUAV = RHICreateUnorderedAccessView(DisplacementMap->GameThread_GetRenderTargetResource()->TextureRHI);
+	}
 }
 
 void UOceanGridMeshComponent::SendRenderDynamicData_Concurrent()
@@ -190,12 +230,12 @@ void UOceanGridMeshComponent::SendRenderDynamicData_Concurrent()
 	//SCOPE_CYCLE_COUNTER(STAT_OceanGridMeshCompUpdate);
 	Super::SendRenderDynamicData_Concurrent();
 
-	if (SceneProxy != nullptr)
+	if (SceneProxy != nullptr && DisplacementMap != nullptr && _DisplacementMapUAV.IsValid())
 	{
 		ENQUEUE_RENDER_COMMAND(OceanDeformGridMeshCommand)(
 			[this](FRHICommandListImmediate& RHICmdList)
 			{
-				((const FOceanGridMeshSceneProxy*)SceneProxy)->EnqueOceanGridMeshRenderCommand(RHICmdList, this);
+				((const FOceanGridMeshSceneProxy*)SceneProxy)->EnqueSimulateOceanCommand(RHICmdList, this);
 			}
 		);
 	}

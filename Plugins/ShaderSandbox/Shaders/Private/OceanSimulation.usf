@@ -1,0 +1,16 @@
+#include "/Engine/Public/Platform.ush"
+
+float MeshWidth;
+float MeshHeight;
+float WaveLengthRow;
+float WaveLengthColumn;
+float Period;
+float Amplitude;
+float Time;
+RWTexture2D<float4> DisplacementMap;
+
+[numthreads(32, 1, 1)]
+void SinWaveDisplacementMap(uint2 DispatchThreadId : SV_DispatchThreadID)
+{
+}
+

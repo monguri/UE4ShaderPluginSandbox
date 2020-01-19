@@ -11,9 +11,12 @@ class SHADERSANDBOX_API UOceanGridMeshComponent : public UDeformableGridMeshComp
 	GENERATED_BODY()
 
 public:
+	UPROPERTY(EditAnywhere, Category="Components|OceanGridMesh", BlueprintReadOnly)
+	class UCanvasRenderTarget2D* DisplacementMap = nullptr;
+
 	/** Set sin wave settings. */
 	UFUNCTION(BlueprintCallable, Category="Components|OceanGridMesh")
-	void SetOceanSettings();
+	void SetSinWaveSettings(float WaveLengthRow, float WaveLengthColumn, float Period, float Amplitude);
 
 	float GetWaveLengthRow() const { return _WaveLengthRow; }
 	float GetWaveLengthColumn() const { return _WaveLengthColumn; }
@@ -21,9 +24,12 @@ public:
 	float GetAmplitude() const { return _Amplitude; }
 
 	float GetAccumulatedTime() const { return _AccumulatedTime; }
+	UCanvasRenderTarget2D* GetDisplacementMap() const { return DisplacementMap; }
+	FUnorderedAccessViewRHIRef GetDisplacementMapUAV() const { return _DisplacementMapUAV; }
 
 public:
 	UOceanGridMeshComponent();
+	~UOceanGridMeshComponent();
 
 	//~ Begin UPrimitiveComponent Interface.
 	virtual FPrimitiveSceneProxy* CreateSceneProxy() override;
@@ -37,5 +43,6 @@ private:
 	float _WaveLengthColumn = 10.0f;
 	float _Period = 1.0f;
 	float _Amplitude = 10.0f;
+	FUnorderedAccessViewRHIRef _DisplacementMapUAV;
 };
 
