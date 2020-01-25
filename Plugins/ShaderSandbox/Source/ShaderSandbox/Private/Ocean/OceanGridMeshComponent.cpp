@@ -150,7 +150,7 @@ public:
 
 	uint32 GetAllocatedSize( void ) const { return( FPrimitiveSceneProxy::GetAllocatedSize() ); }
 
-	void EnqueSimulateOceanCommand(FRHICommandListImmediate& RHICmdList, UOceanGridMeshComponent* Component) const
+	void EnqueTestSinWaveCommand(FRHICommandListImmediate& RHICmdList, UOceanGridMeshComponent* Component) const
 	{
 		FTextureRenderTargetResource* TextureRenderTargetResource = Component->GetDisplacementMap()->GetRenderTargetResource();
 		if (TextureRenderTargetResource == nullptr)
@@ -168,6 +168,27 @@ public:
 		Params.Period = Component->GetPeriod();
 		Params.Amplitude = Component->GetAmplitude();
 		Params.AccumulatedTime = Component->GetAccumulatedTime();
+
+		TestSinWave(RHICmdList, Params, Component->GetDisplacementMapUAV());
+	}
+
+	void EnqueSimulateOceanCommand(FRHICommandListImmediate& RHICmdList, UOceanGridMeshComponent* Component) const
+	{
+		FTextureRenderTargetResource* TextureRenderTargetResource = Component->GetDisplacementMap()->GetRenderTargetResource();
+		if (TextureRenderTargetResource == nullptr)
+		{
+			return;
+		}
+
+		FOceanSpectrumParameters Params;
+		Params.DispMapDimension = TextureRenderTargetResource->GetSizeX(); // TODO:正方形前提でSizeYは見てない
+		Params.PatchLength = Component->GetGridWidth() * Component->GetNumColumn(); // TODO:こちらも同様。幅しか見てない
+		Params.TimeScale = Component->GetTimeScale();
+		Params.AmplitudeScale = Component->GetAmplitudeScale();
+		Params.WindDirection = Component->GetWindDirection();
+		Params.WindSpeed = Component->GetWindSpeed();
+		Params.WindDependency = Component->GetWindDependency();
+		Params.ChoppyScale = Component->GetChoppyScale();
 
 		SimulateOcean(RHICmdList, Params, Component->GetDisplacementMapUAV());
 	}
@@ -225,6 +246,28 @@ void UOceanGridMeshComponent::SetSinWaveSettings(float WaveLengthRow, float Wave
 	}
 }
 
+void UOceanGridMeshComponent::SetOceanSpectrumSettings(float TimeScale, float AmplitudeScale, FVector2D WindDirection, float WindSpeed, float WindDependency, float ChoppyScale)
+{
+	_TimeScale = TimeScale;
+	_AmplitudeScale = AmplitudeScale;
+	_WindDirection = WindDirection.GetSafeNormal(); // 正規化しておく
+	_WindSpeed = WindSpeed;
+	_WindDependency = WindDependency;
+	_ChoppyScale = ChoppyScale;
+
+	if (_DisplacementMapUAV.IsValid())
+	{
+		_DisplacementMapUAV.SafeRelease();
+	}
+
+	if (DisplacementMap != nullptr)
+	{
+		_DisplacementMapUAV = RHICreateUnorderedAccessView(DisplacementMap->GameThread_GetRenderTargetResource()->TextureRHI);
+	}
+}
+
+#define TEST_SIN_WAVE 0
+
 void UOceanGridMeshComponent::SendRenderDynamicData_Concurrent()
 {
 	//SCOPE_CYCLE_COUNTER(STAT_OceanGridMeshCompUpdate);
@@ -235,7 +278,11 @@ void UOceanGridMeshComponent::SendRenderDynamicData_Concurrent()
 		ENQUEUE_RENDER_COMMAND(OceanDeformGridMeshCommand)(
 			[this](FRHICommandListImmediate& RHICmdList)
 			{
+#if TEST_SIN_WAVE > 0
+				((const FOceanGridMeshSceneProxy*)SceneProxy)->EnqueTestSinWaveCommand(RHICmdList, this);
+#else
 				((const FOceanGridMeshSceneProxy*)SceneProxy)->EnqueSimulateOceanCommand(RHICmdList, this);
+#endif
 			}
 		);
 	}

@@ -4,6 +4,10 @@
 #include "RenderGraphBuilder.h"
 #include "RenderGraphUtils.h"
 
+void SimulateOcean(FRHICommandListImmediate& RHICmdList, const FOceanSpectrumParameters& Params, FUnorderedAccessViewRHIRef DisplacementMapUAV)
+{
+}
+
 class FOceanSinWaveCS : public FGlobalShader
 {
 	DECLARE_GLOBAL_SHADER(FOceanSinWaveCS);
@@ -31,7 +35,7 @@ public:
 
 IMPLEMENT_GLOBAL_SHADER(FOceanSinWaveCS, "/Plugin/ShaderSandbox/Private/OceanSimulation.usf", "SinWaveDisplacementMap", SF_Compute);
 
-void SimulateOcean(FRHICommandListImmediate& RHICmdList, const FOceanSinWaveParameters& Params, FUnorderedAccessViewRHIRef DisplacementMapUAV)
+void TestSinWave(FRHICommandListImmediate& RHICmdList, const FOceanSinWaveParameters& Params, FUnorderedAccessViewRHIRef DisplacementMapUAV)
 {
 	FRDGBuilder GraphBuilder(RHICmdList);
 
