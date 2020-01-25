@@ -186,6 +186,8 @@ void FClothGridMeshDeformer::FlushDeformCommandQueue(FRHICommandListImmediate& R
 			ClothSimParams,
 			FIntVector(NumClothMesh, 1, 1)
 		);
+
+		ClothParameterStructuredBuffer->ReleaseResource();
 	}
 
 	{
