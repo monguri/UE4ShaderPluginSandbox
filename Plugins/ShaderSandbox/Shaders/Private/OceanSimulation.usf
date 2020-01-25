@@ -1,5 +1,7 @@
 #include "/Engine/Public/Platform.ush"
 
+uint MapWidth;
+uint MapHeight;
 float MeshWidth;
 float MeshHeight;
 float WaveLengthRow;
@@ -12,6 +14,18 @@ RWTexture2D<float4> DisplacementMap;
 [numthreads(8, 8, 1)]
 void SinWaveDisplacementMap(uint2 DispatchThreadId : SV_DispatchThreadID)
 {
-    DisplacementMap[DispatchThreadId] = float4(0.0, 0.0, 100.0, 1.0);
+	const float SMALL_NUMBER = 0.0001;
+	const float PI = 3.1415159;
+
+	uint2 PixelCoord = DispatchThreadId;
+	uint2 XY = PixelCoord * float2(MeshWidth, MeshHeight) / uint2(MapWidth, MapHeight);
+
+	// Update Z only
+	float Z = Amplitude * sin(2.0 * PI *
+	(XY.x / max(WaveLengthRow, SMALL_NUMBER)
+	+ XY.y / max(WaveLengthColumn, SMALL_NUMBER)
+	+ Time / max(Period, SMALL_NUMBER))
+	);
+    DisplacementMap[DispatchThreadId] = float4(0.0, 0.0, Z, 1.0);
 }
 

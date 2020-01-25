@@ -20,6 +20,7 @@ public:
 	uint32 GetNumRow() const { return _NumRow; }
 	uint32 GetNumColumn() const { return _NumColumn; }
 	const TArray<FVector4>& GetVertices() const { return _Vertices; }
+	const TArray<FVector2D>& GetTexCoords() const { return _TexCoords; }
 	const TArray<uint32>& GetIndices() const { return _Indices; }
 	float GetGridWidth() const { return _GridWidth; }
 	float GetGridHeight() const { return _GridHeight; }
@@ -44,6 +45,7 @@ protected:
 	uint32 _NumRow = 10;
 	uint32 _NumColumn = 10;
 	TArray<FVector4> _Vertices;
+	TArray<FVector2D> _TexCoords;
 	TArray<uint32> _Indices;
 	float _GridWidth = 10.0f;
 	float _GridHeight = 10.0f;

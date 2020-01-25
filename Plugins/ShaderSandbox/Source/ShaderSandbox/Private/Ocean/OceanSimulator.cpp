@@ -10,6 +10,8 @@ class FOceanSinWaveCS : public FGlobalShader
 	SHADER_USE_PARAMETER_STRUCT(FOceanSinWaveCS, FGlobalShader);
 
 	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
+		SHADER_PARAMETER(uint32, MapWidth)
+		SHADER_PARAMETER(uint32, MapHeight)
 		SHADER_PARAMETER(float, MeshWidth)
 		SHADER_PARAMETER(float, MeshHeight)
 		SHADER_PARAMETER(float, WaveLengthRow)
@@ -43,6 +45,8 @@ void SimulateOcean(FRHICommandListImmediate& RHICmdList, const FOceanSinWavePara
 	TShaderMapRef<FOceanSinWaveCS> OceanSinWaveCS(ShaderMap);
 
 	FOceanSinWaveCS::FParameters* OceanSinWaveParams = GraphBuilder.AllocParameters<FOceanSinWaveCS::FParameters>();
+	OceanSinWaveParams->MapWidth = Params.MapWidth;
+	OceanSinWaveParams->MapHeight = Params.MapHeight;
 	OceanSinWaveParams->MeshWidth = Params.MeshWidth;
 	OceanSinWaveParams->MeshHeight = Params.MeshHeight;
 	OceanSinWaveParams->WaveLengthColumn = Params.WaveLengthColumn;
