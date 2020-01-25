@@ -1,6 +1,5 @@
 #include "Cloth/ClothGridMeshDeformer.h"
 #include "Cloth/ClothVertexBuffers.h"
-#include "Cloth/ClothParameterStructuredBuffer.h"
 #include "GlobalShader.h"
 #include "RHIResources.h"
 #include "RenderGraphBuilder.h"
@@ -100,6 +99,11 @@ public:
 
 IMPLEMENT_GLOBAL_SHADER(FClothGridMeshTangentCS, "/Plugin/ShaderSandbox/Private/GridMeshTangent.usf", "MainCS", SF_Compute);
 
+FClothGridMeshDeformer::~FClothGridMeshDeformer()
+{
+	ClothParameterStructuredBuffer.ReleaseResource();
+}
+
 void FClothGridMeshDeformer::EnqueueDeformCommand(const FClothGridMeshDeformCommand& Command)
 {
 	DeformCommandQueue.Add(Command);
@@ -168,11 +172,9 @@ void FClothGridMeshDeformer::FlushDeformCommandQueue(FRHICommandListImmediate& R
 			ClothParams.Add(GridClothParams);
 		}
 
-		// TODO:今は毎フレーム生成でBUF_Volatileにしてるけど、BUF_Staticにして、毎フレーム書き換えあるいはreallocにしたい
-		FClothParameterStructuredBuffer* ClothParameterStructuredBuffer = new FClothParameterStructuredBuffer(ClothParams);
-		ClothParameterStructuredBuffer->InitResource();
+		ClothParameterStructuredBuffer.SetData(ClothParams);
 
-		ClothSimParams->Params = ClothParameterStructuredBuffer->GetSRV();
+		ClothSimParams->Params = ClothParameterStructuredBuffer.GetSRV();
 		ClothSimParams->WorkAccelerationMoveVertexBuffer = WorkAccelerationMoveVertexBufferUAV;
 		ClothSimParams->WorkPrevPositionVertexBuffer = WorkPrevVertexBufferUAV;
 		ClothSimParams->WorkPositionVertexBuffer = WorkVertexBufferUAV;
@@ -186,8 +188,6 @@ void FClothGridMeshDeformer::FlushDeformCommandQueue(FRHICommandListImmediate& R
 			ClothSimParams,
 			FIntVector(NumClothMesh, 1, 1)
 		);
-
-		ClothParameterStructuredBuffer->ReleaseResource();
 	}
 
 	{

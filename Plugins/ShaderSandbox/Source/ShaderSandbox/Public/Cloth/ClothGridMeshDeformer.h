@@ -5,6 +5,7 @@
 #include "Engine/EngineTypes.h"
 #include "RHICommandList.h"
 #include "ClothGridMeshParameters.h"
+#include "Cloth/ClothParameterStructuredBuffer.h"
 
 struct FClothGridMeshDeformCommand
 {
@@ -14,9 +15,11 @@ struct FClothGridMeshDeformCommand
 
 struct FClothGridMeshDeformer
 {
+	~FClothGridMeshDeformer();
 	void EnqueueDeformCommand(const FClothGridMeshDeformCommand& Command);
 	void FlushDeformCommandQueue(FRHICommandListImmediate& RHICmdList, FRHIUnorderedAccessView* WorkAccelerationMoveVertexBufferUAV, FRHIUnorderedAccessView* WorkPrevVertexBufferUAV, FRHIUnorderedAccessView* WorkVertexBufferUAV);
 
+	FClothParameterStructuredBuffer ClothParameterStructuredBuffer;
 	TArray<FClothGridMeshDeformCommand> DeformCommandQueue;
 };
 
