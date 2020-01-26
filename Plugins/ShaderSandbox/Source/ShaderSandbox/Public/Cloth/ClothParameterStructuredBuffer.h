@@ -5,10 +5,7 @@
 struct FClothParameterStructuredBuffer : public FRenderResource
 {
 public:
-	virtual ~FClothParameterStructuredBuffer();
-
 	void SetData(const TArray<struct FGridClothParameters>& Data);
-	virtual void InitDynamicRHI() override;
 	virtual void ReleaseDynamicRHI() override;
 
 	FRHIShaderResourceView* GetSRV() const { return ComponentsDataSRV; }
