@@ -9,7 +9,7 @@
 struct FOceanSpectrumParameters
 {
 	/** The size of displacement map. Must be power of 2. */
-	int32 DispMapDimension = 512;
+	uint32 DispMapDimension = 512;
 	/** The side length (world space) of square patch. Typical value is 1000 ~ 2000. */
 	float PatchLength = 1000.0f;
 	/** Adjust the time interval for simulation (controls the simulation speed) */
@@ -26,7 +26,7 @@ struct FOceanSpectrumParameters
 	float ChoppyScale = 1.3f;
 };
 
-void SimulateOcean(FRHICommandListImmediate& RHICmdList, const FOceanSpectrumParameters& Params, FUnorderedAccessViewRHIRef DisplacementMapUAV);
+void SimulateOcean(FRHICommandListImmediate& RHICmdList, const FOceanSpectrumParameters& Params, FRHIShaderResourceView* H0SRV, FRHIShaderResourceView* OmegaSRV, FRHIUnorderedAccessView* HtUAV, FRHIUnorderedAccessView* DisplacementMapUAV);
 
 struct FOceanSinWaveParameters
 {

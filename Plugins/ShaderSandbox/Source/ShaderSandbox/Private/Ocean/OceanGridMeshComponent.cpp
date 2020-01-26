@@ -15,6 +15,81 @@
 #include "DeformMesh/DeformableVertexBuffers.h"
 #include "Ocean/OceanSimulator.h"
 #include "Engine/CanvasRenderTarget2D.h"
+#include "ResourceArrayStructuredBuffer.h"
+
+namespace
+{
+/**
+ * 平均0、標準偏差1のガウシアン分布でランダム値を生成する。
+ */
+float GaussianRand()
+{
+	float U1 = FMath::FRand();
+	float U2 = FMath::FRand();
+
+	if (U1 < SMALL_NUMBER)
+	{
+		U1 = SMALL_NUMBER;
+	}
+
+	// TODO:計算の理屈がわからん
+	return FMath::Sqrt(-2.0f * FMath::Loge(U1)) * FMath::Cos(2.0f * PI * U2);
+}
+
+/**
+ * Phillips Spectrum
+ * K: 正規化された波数ベクトル
+ */
+float CalculatePhillipsCoefficient(const FVector2D& K, float Gravity, const FOceanSpectrumParameters& Params)
+{
+	float Amplitude = Params.AmplitudeScale * 1.0e-7f; //TODO：根拠不明の値
+
+	// この風速において最大の波長の波。
+	float MaxLength = Params.WindSpeed * Params.WindSpeed / Gravity;
+
+	float KSqr = K.X * K.X + K.Y * K.Y;
+	float KCos = K.X * Params.WindDirection.X + K.Y * Params.WindDirection.Y;
+	float Phillips = Amplitude * FMath::Exp(-1.0f / (MaxLength * MaxLength * KSqr)) / (KSqr * KSqr * KSqr) * (KCos * KCos); // TODO:KSqrは2乗すればK^4になるから十分では？
+
+	// 逆方向の波は弱くする
+	if (KCos < 0)
+	{
+		Phillips *= Params.WindDependency;
+	}
+
+	// 最大波長よりもずっと小さい波は削減する。Tessendorfの計算にはなかった要素。TODO:いるのか？
+	float CutLength = MaxLength / 1000;
+	return Phillips * FMath::Exp(-KSqr * CutLength * CutLength);
+}
+
+void InitHeightMap(const FOceanSpectrumParameters& Params, float GravityZ, TResourceArray<FVector2D>& OutH0, TResourceArray<float>& OutOmega0)
+{
+	FVector2D K;
+	float GravityConstant = FMath::Abs(GravityZ);
+
+	FMath::RandInit(FPlatformTime::Cycles());
+
+	for (uint32 i = 0; i < Params.DispMapDimension; i++)
+	{
+		// Kは正規化された波数ベクトル。範囲は[-|DX/W, |DX/W], [-|DY/H, |DY/H]
+		K.Y = (-(int32)Params.DispMapDimension / 2.0f + i) * (2 * PI / Params.PatchLength);
+
+		for (uint32 j = 0; j < Params.DispMapDimension; j++)
+		{
+			K.X = (-(int32)Params.DispMapDimension / 2.0f + j) * (2 * PI / Params.PatchLength);
+
+			float PhillipsCoef = CalculatePhillipsCoefficient(K, GravityConstant, Params);
+			float PhillipsSqrt = (K.X == 0 || K.Y == 0) ? 0.0f : FMath::Sqrt(PhillipsCoef);
+			OutH0[i * (Params.DispMapDimension + 4) + j].X = PhillipsSqrt * GaussianRand() * UE_HALF_SQRT_2;
+			OutH0[i * (Params.DispMapDimension + 4) + j].Y = PhillipsSqrt * GaussianRand() * UE_HALF_SQRT_2;
+
+			// The angular frequency is following the dispersion relation:
+			// OutOmega0^2 = g * k
+			OutOmega0[i * (Params.DispMapDimension + 4) + j] = FMath::Sqrt(GravityConstant * K.Size());
+		}
+	}
+}
+} // namespace
 
 /** almost all is copy of FCustomMeshSceneProxy. */
 class FOceanGridMeshSceneProxy final : public FPrimitiveSceneProxy
@@ -56,6 +131,45 @@ public:
 			Material = UMaterial::GetDefaultMaterial(MD_Surface);
 		}
 
+		int32 SizeX, SizeY;
+		Component->GetDisplacementMap()->GetSize(SizeX, SizeY);
+		check(SizeX == SizeY); // 正方形である前提
+		check(FMath::IsPowerOfTwo(SizeX)); // 2の累乗のサイズである前提
+		uint32 DispMapDimension = SizeX;
+		
+		// Phyllips Spectrumを使った初期化
+		// Height map H(0)
+		uint32 HeightMapSize = (DispMapDimension + 4) * (DispMapDimension + 1); // TODO:なぜ+4、+1なのか？
+		H0Data.Init(FVector2D::ZeroVector, HeightMapSize);
+
+		Omega0Data.Init(0.0f, HeightMapSize);
+
+		FOceanSpectrumParameters Params;
+		Params.DispMapDimension = DispMapDimension;
+		Params.PatchLength = Component->GetGridWidth() * Component->GetNumColumn();
+		Params.TimeScale = Component->GetTimeScale();
+		Params.AmplitudeScale = Component->GetAmplitudeScale();
+		Params.WindDirection = Component->GetWindDirection();
+		Params.WindSpeed = Component->GetWindSpeed();
+		Params.WindDependency = Component->GetWindDependency();
+		Params.ChoppyScale = Component->GetChoppyScale();
+
+		InitHeightMap(Params, Component->GetWorld()->GetGravityZ(), H0Data, Omega0Data);
+
+		H0Buffer.Initialize(H0Data, sizeof(FVector2D));
+		Omega0Buffer.Initialize(Omega0Data, sizeof(float));
+
+		// This value should be (hmap_dim / 2 + 1) * hmap_dim, but we use full sized buffer here for simplicity.
+		uint32 InputHalfSize = DispMapDimension * DispMapDimension;
+		ZeroInitData.Init(0.0f, 3 * InputHalfSize * 2);
+
+		HtBuffer.Initialize(ZeroInitData, 2 * sizeof(float));
+
+		uint32 OutputSize = DispMapDimension * DispMapDimension;
+		ZeroInitData2.Empty();
+		ZeroInitData2.Init(0.0f, 3 * OutputSize * 2);
+
+		DxyzBuffer.Initialize(ZeroInitData2, 2 * sizeof(float));
 	}
 
 	virtual ~FOceanGridMeshSceneProxy()
@@ -65,6 +179,10 @@ public:
 		VertexBuffers.ColorVertexBuffer.ReleaseResource();
 		IndexBuffer.ReleaseResource();
 		VertexFactory.ReleaseResource();
+		H0Buffer.ReleaseResource();
+		Omega0Buffer.ReleaseResource();
+		HtBuffer.ReleaseResource();
+		DxyzBuffer.ReleaseResource();
 	}
 
 	virtual void GetDynamicMeshElements(const TArray<const FSceneView*>& Views, const FSceneViewFamily& ViewFamily, uint32 VisibilityMap, FMeshElementCollector& Collector) const override
@@ -190,7 +308,7 @@ public:
 		Params.WindDependency = Component->GetWindDependency();
 		Params.ChoppyScale = Component->GetChoppyScale();
 
-		SimulateOcean(RHICmdList, Params, Component->GetDisplacementMapUAV());
+		SimulateOcean(RHICmdList, Params, H0Buffer.GetSRV(), Omega0Buffer.GetSRV(), HtBuffer.GetUAV(), Component->GetDisplacementMapUAV());
 	}
 
 private:
@@ -199,6 +317,15 @@ private:
 	FDeformableVertexBuffers VertexBuffers;
 	FDynamicMeshIndexBuffer32 IndexBuffer;
 	FLocalVertexFactory VertexFactory;
+
+	TResourceArray<FVector2D> H0Data;
+	TResourceArray<float> Omega0Data;
+	TResourceArray<float> ZeroInitData;
+	TResourceArray<float> ZeroInitData2;
+	FResourceArrayStructuredBuffer H0Buffer;
+	FResourceArrayStructuredBuffer Omega0Buffer;
+	FResourceArrayStructuredBuffer HtBuffer;
+	FResourceArrayStructuredBuffer DxyzBuffer;
 
 	FMaterialRelevance MaterialRelevance;
 };
@@ -221,7 +348,7 @@ UOceanGridMeshComponent::~UOceanGridMeshComponent()
 FPrimitiveSceneProxy* UOceanGridMeshComponent::CreateSceneProxy()
 {
 	FPrimitiveSceneProxy* Proxy = NULL;
-	if(_Vertices.Num() > 0 && _Indices.Num() > 0)
+	if(_Vertices.Num() > 0 && _Indices.Num() > 0 && DisplacementMap != nullptr)
 	{
 		Proxy = new FOceanGridMeshSceneProxy(this);
 	}
