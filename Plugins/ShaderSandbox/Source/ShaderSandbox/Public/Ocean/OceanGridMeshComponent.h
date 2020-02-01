@@ -14,6 +14,9 @@ public:
 	UPROPERTY(EditAnywhere, Category="Components|OceanGridMesh", BlueprintReadOnly)
 	class UCanvasRenderTarget2D* DisplacementMap = nullptr;
 
+	UPROPERTY(EditAnywhere, Category="Components|OceanGridMesh", BlueprintReadOnly)
+	class UCanvasRenderTarget2D* H0DebugView = nullptr;
+
 	/** Set sin wave settings. */
 	UFUNCTION(BlueprintCallable, Category="Components|OceanGridMesh")
 	void SetSinWaveSettings(float WaveLengthRow, float WaveLengthColumn, float Period, float Amplitude);
@@ -37,6 +40,7 @@ public:
 
 	UCanvasRenderTarget2D* GetDisplacementMap() const { return DisplacementMap; }
 	FUnorderedAccessViewRHIRef GetDisplacementMapUAV() const { return _DisplacementMapUAV; }
+	FUnorderedAccessViewRHIRef GetH0DebugViewUAV() const { return _H0DebugViewUAV; }
 
 public:
 	UOceanGridMeshComponent();
@@ -67,5 +71,6 @@ private:
 	float _ChoppyScale = 1.3f;
 
 	FUnorderedAccessViewRHIRef _DisplacementMapUAV;
+	FUnorderedAccessViewRHIRef _H0DebugViewUAV;
 };
 

@@ -6,8 +6,6 @@ uint MapHeight;
 StructuredBuffer<float2> H0Buffer;
 RWTexture2D<float4> H0DebugTexture;
 
-RWTexture2D<float4> DisplacementMap;
-
 [numthreads(8, 8, 1)]
 void OceanDebugH0(uint2 DispatchThreadId : SV_DispatchThreadID)
 {
@@ -25,6 +23,7 @@ float WaveLengthColumn;
 float Period;
 float Amplitude;
 float Time;
+RWTexture2D<float4> DisplacementMap;
 
 [numthreads(8, 8, 1)]
 void SinWaveDisplacementMap(uint2 DispatchThreadId : SV_DispatchThreadID)

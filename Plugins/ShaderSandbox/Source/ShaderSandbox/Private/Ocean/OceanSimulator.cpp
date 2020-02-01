@@ -13,7 +13,7 @@ class FOceanDebugH0CS : public FGlobalShader
 		SHADER_PARAMETER(uint32, MapWidth)
 		SHADER_PARAMETER(uint32, MapHeight)
 		SHADER_PARAMETER_SRV(StructuredBuffer<FVector2D>, H0Buffer)
-		SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D<float4>, H0DebugTexture)
+		SHADER_PARAMETER_UAV(RWTexture2D<float4>, H0DebugTexture)
 	END_SHADER_PARAMETER_STRUCT()
 
 public:
@@ -25,46 +25,38 @@ public:
 
 IMPLEMENT_GLOBAL_SHADER(FOceanDebugH0CS, "/Plugin/ShaderSandbox/Private/OceanSimulation.usf", "OceanDebugH0", SF_Compute);
 
-void SimulateOcean(FRHICommandListImmediate& RHICmdList, const FOceanSpectrumParameters& Params, FRHIShaderResourceView* H0SRV, FRHIShaderResourceView* OmegaSRV, FRHIUnorderedAccessView* HtUAV, FRHIUnorderedAccessView* DisplacementMapUAV)
+void SimulateOcean(FRHICommandListImmediate& RHICmdList, const FOceanSpectrumParameters& Params, FRHIShaderResourceView* H0SRV, FRHIShaderResourceView* OmegaSRV, FRHIUnorderedAccessView* HtUAV, FRHIUnorderedAccessView* DisplacementMapUAV, FRHIUnorderedAccessView* H0DebugViewUAV)
 {
-	FRDGBuilder GraphBuilder(RHICmdList);
 
 	TShaderMap<FGlobalShaderType>* ShaderMap = GetGlobalShaderMap(ERHIFeatureLevel::SM5);
 
-	uint32 DispatchCountX = FMath::DivideAndRoundUp((Params.DispMapDimension + 4), (uint32)8);
-	uint32 DispatchCountY = FMath::DivideAndRoundUp(Params.DispMapDimension, (uint32)8);
-	check(DispatchCountX <= 65535);
-	check(DispatchCountY <= 65535);
+	if (H0DebugViewUAV != nullptr)
+	{
+		FRDGBuilder GraphBuilder(RHICmdList);
 
-	TShaderMapRef<FOceanDebugH0CS> OceanDebugH0CS(ShaderMap);
+		uint32 DispatchCountX = FMath::DivideAndRoundUp((Params.DispMapDimension + 4), (uint32)8);
+		uint32 DispatchCountY = FMath::DivideAndRoundUp(Params.DispMapDimension, (uint32)8);
+		check(DispatchCountX <= 65535);
+		check(DispatchCountY <= 65535);
 
-	FRDGTextureDesc H0DebugTextureDesc = FRDGTextureDesc::Create2DDesc(
-		FIntPoint(Params.DispMapDimension + 4, Params.DispMapDimension),
-		PF_FloatRGBA,
-		FClearValueBinding::None,
-		ETextureCreateFlags::TexCreate_None,
-		ETextureCreateFlags::TexCreate_ShaderResource | ETextureCreateFlags::TexCreate_UAV,
-		false
-	);
+		TShaderMapRef<FOceanDebugH0CS> OceanDebugH0CS(ShaderMap);
 
-	FRDGTexture* H0DebugTexture = GraphBuilder.CreateTexture(H0DebugTextureDesc, TEXT("OceanH0"));
-	FRDGTextureUAV* H0DebugUAV = GraphBuilder.CreateUAV(H0DebugTexture);
+		FOceanDebugH0CS::FParameters* OceanDebugH0Params = GraphBuilder.AllocParameters<FOceanDebugH0CS::FParameters>();
+		OceanDebugH0Params->MapWidth = Params.DispMapDimension + 4;
+		OceanDebugH0Params->MapHeight = Params.DispMapDimension;
+		OceanDebugH0Params->H0Buffer = H0SRV;
+		OceanDebugH0Params->H0DebugTexture = H0DebugViewUAV;
 
-	FOceanDebugH0CS::FParameters* OceanDebugH0Params = GraphBuilder.AllocParameters<FOceanDebugH0CS::FParameters>();
-	OceanDebugH0Params->MapWidth = Params.DispMapDimension + 4;
-	OceanDebugH0Params->MapHeight = Params.DispMapDimension;
-	OceanDebugH0Params->H0Buffer = H0SRV;
-	OceanDebugH0Params->H0DebugTexture = H0DebugUAV;
+		FComputeShaderUtils::AddPass(
+			GraphBuilder,
+			RDG_EVENT_NAME("OceanDebugH0"),
+			*OceanDebugH0CS,
+			OceanDebugH0Params,
+			FIntVector(DispatchCountX, DispatchCountY, 1)
+		);
 
-	FComputeShaderUtils::AddPass(
-		GraphBuilder,
-		RDG_EVENT_NAME("OceanDebugH0"),
-		*OceanDebugH0CS,
-		OceanDebugH0Params,
-		FIntVector(DispatchCountX, DispatchCountY, 1)
-	);
-
-	GraphBuilder.Execute();
+		GraphBuilder.Execute();
+	}
 }
 
 class FOceanSinWaveCS : public FGlobalShader

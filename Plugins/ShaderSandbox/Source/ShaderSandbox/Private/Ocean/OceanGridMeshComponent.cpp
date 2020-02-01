@@ -308,7 +308,7 @@ public:
 		Params.WindDependency = Component->GetWindDependency();
 		Params.ChoppyScale = Component->GetChoppyScale();
 
-		SimulateOcean(RHICmdList, Params, H0Buffer.GetSRV(), Omega0Buffer.GetSRV(), HtBuffer.GetUAV(), Component->GetDisplacementMapUAV());
+		SimulateOcean(RHICmdList, Params, H0Buffer.GetSRV(), Omega0Buffer.GetSRV(), HtBuffer.GetUAV(), Component->GetDisplacementMapUAV(), Component->GetH0DebugViewUAV());
 	}
 
 private:
@@ -342,6 +342,11 @@ UOceanGridMeshComponent::~UOceanGridMeshComponent()
 	if (_DisplacementMapUAV.IsValid())
 	{
 		_DisplacementMapUAV.SafeRelease();
+	}
+
+	if (_H0DebugViewUAV.IsValid())
+	{
+		_H0DebugViewUAV.SafeRelease();
 	}
 }
 
@@ -390,6 +395,16 @@ void UOceanGridMeshComponent::SetOceanSpectrumSettings(float TimeScale, float Am
 	if (DisplacementMap != nullptr)
 	{
 		_DisplacementMapUAV = RHICreateUnorderedAccessView(DisplacementMap->GameThread_GetRenderTargetResource()->TextureRHI);
+	}
+
+	if (_H0DebugViewUAV.IsValid())
+	{
+		_H0DebugViewUAV.SafeRelease();
+	}
+
+	if (H0DebugView != nullptr)
+	{
+		_H0DebugViewUAV = RHICreateUnorderedAccessView(H0DebugView->GameThread_GetRenderTargetResource()->TextureRHI);
 	}
 }
 
