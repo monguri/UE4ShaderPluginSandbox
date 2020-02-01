@@ -10,11 +10,10 @@ class FOceanDebugH0CS : public FGlobalShader
 	SHADER_USE_PARAMETER_STRUCT(FOceanDebugH0CS, FGlobalShader);
 
 	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
-		SHADER_PARAMETER(uint32, H0BufferWidth)
 		SHADER_PARAMETER(uint32, MapWidth)
 		SHADER_PARAMETER(uint32, MapHeight)
 		SHADER_PARAMETER_SRV(StructuredBuffer<FVector2D>, H0Buffer)
-		SHADER_PARAMETER_UAV(RWTexture2D<float4>, DisplacementMap)
+		SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D<float4>, H0DebugTexture)
 	END_SHADER_PARAMETER_STRUCT()
 
 public:
@@ -32,19 +31,30 @@ void SimulateOcean(FRHICommandListImmediate& RHICmdList, const FOceanSpectrumPar
 
 	TShaderMap<FGlobalShaderType>* ShaderMap = GetGlobalShaderMap(ERHIFeatureLevel::SM5);
 
-	uint32 DispatchCountX = FMath::DivideAndRoundUp(Params.DispMapDimension, (uint32)8);
+	uint32 DispatchCountX = FMath::DivideAndRoundUp((Params.DispMapDimension + 4), (uint32)8);
 	uint32 DispatchCountY = FMath::DivideAndRoundUp(Params.DispMapDimension, (uint32)8);
 	check(DispatchCountX <= 65535);
 	check(DispatchCountY <= 65535);
 
 	TShaderMapRef<FOceanDebugH0CS> OceanDebugH0CS(ShaderMap);
 
+	FRDGTextureDesc H0DebugTextureDesc = FRDGTextureDesc::Create2DDesc(
+		FIntPoint(Params.DispMapDimension + 4, Params.DispMapDimension),
+		PF_FloatRGBA,
+		FClearValueBinding::None,
+		ETextureCreateFlags::TexCreate_None,
+		ETextureCreateFlags::TexCreate_ShaderResource | ETextureCreateFlags::TexCreate_UAV,
+		false
+	);
+
+	FRDGTexture* H0DebugTexture = GraphBuilder.CreateTexture(H0DebugTextureDesc, TEXT("OceanH0"));
+	FRDGTextureUAV* H0DebugUAV = GraphBuilder.CreateUAV(H0DebugTexture);
+
 	FOceanDebugH0CS::FParameters* OceanDebugH0Params = GraphBuilder.AllocParameters<FOceanDebugH0CS::FParameters>();
-	OceanDebugH0Params->H0BufferWidth = Params.DispMapDimension + 4;
-	OceanDebugH0Params->MapWidth = Params.DispMapDimension;
+	OceanDebugH0Params->MapWidth = Params.DispMapDimension + 4;
 	OceanDebugH0Params->MapHeight = Params.DispMapDimension;
 	OceanDebugH0Params->H0Buffer = H0SRV;
-	OceanDebugH0Params->DisplacementMap = DisplacementMapUAV;
+	OceanDebugH0Params->H0DebugTexture = H0DebugUAV;
 
 	FComputeShaderUtils::AddPass(
 		GraphBuilder,
