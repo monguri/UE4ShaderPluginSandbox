@@ -80,12 +80,12 @@ void InitHeightMap(const FOceanSpectrumParameters& Params, float GravityZ, TReso
 
 			float PhillipsCoef = CalculatePhillipsCoefficient(K, GravityConstant, Params);
 			float PhillipsSqrt = (K.X == 0 || K.Y == 0) ? 0.0f : FMath::Sqrt(PhillipsCoef);
-			OutH0[i * (Params.DispMapDimension + 4) + j].X = PhillipsSqrt * GaussianRand() * UE_HALF_SQRT_2;
-			OutH0[i * (Params.DispMapDimension + 4) + j].Y = PhillipsSqrt * GaussianRand() * UE_HALF_SQRT_2;
+			OutH0[i * (Params.DispMapDimension) + j].X = PhillipsSqrt * GaussianRand() * UE_HALF_SQRT_2;
+			OutH0[i * (Params.DispMapDimension) + j].Y = PhillipsSqrt * GaussianRand() * UE_HALF_SQRT_2;
 
 			// The angular frequency is following the dispersion relation:
 			// OutOmega0^2 = g * k
-			OutOmega0[i * (Params.DispMapDimension + 4) + j] = FMath::Sqrt(GravityConstant * K.Size());
+			OutOmega0[i * (Params.DispMapDimension) + j] = FMath::Sqrt(GravityConstant * K.Size());
 		}
 	}
 }
@@ -139,10 +139,9 @@ public:
 		
 		// Phyllips SpectrumÇégÇ¡ÇΩèâä˙âª
 		// Height map H(0)
-		uint32 HeightMapSize = (DispMapDimension + 4) * (DispMapDimension + 1); // TODO:Ç»Ç∫+4ÅA+1Ç»ÇÃÇ©ÅH
-		H0Data.Init(FVector2D::ZeroVector, HeightMapSize);
+		H0Data.Init(FVector2D::ZeroVector, DispMapDimension * DispMapDimension);
 
-		Omega0Data.Init(0.0f, HeightMapSize);
+		Omega0Data.Init(0.0f, DispMapDimension * DispMapDimension);
 
 		FOceanSpectrumParameters Params;
 		Params.DispMapDimension = DispMapDimension;
@@ -159,15 +158,12 @@ public:
 		H0Buffer.Initialize(H0Data, sizeof(FVector2D));
 		Omega0Buffer.Initialize(Omega0Data, sizeof(float));
 
-		// This value should be (hmap_dim / 2 + 1) * hmap_dim, but we use full sized buffer here for simplicity.
-		uint32 InputHalfSize = DispMapDimension * DispMapDimension;
-		ZeroInitData.Init(0.0f, 3 * InputHalfSize * 2);
+		ZeroInitData.Init(0.0f, 3 * DispMapDimension * DispMapDimension * 2);
 
 		HtBuffer.Initialize(ZeroInitData, 2 * sizeof(float));
 
-		uint32 OutputSize = DispMapDimension * DispMapDimension;
 		ZeroInitData2.Empty();
-		ZeroInitData2.Init(0.0f, 3 * OutputSize * 2);
+		ZeroInitData2.Init(0.0f, 3 * DispMapDimension * DispMapDimension * 2);
 
 		DxyzBuffer.Initialize(ZeroInitData2, 2 * sizeof(float));
 	}

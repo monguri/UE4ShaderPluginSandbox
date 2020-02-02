@@ -49,6 +49,10 @@ IMPLEMENT_GLOBAL_SHADER(FOceanUpdateSpectrumCS, "/Plugin/ShaderSandbox/Private/O
 
 void SimulateOcean(FRHICommandListImmediate& RHICmdList, const FOceanSpectrumParameters& Params, FRHIShaderResourceView* H0SRV, FRHIShaderResourceView* OmegaSRV, FRHIUnorderedAccessView* HtUAV, FRHIUnorderedAccessView* DisplacementMapUAV, FRHIUnorderedAccessView* H0DebugViewUAV)
 {
+	uint32 DispatchCountX = FMath::DivideAndRoundUp((Params.DispMapDimension), (uint32)8);
+	uint32 DispatchCountY = FMath::DivideAndRoundUp(Params.DispMapDimension, (uint32)8);
+	check(DispatchCountX <= 65535);
+	check(DispatchCountY <= 65535);
 
 	TShaderMap<FGlobalShaderType>* ShaderMap = GetGlobalShaderMap(ERHIFeatureLevel::SM5);
 
@@ -57,15 +61,10 @@ void SimulateOcean(FRHICommandListImmediate& RHICmdList, const FOceanSpectrumPar
 	// TODO:ÉuÉçÉbÉNÇÊÇËä÷êîâª
 	if (H0DebugViewUAV != nullptr)
 	{
-		uint32 DispatchCountX = FMath::DivideAndRoundUp((Params.DispMapDimension + 4), (uint32)8);
-		uint32 DispatchCountY = FMath::DivideAndRoundUp(Params.DispMapDimension, (uint32)8);
-		check(DispatchCountX <= 65535);
-		check(DispatchCountY <= 65535);
-
 		TShaderMapRef<FOceanDebugH0CS> OceanDebugH0CS(ShaderMap);
 
 		FOceanDebugH0CS::FParameters* OceanDebugH0Params = GraphBuilder.AllocParameters<FOceanDebugH0CS::FParameters>();
-		OceanDebugH0Params->MapWidth = Params.DispMapDimension + 4;
+		OceanDebugH0Params->MapWidth = Params.DispMapDimension;
 		OceanDebugH0Params->MapHeight = Params.DispMapDimension;
 		OceanDebugH0Params->H0Buffer = H0SRV;
 		OceanDebugH0Params->H0DebugTexture = H0DebugViewUAV;
@@ -80,15 +79,10 @@ void SimulateOcean(FRHICommandListImmediate& RHICmdList, const FOceanSpectrumPar
 	}
 
 	{
-		uint32 DispatchCountX = FMath::DivideAndRoundUp(Params.DispMapDimension, (uint32)8);
-		uint32 DispatchCountY = FMath::DivideAndRoundUp(Params.DispMapDimension, (uint32)8);
-		check(DispatchCountX <= 65535);
-		check(DispatchCountY <= 65535);
-
 		TShaderMapRef<FOceanUpdateSpectrumCS> OceanUpdateSpectrumCS(ShaderMap);
 
 		FOceanUpdateSpectrumCS::FParameters* UpdateSpectrumParams = GraphBuilder.AllocParameters<FOceanUpdateSpectrumCS::FParameters>();
-		UpdateSpectrumParams->MapWidth = Params.DispMapDimension + 4;
+		UpdateSpectrumParams->MapWidth = Params.DispMapDimension;
 		UpdateSpectrumParams->MapHeight = Params.DispMapDimension;
 		UpdateSpectrumParams->H0Buffer = H0SRV;
 		UpdateSpectrumParams->OmegaBuffer = OmegaSRV;
