@@ -23,17 +23,40 @@ public:
 	}
 };
 
-IMPLEMENT_GLOBAL_SHADER(FOceanDebugH0CS, "/Plugin/ShaderSandbox/Private/OceanSimulation.usf", "OceanDebugH0", SF_Compute);
+IMPLEMENT_GLOBAL_SHADER(FOceanDebugH0CS, "/Plugin/ShaderSandbox/Private/OceanSimulation.usf", "DebugH0CS", SF_Compute);
+
+class FOceanUpdateSpectrumCS : public FGlobalShader
+{
+	DECLARE_GLOBAL_SHADER(FOceanUpdateSpectrumCS);
+	SHADER_USE_PARAMETER_STRUCT(FOceanUpdateSpectrumCS, FGlobalShader);
+
+	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
+		SHADER_PARAMETER(uint32, MapWidth)
+		SHADER_PARAMETER(uint32, MapHeight)
+		SHADER_PARAMETER_SRV(StructuredBuffer<FVector2D>, H0Buffer)
+		SHADER_PARAMETER_SRV(StructuredBuffer<float>, OmegaBuffer)
+		SHADER_PARAMETER_UAV(RWTexture2D<float4>, HtBuffer)
+	END_SHADER_PARAMETER_STRUCT()
+
+public:
+	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters)
+	{
+		return IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
+	}
+};
+
+IMPLEMENT_GLOBAL_SHADER(FOceanUpdateSpectrumCS, "/Plugin/ShaderSandbox/Private/OceanSimulation.usf", "UpdateSpectrumCS", SF_Compute);
 
 void SimulateOcean(FRHICommandListImmediate& RHICmdList, const FOceanSpectrumParameters& Params, FRHIShaderResourceView* H0SRV, FRHIShaderResourceView* OmegaSRV, FRHIUnorderedAccessView* HtUAV, FRHIUnorderedAccessView* DisplacementMapUAV, FRHIUnorderedAccessView* H0DebugViewUAV)
 {
 
 	TShaderMap<FGlobalShaderType>* ShaderMap = GetGlobalShaderMap(ERHIFeatureLevel::SM5);
 
+	FRDGBuilder GraphBuilder(RHICmdList);
+
+	// TODO:ÉuÉçÉbÉNÇÊÇËä÷êîâª
 	if (H0DebugViewUAV != nullptr)
 	{
-		FRDGBuilder GraphBuilder(RHICmdList);
-
 		uint32 DispatchCountX = FMath::DivideAndRoundUp((Params.DispMapDimension + 4), (uint32)8);
 		uint32 DispatchCountY = FMath::DivideAndRoundUp(Params.DispMapDimension, (uint32)8);
 		check(DispatchCountX <= 65535);
@@ -49,14 +72,38 @@ void SimulateOcean(FRHICommandListImmediate& RHICmdList, const FOceanSpectrumPar
 
 		FComputeShaderUtils::AddPass(
 			GraphBuilder,
-			RDG_EVENT_NAME("OceanDebugH0"),
+			RDG_EVENT_NAME("OceanDebugH0CS"),
 			*OceanDebugH0CS,
 			OceanDebugH0Params,
 			FIntVector(DispatchCountX, DispatchCountY, 1)
 		);
-
-		GraphBuilder.Execute();
 	}
+
+	{
+		uint32 DispatchCountX = FMath::DivideAndRoundUp(Params.DispMapDimension, (uint32)8);
+		uint32 DispatchCountY = FMath::DivideAndRoundUp(Params.DispMapDimension, (uint32)8);
+		check(DispatchCountX <= 65535);
+		check(DispatchCountY <= 65535);
+
+		TShaderMapRef<FOceanUpdateSpectrumCS> OceanUpdateSpectrumCS(ShaderMap);
+
+		FOceanUpdateSpectrumCS::FParameters* UpdateSpectrumParams = GraphBuilder.AllocParameters<FOceanUpdateSpectrumCS::FParameters>();
+		UpdateSpectrumParams->MapWidth = Params.DispMapDimension + 4;
+		UpdateSpectrumParams->MapHeight = Params.DispMapDimension;
+		UpdateSpectrumParams->H0Buffer = H0SRV;
+		UpdateSpectrumParams->OmegaBuffer = OmegaSRV;
+		UpdateSpectrumParams->HtBuffer = HtUAV;
+
+		FComputeShaderUtils::AddPass(
+			GraphBuilder,
+			RDG_EVENT_NAME("OceanUpdateSpectrumCS"),
+			*OceanUpdateSpectrumCS,
+			UpdateSpectrumParams,
+			FIntVector(DispatchCountX, DispatchCountY, 1)
+		);
+	}
+
+	GraphBuilder.Execute();
 }
 
 class FOceanSinWaveCS : public FGlobalShader
@@ -114,7 +161,7 @@ void TestSinWave(FRHICommandListImmediate& RHICmdList, const FOceanSinWaveParame
 
 	FComputeShaderUtils::AddPass(
 		GraphBuilder,
-		RDG_EVENT_NAME("SinWaveDisplacementMap"),
+		RDG_EVENT_NAME("OceanSinWaveCS"),
 		*OceanSinWaveCS,
 		OceanSinWaveParams,
 		FIntVector(DispatchCountX, DispatchCountY, 1)
