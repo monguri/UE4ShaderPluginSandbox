@@ -1,8 +1,7 @@
 #include "/Engine/Public/Platform.ush"
 
-uint MapWidth;
-uint MapHeight;
-
+uint MapSize;
+float Time;
 StructuredBuffer<float2> H0Buffer;
 RWTexture2D<float4> H0DebugTexture;
 
@@ -10,27 +9,103 @@ RWTexture2D<float4> H0DebugTexture;
 void DebugH0CS(uint2 DispatchThreadId : SV_DispatchThreadID)
 {
 	uint2 PixelCoord = DispatchThreadId;
-	uint H0Index = PixelCoord.y * MapWidth + PixelCoord.x;
+	uint Index = PixelCoord.y * MapSize + PixelCoord.x; // Structured Buffer index corresponding wave number k
 
 	const float SCALE = 100.0f; // デフォルトのパラメータ設定でおおよそ結果がきれいに見える値
-    H0DebugTexture[PixelCoord] = float4(H0Buffer[H0Index].x * SCALE, H0Buffer[H0Index].y * SCALE, 0.0, 1.0);
+    H0DebugTexture[PixelCoord] = float4(H0Buffer[Index].x * SCALE, H0Buffer[Index].y * SCALE, 0.0, 1.0);
+}
+
+StructuredBuffer<float2> HtBuffer;
+RWTexture2D<float4> HtDebugTexture;
+
+[numthreads(8, 8, 1)]
+void DebugHtCS(uint2 DispatchThreadId : SV_DispatchThreadID)
+{
+	uint2 PixelCoord = DispatchThreadId;
+	uint Index = PixelCoord.y * MapSize + PixelCoord.x; // Structured Buffer index corresponding wave number k
+
+	const float SCALE = 100.0f; // デフォルトのパラメータ設定でおおよそ結果がきれいに見える値
+	HtDebugTexture[PixelCoord] = float4(HtBuffer[Index].x * SCALE, HtBuffer[Index].y * SCALE, 0.0, 1.0);
+    //HtDebugTexture[PixelCoord] = float4(1.0f, 0.0f, 0.0, 1.0);
+}
+
+RWTexture2D<float4> DkxDebugTexture;
+
+[numthreads(8, 8, 1)]
+void DebugDkxCS(uint2 DispatchThreadId : SV_DispatchThreadID)
+{
+	uint2 PixelCoord = DispatchThreadId;
+	uint Index = PixelCoord.y * MapSize + PixelCoord.x; // Structured Buffer index corresponding wave number k
+
+	const float SCALE = 100.0f; // デフォルトのパラメータ設定でおおよそ結果がきれいに見える値
+	DkxDebugTexture[PixelCoord] = float4(HtBuffer[Index + MapSize * MapSize].x * SCALE, HtBuffer[Index + MapSize * MapSize].y * SCALE, 0.0, 1.0);
+    //DkxDebugTexture[PixelCoord] = float4(0.0f, 1.0f, 0.0, 1.0);
+}
+
+RWTexture2D<float4> DkyDebugTexture;
+
+[numthreads(8, 8, 1)]
+void DebugDkyCS(uint2 DispatchThreadId : SV_DispatchThreadID)
+{
+	uint2 PixelCoord = DispatchThreadId;
+	uint Index = PixelCoord.y * MapSize + PixelCoord.x; // Structured Buffer index corresponding wave number k
+
+	const float SCALE = 100.0f; // デフォルトのパラメータ設定でおおよそ結果がきれいに見える値
+	DkyDebugTexture[PixelCoord] = float4(HtBuffer[Index + 2 * MapSize * MapSize].x * SCALE, HtBuffer[Index + 2 * MapSize * MapSize].y * SCALE, 0.0, 1.0);
+    //DkyDebugTexture[PixelCoord] = float4(0.0f, 0.0f, 1.0, 1.0);
 }
 
 StructuredBuffer<float> OmegaBuffer;
-StructuredBuffer<float2> HtBuffer;
+RWStructuredBuffer<float2> OutHtBuffer;
 
 [numthreads(8, 8, 1)]
 void UpdateSpectrumCS(uint2 DispatchThreadId : SV_DispatchThreadID)
 {
+	uint2 PixelCoord = DispatchThreadId;
+	uint Index = PixelCoord.y * MapSize + PixelCoord.x; // Structured Buffer index corresponding wave number k
+	uint MinusIndex = (MapSize - PixelCoord.y - 1) * MapSize + (MapSize - PixelCoord.x - 1); // Structured Buffer index corresponding wave number -k
+
+	// H(k, 0)からのH(k, t)への時間発展。H(k, t) = H(k, 0) * e^(i * omega * t) + Conj(H(-k, 0)) * e^(-i * omega * t)
+	float2 Hk0 = H0Buffer[Index];
+	float2 Hminusk0 = H0Buffer[MinusIndex];
+	float SinOmega, CosOmega;
+	sincos(OmegaBuffer[Index] * Time, SinOmega, CosOmega);
+
+	float2 Hkt;
+	Hkt.x = (Hk0.x + Hminusk0.x) * CosOmega - (Hk0.y + Hminusk0.y) * SinOmega;
+	Hkt.y = (Hk0.x - Hminusk0.x) * SinOmega + (Hk0.y - Hminusk0.y) * CosOmega;
+
+	// H(k, t)からのD(k, t)の計算。D(k, t) = i * k / |k| * H(k, t)
+	float2 K = PixelCoord - float2(MapSize * 0.5f, MapSize * 0.5f);
+	float KLen = length(K);
+	if (KLen < 1e-12f)
+	{
+		K = float2(0.0f, 0.0f);
+	}
+	else
+	{
+		K /= KLen;
+	}
+
+	float2 iHkt = float2(Hkt.y, -Hkt.x);
+
+	// D(k, t)は波数空間のベクトルなので、kのx方向とy方向に分けて扱う
+	float2 Dkxt = K.x * float2(Hkt.y, -Hkt.x);
+	float2 Dkyt = K.y * float2(Hkt.y, -Hkt.x);
+
+	OutHtBuffer[Index] = Hkt;
+	OutHtBuffer[Index + MapSize * MapSize] = Dkxt;
+	OutHtBuffer[Index + 2 * MapSize * MapSize] = Dkyt;
 }
 
+uint MapWidth;
+uint MapHeight;
 float MeshWidth;
 float MeshHeight;
 float WaveLengthRow;
 float WaveLengthColumn;
 float Period;
 float Amplitude;
-float Time;
 RWTexture2D<float4> DisplacementMap;
 
 [numthreads(8, 8, 1)]

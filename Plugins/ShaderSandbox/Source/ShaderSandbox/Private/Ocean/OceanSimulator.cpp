@@ -10,8 +10,7 @@ class FOceanDebugH0CS : public FGlobalShader
 	SHADER_USE_PARAMETER_STRUCT(FOceanDebugH0CS, FGlobalShader);
 
 	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
-		SHADER_PARAMETER(uint32, MapWidth)
-		SHADER_PARAMETER(uint32, MapHeight)
+		SHADER_PARAMETER(uint32, MapSize)
 		SHADER_PARAMETER_SRV(StructuredBuffer<FVector2D>, H0Buffer)
 		SHADER_PARAMETER_UAV(RWTexture2D<float4>, H0DebugTexture)
 	END_SHADER_PARAMETER_STRUCT()
@@ -25,17 +24,77 @@ public:
 
 IMPLEMENT_GLOBAL_SHADER(FOceanDebugH0CS, "/Plugin/ShaderSandbox/Private/OceanSimulation.usf", "DebugH0CS", SF_Compute);
 
+class FOceanDebugHtCS : public FGlobalShader
+{
+	DECLARE_GLOBAL_SHADER(FOceanDebugHtCS);
+	SHADER_USE_PARAMETER_STRUCT(FOceanDebugHtCS, FGlobalShader);
+
+	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
+		SHADER_PARAMETER(uint32, MapSize)
+		SHADER_PARAMETER_SRV(StructuredBuffer<FVector2D>, HtBuffer)
+		SHADER_PARAMETER_UAV(RWTexture2D<float4>, HtDebugTexture)
+	END_SHADER_PARAMETER_STRUCT()
+
+public:
+	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters)
+	{
+		return IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
+	}
+};
+
+IMPLEMENT_GLOBAL_SHADER(FOceanDebugHtCS, "/Plugin/ShaderSandbox/Private/OceanSimulation.usf", "DebugHtCS", SF_Compute);
+
+class FOceanDebugDkxCS : public FGlobalShader
+{
+	DECLARE_GLOBAL_SHADER(FOceanDebugDkxCS);
+	SHADER_USE_PARAMETER_STRUCT(FOceanDebugDkxCS, FGlobalShader);
+
+	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
+		SHADER_PARAMETER(uint32, MapSize)
+		SHADER_PARAMETER_SRV(StructuredBuffer<FVector2D>, HtBuffer)
+		SHADER_PARAMETER_UAV(RWTexture2D<float4>, DkxDebugTexture)
+	END_SHADER_PARAMETER_STRUCT()
+
+public:
+	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters)
+	{
+		return IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
+	}
+};
+
+IMPLEMENT_GLOBAL_SHADER(FOceanDebugDkxCS, "/Plugin/ShaderSandbox/Private/OceanSimulation.usf", "DebugDkxCS", SF_Compute);
+
+class FOceanDebugDkyCS : public FGlobalShader
+{
+	DECLARE_GLOBAL_SHADER(FOceanDebugDkyCS);
+	SHADER_USE_PARAMETER_STRUCT(FOceanDebugDkyCS, FGlobalShader);
+
+	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
+		SHADER_PARAMETER(uint32, MapSize)
+		SHADER_PARAMETER_SRV(StructuredBuffer<FVector2D>, HtBuffer)
+		SHADER_PARAMETER_UAV(RWTexture2D<float4>, DkyDebugTexture)
+	END_SHADER_PARAMETER_STRUCT()
+
+public:
+	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters)
+	{
+		return IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
+	}
+};
+
+IMPLEMENT_GLOBAL_SHADER(FOceanDebugDkyCS, "/Plugin/ShaderSandbox/Private/OceanSimulation.usf", "DebugDkyCS", SF_Compute);
+
 class FOceanUpdateSpectrumCS : public FGlobalShader
 {
 	DECLARE_GLOBAL_SHADER(FOceanUpdateSpectrumCS);
 	SHADER_USE_PARAMETER_STRUCT(FOceanUpdateSpectrumCS, FGlobalShader);
 
 	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
-		SHADER_PARAMETER(uint32, MapWidth)
-		SHADER_PARAMETER(uint32, MapHeight)
+		SHADER_PARAMETER(uint32, MapSize)
+		SHADER_PARAMETER(float, Time)
 		SHADER_PARAMETER_SRV(StructuredBuffer<FVector2D>, H0Buffer)
 		SHADER_PARAMETER_SRV(StructuredBuffer<float>, OmegaBuffer)
-		SHADER_PARAMETER_UAV(RWTexture2D<float4>, HtBuffer)
+		SHADER_PARAMETER_UAV(RWTexture2D<float4>, OutHtBuffer)
 	END_SHADER_PARAMETER_STRUCT()
 
 public:
@@ -47,7 +106,7 @@ public:
 
 IMPLEMENT_GLOBAL_SHADER(FOceanUpdateSpectrumCS, "/Plugin/ShaderSandbox/Private/OceanSimulation.usf", "UpdateSpectrumCS", SF_Compute);
 
-void SimulateOcean(FRHICommandListImmediate& RHICmdList, const FOceanSpectrumParameters& Params, FRHIShaderResourceView* H0SRV, FRHIShaderResourceView* OmegaSRV, FRHIUnorderedAccessView* HtUAV, FRHIUnorderedAccessView* DisplacementMapUAV, FRHIUnorderedAccessView* H0DebugViewUAV)
+void SimulateOcean(FRHICommandListImmediate& RHICmdList, const FOceanSpectrumParameters& Params, FRHIShaderResourceView* H0SRV, FRHIShaderResourceView* OmegaSRV, FRHIShaderResourceView* HtSRV, FRHIUnorderedAccessView* HtUAV, FRHIUnorderedAccessView* DisplacementMapUAV, FRHIUnorderedAccessView* H0DebugViewUAV, FRHIUnorderedAccessView* HtDebugViewUAV, FRHIUnorderedAccessView* DkxDebugViewUAV, FRHIUnorderedAccessView* DkyDebugViewUAV)
 {
 	uint32 DispatchCountX = FMath::DivideAndRoundUp((Params.DispMapDimension), (uint32)8);
 	uint32 DispatchCountY = FMath::DivideAndRoundUp(Params.DispMapDimension, (uint32)8);
@@ -64,8 +123,7 @@ void SimulateOcean(FRHICommandListImmediate& RHICmdList, const FOceanSpectrumPar
 		TShaderMapRef<FOceanDebugH0CS> OceanDebugH0CS(ShaderMap);
 
 		FOceanDebugH0CS::FParameters* OceanDebugH0Params = GraphBuilder.AllocParameters<FOceanDebugH0CS::FParameters>();
-		OceanDebugH0Params->MapWidth = Params.DispMapDimension;
-		OceanDebugH0Params->MapHeight = Params.DispMapDimension;
+		OceanDebugH0Params->MapSize = Params.DispMapDimension;
 		OceanDebugH0Params->H0Buffer = H0SRV;
 		OceanDebugH0Params->H0DebugTexture = H0DebugViewUAV;
 
@@ -82,17 +140,71 @@ void SimulateOcean(FRHICommandListImmediate& RHICmdList, const FOceanSpectrumPar
 		TShaderMapRef<FOceanUpdateSpectrumCS> OceanUpdateSpectrumCS(ShaderMap);
 
 		FOceanUpdateSpectrumCS::FParameters* UpdateSpectrumParams = GraphBuilder.AllocParameters<FOceanUpdateSpectrumCS::FParameters>();
-		UpdateSpectrumParams->MapWidth = Params.DispMapDimension;
-		UpdateSpectrumParams->MapHeight = Params.DispMapDimension;
+		UpdateSpectrumParams->MapSize = Params.DispMapDimension;
+		UpdateSpectrumParams->Time = Params.AccumulatedTime;
 		UpdateSpectrumParams->H0Buffer = H0SRV;
 		UpdateSpectrumParams->OmegaBuffer = OmegaSRV;
-		UpdateSpectrumParams->HtBuffer = HtUAV;
+		UpdateSpectrumParams->OutHtBuffer = HtUAV;
 
 		FComputeShaderUtils::AddPass(
 			GraphBuilder,
 			RDG_EVENT_NAME("OceanUpdateSpectrumCS"),
 			*OceanUpdateSpectrumCS,
 			UpdateSpectrumParams,
+			FIntVector(DispatchCountX, DispatchCountY, 1)
+		);
+	}
+
+	if (HtDebugViewUAV != nullptr)
+	{
+		TShaderMapRef<FOceanDebugHtCS> OceanDebugHtCS(ShaderMap);
+
+		FOceanDebugHtCS::FParameters* OceanDebugHtParams = GraphBuilder.AllocParameters<FOceanDebugHtCS::FParameters>();
+		OceanDebugHtParams->MapSize = Params.DispMapDimension;
+		OceanDebugHtParams->HtBuffer = HtSRV;
+		OceanDebugHtParams->HtDebugTexture = HtDebugViewUAV;
+
+		FComputeShaderUtils::AddPass(
+			GraphBuilder,
+			RDG_EVENT_NAME("OceanDebugHtCS"),
+			*OceanDebugHtCS,
+			OceanDebugHtParams,
+			FIntVector(DispatchCountX, DispatchCountY, 1)
+		);
+	}
+
+	if (DkxDebugViewUAV != nullptr)
+	{
+		TShaderMapRef<FOceanDebugDkxCS> OceanDebugDkxCS(ShaderMap);
+
+		FOceanDebugDkxCS::FParameters* OceanDebugDkxParams = GraphBuilder.AllocParameters<FOceanDebugDkxCS::FParameters>();
+		OceanDebugDkxParams->MapSize = Params.DispMapDimension;
+		OceanDebugDkxParams->HtBuffer = HtSRV;
+		OceanDebugDkxParams->DkxDebugTexture = DkxDebugViewUAV;
+
+		FComputeShaderUtils::AddPass(
+			GraphBuilder,
+			RDG_EVENT_NAME("OceanDebugDkxCS"),
+			*OceanDebugDkxCS,
+			OceanDebugDkxParams,
+			FIntVector(DispatchCountX, DispatchCountY, 1)
+		);
+	}
+
+	if (DkyDebugViewUAV != nullptr)
+	{
+		TShaderMapRef<FOceanDebugDkyCS> OceanDebugDkyCS(ShaderMap);
+
+		FOceanDebugDkyCS::FParameters* OceanDebugDkyParams = GraphBuilder.AllocParameters<FOceanDebugDkyCS::FParameters>();
+		OceanDebugDkyParams->MapSize = Params.DispMapDimension;
+		OceanDebugDkyParams->HtBuffer = HtSRV;
+		OceanDebugDkyParams->DkyDebugTexture = DkyDebugViewUAV;
+
+		FComputeShaderUtils::AddPass(
+			GraphBuilder,
+			RDG_EVENT_NAME("OceanDebugDkyCS"),
+			*OceanDebugDkyCS,
+			OceanDebugDkyParams,
 			FIntVector(DispatchCountX, DispatchCountY, 1)
 		);
 	}

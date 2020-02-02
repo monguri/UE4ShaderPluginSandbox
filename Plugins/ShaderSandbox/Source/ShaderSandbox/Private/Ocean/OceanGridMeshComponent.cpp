@@ -146,12 +146,12 @@ public:
 		FOceanSpectrumParameters Params;
 		Params.DispMapDimension = DispMapDimension;
 		Params.PatchLength = Component->GetGridWidth() * Component->GetNumColumn();
-		Params.TimeScale = Component->GetTimeScale();
 		Params.AmplitudeScale = Component->GetAmplitudeScale();
 		Params.WindDirection = Component->GetWindDirection();
 		Params.WindSpeed = Component->GetWindSpeed();
 		Params.WindDependency = Component->GetWindDependency();
 		Params.ChoppyScale = Component->GetChoppyScale();
+		Params.AccumulatedTime = Component->GetAccumulatedTime() * Component->GetTimeScale();
 
 		InitHeightMap(Params, Component->GetWorld()->GetGravityZ(), H0Data, Omega0Data);
 
@@ -297,14 +297,26 @@ public:
 		FOceanSpectrumParameters Params;
 		Params.DispMapDimension = TextureRenderTargetResource->GetSizeX(); // TODO:正方形前提でSizeYは見てない
 		Params.PatchLength = Component->GetGridWidth() * Component->GetNumColumn(); // TODO:こちらも同様。幅しか見てない
-		Params.TimeScale = Component->GetTimeScale();
 		Params.AmplitudeScale = Component->GetAmplitudeScale();
 		Params.WindDirection = Component->GetWindDirection();
 		Params.WindSpeed = Component->GetWindSpeed();
 		Params.WindDependency = Component->GetWindDependency();
 		Params.ChoppyScale = Component->GetChoppyScale();
+		Params.AccumulatedTime = Component->GetAccumulatedTime() * Component->GetTimeScale();
 
-		SimulateOcean(RHICmdList, Params, H0Buffer.GetSRV(), Omega0Buffer.GetSRV(), HtBuffer.GetUAV(), Component->GetDisplacementMapUAV(), Component->GetH0DebugViewUAV());
+		SimulateOcean(
+			RHICmdList,
+			Params,
+			H0Buffer.GetSRV(),
+			Omega0Buffer.GetSRV(),
+			HtBuffer.GetSRV(),
+			HtBuffer.GetUAV(),
+			Component->GetDisplacementMapUAV(),
+			Component->GetH0DebugViewUAV(),
+			Component->GetHtDebugViewUAV(),
+			Component->GetDkxDebugViewUAV(),
+			Component->GetDkyDebugViewUAV()
+		);
 	}
 
 private:
@@ -343,6 +355,21 @@ UOceanGridMeshComponent::~UOceanGridMeshComponent()
 	if (_H0DebugViewUAV.IsValid())
 	{
 		_H0DebugViewUAV.SafeRelease();
+	}
+
+	if (_HtDebugViewUAV.IsValid())
+	{
+		_HtDebugViewUAV.SafeRelease();
+	}
+
+	if (_DkxDebugViewUAV.IsValid())
+	{
+		_DkxDebugViewUAV.SafeRelease();
+	}
+
+	if (_DkyDebugViewUAV.IsValid())
+	{
+		_DkyDebugViewUAV.SafeRelease();
 	}
 }
 
@@ -401,6 +428,36 @@ void UOceanGridMeshComponent::SetOceanSpectrumSettings(float TimeScale, float Am
 	if (H0DebugView != nullptr)
 	{
 		_H0DebugViewUAV = RHICreateUnorderedAccessView(H0DebugView->GameThread_GetRenderTargetResource()->TextureRHI);
+	}
+
+	if (_HtDebugViewUAV.IsValid())
+	{
+		_HtDebugViewUAV.SafeRelease();
+	}
+
+	if (HtDebugView != nullptr)
+	{
+		_HtDebugViewUAV = RHICreateUnorderedAccessView(HtDebugView->GameThread_GetRenderTargetResource()->TextureRHI);
+	}
+
+	if (_DkxDebugViewUAV.IsValid())
+	{
+		_DkxDebugViewUAV.SafeRelease();
+	}
+
+	if (DkxDebugView != nullptr)
+	{
+		_DkxDebugViewUAV = RHICreateUnorderedAccessView(DkxDebugView->GameThread_GetRenderTargetResource()->TextureRHI);
+	}
+
+	if (_DkyDebugViewUAV.IsValid())
+	{
+		_DkyDebugViewUAV.SafeRelease();
+	}
+
+	if (DkyDebugView != nullptr)
+	{
+		_DkyDebugViewUAV = RHICreateUnorderedAccessView(DkyDebugView->GameThread_GetRenderTargetResource()->TextureRHI);
 	}
 }
 
