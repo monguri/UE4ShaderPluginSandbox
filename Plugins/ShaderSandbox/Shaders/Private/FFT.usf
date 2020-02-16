@@ -1,2 +1,10 @@
 #include "/Engine/Public/Platform.ush"
 
+Buffer<float4> SrcTexture2D;
+RWBuffer<float4> DstTexture2D;
+
+[numthreads(512, 1, 1)]
+void ForwardFFT2D512x512CS()
+{
+}
+
