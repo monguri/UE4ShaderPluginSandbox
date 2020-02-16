@@ -5,33 +5,25 @@
 
 void AFFT2DTestActor::BeginPlay()
 {
-	if (SrcTexture != nullptr)
+	if (SrcTexture == nullptr || DstTexture == nullptr)
 	{
-		uint8 MipLevel = 0;
-		_SrcSRV = RHICreateShaderResourceView(SrcTexture->TextureReference.TextureReferenceRHI->GetReferencedTexture(), MipLevel);
-		if (SrcTexture->GetSizeX() != 512 || SrcTexture->GetSizeY() != 512) // TODO:マジックナンバー
-		{
-			return;
-		}
+		return;
 	}
 
-	if (DstTexture != nullptr)
+	_DstUAV = RHICreateUnorderedAccessView(DstTexture->GameThread_GetRenderTargetResource()->TextureRHI);
+	int32 Width, Height;
+	DstTexture->GetSize(Width, Height);
+	if (Width != 512 || Height != 512) // TODO:マジックナンバー
 	{
-		_DstUAV = RHICreateUnorderedAccessView(DstTexture->GameThread_GetRenderTargetResource()->TextureRHI);
-		int32 Width, Height;
-		DstTexture->GetSize(Width, Height);
-		if (Width != 512 || Height != 512) // TODO:マジックナンバー
-		{
-			return;
-		}
+		return;
 	}
 
 	ENQUEUE_RENDER_COMMAND(FFT2DTestCmmand)(
 		[this](FRHICommandListImmediate& RHICmdList)
 		{
-			if (_SrcSRV.IsValid() && _DstUAV.IsValid())
+			if (_DstUAV.IsValid())
 			{
-				FFT2D::DoFFT2D512x512(RHICmdList, FFTMode, _SrcSRV, _DstUAV);
+				FFT2D::DoFFT2D512x512(RHICmdList, FFTMode, SrcTexture->Resource->TextureRHI, _DstUAV);
 			}
 		}
 	);
@@ -39,11 +31,6 @@ void AFFT2DTestActor::BeginPlay()
 
 void AFFT2DTestActor::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
-	if (_SrcSRV.IsValid())
-	{
-		_SrcSRV.SafeRelease();
-	}
-
 	if (_DstUAV.IsValid())
 	{
 		_DstUAV.SafeRelease();

@@ -24,7 +24,6 @@ public:
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 private:
-	FShaderResourceViewRHIRef _SrcSRV;
 	FUnorderedAccessViewRHIRef _DstUAV;
 };
 

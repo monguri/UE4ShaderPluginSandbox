@@ -1,10 +1,12 @@
 #include "/Engine/Public/Platform.ush"
 
-Buffer<float4> SrcTexture2D;
-RWBuffer<float4> DstTexture2D;
+Texture2D<float4> SrcTexture;
+RWTexture2D<float4> DstTexture;
 
 [numthreads(512, 1, 1)]
-void ForwardFFT2D512x512CS()
+void ForwardFFT2D512x512CS(uint GroupID : SV_GroupID, uint GroupThreadID : SV_GroupThreadID)
 {
+	uint2 Pixel = uint2(GroupThreadID, GroupID);
+	DstTexture[Pixel] = SrcTexture[Pixel];
 }
 

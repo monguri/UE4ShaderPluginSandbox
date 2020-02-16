@@ -15,6 +15,6 @@ enum class EFFTMode : uint8
 
 namespace FFT2D
 {
-	void DoFFT2D512x512(FRHICommandListImmediate& RHICmdList, EFFTMode Mode, FRHIShaderResourceView* SrcSRV, FRHIUnorderedAccessView* DstUAV);
+	void DoFFT2D512x512(FRHICommandListImmediate& RHICmdList, EFFTMode Mode, const FTextureRHIRef& SrcTexture, FRHIUnorderedAccessView* DstUAV);
 }; // namespace FFT2D
 
