@@ -1,12 +1,268 @@
 #include "/Engine/Public/Platform.ush"
 
+#ifndef TWO_PI
+	#define TWO_PI 2.0f * 3.1415926535897932f // Common.ushからPIの値をとってきた
+#endif
+
+#define Complex float2
+
+#define SCAN_LINE_LENGTH 512
+#define RADIX 8
+#define NUMTHREADSX (512 / RADIX)
+#define STRIDE (512 / RADIX)
+
+#define FFTMemoryBarrier() GroupMemoryBarrierWithGroupSync()
+
 Texture2D<float4> SrcTexture;
 RWTexture2D<float4> DstTexture;
+uint4 SrcRect;
+uint4 DstRect;
 
-[numthreads(512, 1, 1)]
-void ForwardFFT2D512x512CS(uint GroupID : SV_GroupID, uint GroupThreadID : SV_GroupThreadID)
+//const bool bIsHorizontal = true;
+void CopyDataSrcWindowToLocal(inout Complex LocalBuffer[2][RADIX], in uint ScanIdx, uint Loc, uint Stride, uint4 Window)
 {
+	for (uint i = 0; i < RADIX; i++)
+	{
+		LocalBuffer[0][i] = Complex(0.0f, 0.0f);
+		LocalBuffer[1][i] = Complex(0.0f, 0.0f);
+	}
+
+	uint2 Pixel = uint2(Loc, ScanIdx) + Window.xy;
+	UNROLL
+	for (uint i = 0; i < RADIX; ++i, Pixel.x += Stride)
+	{
+		bool IsWindow = (Pixel.x <= Window.z);
+		if (IsWindow)
+		{
+			// RGBAの4チャンネルを2つの複素数で保持する
+			float4 SrcValue = SrcTexture[Pixel];
+			LocalBuffer[0][i] = SrcValue.rg;
+			LocalBuffer[1][i] = SrcValue.ba;
+		}
+	}
+}
+
+// Complex Multiplication using Complex as a complex number
+// The full complex arithmetic is defined as:
+// Real(A) = A.x,                          Image(A) = A.y
+// Real(A + B) = A.x + B.x;                Imag(A + B) = A.y + B.y
+// Real(A * B)  = A.x * B.x - A.y * B.y;   Imag(A * B) = A.x * B.y + B.x * A.y
+Complex ComplexMult(in Complex A, in Complex B)
+{
+	return Complex(A.x * B.x - A.y * B.y, A.x * B.y + B.x * A.y);
+}
+
+//const bool bIsForward = true;
+void Radix2FFT(inout Complex V0, inout Complex V1)
+{
+	V0 = V0 + V1;
+	V1 = V0 - V1 - V1; // V0 - V1
+}
+
+//const bool bIsForward = true;
+void Radix4FFT(inout Complex V0, inout Complex V1, inout Complex V2, inout Complex V3)
+{
+	// The even and odd transforms
+	Radix2FFT(V0, V2); 
+	Radix2FFT(V1, V3); 
+
+	// The butterfly merge of the even and odd transforms
+	// Complex(0, 1) * V3
+	Complex Tmp = Complex(-V3.y, V3.x);
+	Complex TmpV1 = V1;
+
+	V0 = V0 + TmpV1;
+	V1 = V2 + Tmp;
+	V3 = V2 - Tmp;
+	V2 = V0 - TmpV1 - TmpV1; // V0 - TmpV1
+}
+
+//const bool bIsForward = true;
+void Radix8FFT(inout Complex V0, inout Complex V1, inout Complex V2, inout Complex V3, inout Complex V4, inout Complex V5, inout Complex V6, inout Complex V7)
+{
+	// The even and odd transforms
+	Radix4FFT(V0, V2, V4, V6);
+	Radix4FFT(V1, V3, V5, V7);
+
+	// 0.7071067811865475 = 1/sqrt(2)
+	float InvSqrtTwo = float(1.f) / sqrt(2.f);
+	Complex Twiddle = Complex(InvSqrtTwo, InvSqrtTwo);
+
+	Complex Rslt[8];
+	Complex Tmp = ComplexMult(Twiddle, V3);
+
+	Rslt[0] = V0 + V1;
+	Rslt[4] = V0 - V1;
+
+	Rslt[1] = V2 + Tmp;
+	Rslt[5] = V2 - Tmp;
+
+	// V4 + i V5
+	Rslt[2] = Complex(V4.x - V5.y, V4.y + V5.x);
+	// V4 - i V5
+	Rslt[6] = Complex(V4.x + V5.y, V4.y - V5.x);
+
+	Twiddle.x = -Twiddle.x;
+	Tmp = ComplexMult(Twiddle, V7);
+
+	Rslt[3] = V6 + Tmp;
+	Rslt[7] = V6 - Tmp;
+
+	V0 = Rslt[0];
+	V1 = Rslt[1];
+	V2 = Rslt[2];
+	V3 = Rslt[3];
+	V4 = Rslt[4];
+	V5 = Rslt[5];
+	V6 = Rslt[6];
+	V7 = Rslt[7];
+}
+
+//const bool bIsForward = true;
+void RadixFFT(inout Complex v[RADIX])
+{
+	Radix8FFT(v[0], v[1], v[2], v[3], v[4], v[5], v[6], v[7]);
+}
+
+groupshared float SharedReal[2 * SCAN_LINE_LENGTH];
+#define NUM_BANKS 32
+
+void CopyLocalXToGroupShared(in Complex Local[RADIX], in uint Head, in uint Stride, in uint BankSkip)
+{
+	UNROLL
+	for (uint i = Head, r = 0; r < RADIX; ++r, i += Stride)
+	{
+		uint j = i + (i / NUM_BANKS) * BankSkip;
+		SharedReal[j] = Local[r].x;
+	}
+}
+
+void CopyLocalYToGroupShared(in Complex Local[RADIX], in uint Head, in uint Stride, in uint BankSkip)
+{
+	UNROLL
+	for (uint i = Head, r = 0; r < RADIX; ++r, i += Stride)
+	{
+		uint j = i + (i / NUM_BANKS) * BankSkip;
+		SharedReal[j] = Local[r].y;
+	}
+}
+
+void CopyGroupSharedToLocalX(inout Complex Local[RADIX], in uint Head, in uint Stride, in uint BankSkip)
+{
+	UNROLL
+	for (uint i = Head, r = 0; r < RADIX; ++r, i += Stride)
+	{
+		uint j = i + (i / NUM_BANKS) * BankSkip;
+		Local[r].x = SharedReal[j];
+	}
+}
+
+void CopyGroupSharedToLocalY(inout Complex Local[RADIX], in uint Head, in uint Stride, in uint BankSkip)
+{
+	UNROLL
+	for (uint i = Head, r = 0; r < RADIX; ++r, i += Stride)
+	{
+		uint j = i + (i / NUM_BANKS) * BankSkip;
+		Local[r].y = SharedReal[j];
+	}
+}
+
+// Exchange data with other threads by affecting a transpose 
+void TransposeData(inout Complex Local[RADIX], uint AHead, uint AStride, uint BHead, uint BStride)
+{
+	uint BankSkip = (AStride < NUM_BANKS) ? AStride : 0;
+
+	CopyLocalXToGroupShared(Local, AHead, AStride, BankSkip);
+	FFTMemoryBarrier();
+	CopyGroupSharedToLocalX(Local, BHead, BStride, BankSkip);
+	FFTMemoryBarrier();
+	CopyLocalYToGroupShared(Local, AHead, AStride, BankSkip);
+	FFTMemoryBarrier();
+	CopyGroupSharedToLocalY(Local, BHead, BStride, BankSkip);
+}
+
+// This accounts for about 9% of total time
+//const bool bIsForward = true;
+void Butterfly(inout Complex Local[RADIX], uint ThreadIdx, uint Length)
+{
+	float angle = TWO_PI * (ThreadIdx % Length) / float(Length * RADIX);
+
+	Complex TwiddleInc;
+	sincos(angle, TwiddleInc.y, TwiddleInc.x);
+	Complex Twiddle = TwiddleInc;
+	for (uint r = 1; r < RADIX; r++)
+	{
+		Local[r] = ComplexMult(Twiddle, Local[r]);
+		Twiddle = ComplexMult(Twiddle, TwiddleInc);
+	}
+}
+
+// Utility: As a function of j, 
+// returns Ns contiguous values, then skips R*Ns values, then the next Ns values, etc
+// (e.g. R = 3, Ns = 2: 0, 1, 6, 7, 12, 13..)
+// (e.g. R = 2, Ns = 4: 0, 1, 2, 3, 8, 9, 10, 11,..)
+uint Expand(in uint j, in uint Ns, in uint R) {
+	return (j / Ns) * Ns * R + (j % Ns);
+}
+
+//const bool bIsForward = true;
+// Performs a single pass Stockham FFT using group shared memory.
+void GroupSharedFFT(inout Complex Local[RADIX], in const uint ArrayLength, in const uint ThreadIdx)
+{
+	uint NumCols = ArrayLength / RADIX;
+	//uint IdxS = Expand(j, NumCols, RADIX);
+	//uint IdxS = (ThreadIdx / NumCols) * ArrayLength + (ThreadIdx % NumCols);
+	uint IdxS = ThreadIdx;
+    // uint Ns = 1;
+	// (j / Ns) * Ns * R + (j % Ns);
+	// Expand(j, Ns, RADIX);
+	uint IdxD = ThreadIdx * RADIX;
+
+	RadixFFT(Local);
+	TransposeData(Local, IdxD, 1, IdxS, NumCols);		
+
+	uint Ns = RADIX;
+	for (; Ns < NumCols; Ns *= RADIX)
+	{
+		Butterfly(Local, ThreadIdx, Ns);
+		IdxD = Expand(ThreadIdx, Ns, RADIX);
+		RadixFFT(Local);
+		FFTMemoryBarrier();
+		TransposeData(Local, IdxD, Ns, IdxS, NumCols);
+	}
+
+	Butterfly(Local, ThreadIdx, Ns);
+	RadixFFT(Local);
+	FFTMemoryBarrier();
+}
+
+#if 0 // テクスチャコピー実験
+[numthreads(512, 1, 1)]
+#else
+[numthreads(NUMTHREADSX, 1, 1)]
+#endif
+void TwoForOneRealFFTImage1D512x512(uint GroupID : SV_GroupID, uint GroupThreadID : SV_GroupThreadID)
+{
+#if 0 // テクスチャコピー実験
 	uint2 Pixel = uint2(GroupThreadID, GroupID);
-	DstTexture[Pixel] = SrcTexture[Pixel];
+	DstTexture[Pixel] = float4(SrcTexture[Pixel].r, 0.0f, 0.0f, SrcTexture[Pixel].a);
+#else
+	//const bool bIsHorizontal = true;
+	//const bool bIsForward = true;
+	//const bool bModifyInput = false;
+
+	const uint ThreadIdx = GroupThreadID;
+	const uint ScanIdx  = GroupID;
+	const uint SignalLength = 512;
+	uint Head = ThreadIdx;
+	const uint Stride = STRIDE;   
+
+	Complex LocalBuffer[2][RADIX];
+
+	CopyDataSrcWindowToLocal(LocalBuffer, ScanIdx, Head, Stride, SrcRect);
+#endif
+
+	GroupSharedFFT(LocalBuffer[0], SignalLength, ThreadIdx);
+	GroupSharedFFT(LocalBuffer[1], SignalLength, ThreadIdx);
 }
 
