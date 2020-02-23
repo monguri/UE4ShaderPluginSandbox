@@ -410,7 +410,7 @@ void MergeTwoForOne(inout Complex LocalBuffer[RADIX], in uint Head, in uint Stri
 	float TmpX[RADIX];
 	for (uint i = 0; i < RADIX; ++i)
 	{
-		TmpX[i] = LocalBuffer[i];
+		TmpX[i] = LocalBuffer[i].x;
 	}
 
 	CopyLocalYToGroupShared(LocalBuffer, Head, Stride);
@@ -437,7 +437,7 @@ void MergeTwoForOne(inout Complex LocalBuffer[RADIX], in uint Head, in uint Stri
 		// Tmp = (K < Non2) ? I *  G_k : -I * F
 		float Tmp = SharedReal[NmK];
 
-		Tmp *= (K < Non2) ? 1 : -1;
+		Tmp *= (K > Non2) ? -1 : 1;
 
 		LocalBuffer[i].x += Tmp;
 	}
