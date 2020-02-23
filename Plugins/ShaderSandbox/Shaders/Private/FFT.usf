@@ -167,6 +167,16 @@ void CopyGroupSharedToLocalY(inout Complex Local[RADIX], in uint Head, in uint S
 	}
 }
 
+void CopyLocalXToGroupShared(in Complex Local[RADIX], in uint Head, in uint Stride)
+{
+	CopyLocalXToGroupShared(Local, Head, Stride, 0);
+}
+
+void CopyLocalYToGroupShared(in Complex Local[RADIX], in uint Head, in uint Stride)
+{
+	CopyLocalYToGroupShared(Local, Head, Stride, 0);
+}
+
 // Exchange data with other threads by affecting a transpose 
 void TransposeData(inout Complex Local[RADIX], uint AHead, uint AStride, uint BHead, uint BStride)
 {
@@ -236,6 +246,142 @@ void GroupSharedFFT(inout Complex Local[RADIX], in const uint ArrayLength, in co
 	FFTMemoryBarrier();
 }
 
+void SplitTwoForOne(inout Complex LocalBuffer[RADIX], in uint Head, in uint Stride, in uint N)
+{
+	const uint Non2 = N / 2;
+	
+	// On input, Each thread has, in LocalBuffer, the frequencies
+	// K = Head + j * Stride;  where j = 0, .., RADIX-1.. Head = ThreadIDx, Stride = NumberOfThreads
+
+	// Write the complex FFT into group shared memory.
+	
+	CopyLocalXToGroupShared(LocalBuffer, Head, Stride);
+	FFTMemoryBarrier();
+
+	// Construct the transform for the two real signals in the LocalBuffer
+	UNROLL
+
+	for (uint i = 0, K = Head; i < RADIX; ++i, K += Stride)
+	{
+		//
+		// K = N/2 - abs(SrcIdx - N/2)
+
+		// DstK = SrcIdx % Non2;
+		// N - k
+		
+		FLATTEN
+		uint NmK = (K > 0) ? (N - K) : 0;
+
+		// Z_k = LocalBuffer[i]
+		// If k < N/2  : Store  F_k = 1/2 (Z_k + Z*_{N-k})
+		// If k > N/2  : Compute I*G_k = 1/2 (Z_k - Z*_{N-k})
+		
+		// Tmp =  {+,-}ComplexConjugate( Z_{N-k})
+		float Tmp = SharedReal[NmK];
+		Tmp *= (K > Non2) ? -1 : 1;
+		LocalBuffer[i].x += Tmp;
+	}
+
+	if (Head == 0)
+	{
+		LocalBuffer[0].x = 2.0f * SharedReal[0];
+	}
+
+	FFTMemoryBarrier();
+	CopyLocalYToGroupShared(LocalBuffer, Head, Stride);
+	FFTMemoryBarrier();
+
+	UNROLL
+	for (uint i = 0, K = Head; i < RADIX; ++i, K += Stride)
+	{
+		//
+		// K = N/2 - abs(SrcIdx - N/2)
+
+		// DstK = SrcIdx % Non2;
+		// N - k
+		
+		FLATTEN
+		uint NmK = (K > 0) ? (N - K) : 0;
+
+		// Z_k = LocalBuffer[i]
+		// If k < N/2  : Store  F_k = 1/2 (Z_k + Z*_{N-k})
+		// If k > N/2  : Compute I*G_k = 1/2 (Z_k - Z*_{N-k})
+		
+		// Tmp =  {+,-}ComplexConjugate( Z_{N-k})
+		float Tmp = -SharedReal[NmK];
+		
+		Tmp *= (K < Non2) ? 1 : -1;
+
+		LocalBuffer[i].y += Tmp;
+	}
+
+	if (Head == 0)
+	{
+		LocalBuffer[0].y = 2.0f * SharedReal[0];
+	}
+
+	UNROLL
+	for (uint i = 0; i < RADIX; ++i)
+	{
+		LocalBuffer[i] *= 0.5; 
+	}
+
+	UNROLL
+	for (uint i = 0, K = Head; i < RADIX; ++i, K += Stride)
+	{
+		// If k > N/2 get G_k from I*G_k:  G_k = -I * (I G_k)
+		if (K > Non2)
+		{
+			LocalBuffer[i] = ComplexMult(Complex(0, -1), LocalBuffer[i]);
+		}
+	}
+}
+
+//const bool bIsHorizontal = true;
+void WriteTwoForOneFrequencyData(inout Complex LocalBuffer[2][RADIX], uint ScanIdx, uint Loc, uint Stride, uint N)
+{
+	FFTMemoryBarrier();
+
+	// Decompose the transforms.  Note '0' and 'N/2' offsets will still be mixed, and have to be explicitly dealt with below. 
+	SplitTwoForOne(LocalBuffer[0], Loc, Stride, N);
+	FFTMemoryBarrier();
+	SplitTwoForOne(LocalBuffer[1], Loc, Stride, N);
+
+	const bool bIsFirstElement = (Loc == 0);
+	const uint Non2 =  N / 2;
+
+	uint2 Pixel = uint2(Loc, ScanIdx);
+	float4 DstValue;
+	UNROLL
+	for (uint r = 0; r < RADIX; ++r, Pixel.x += Stride)
+	{
+		DstValue.xy = LocalBuffer[0][r];
+		DstValue.zw = LocalBuffer[1][r];
+		DstTexture[Pixel] = DstValue;
+
+		// 以下の2ブロックの処理でパディング分の2ピクセルを埋めている
+
+		// The N/2 element holds F_N/2 + I G_N/2
+		// Write F_N/2 into this column, and G_N/2 into the the last column 
+		if (Pixel.x == Non2)
+		{
+			DstTexture[Pixel] = float4(DstValue.x, 0.0f, DstValue.z, 0.0f);
+			DstTexture[uint2(N + 1, Pixel.y)] = float4(DstValue.y, 0.0f, DstValue.w, 0.0f);
+		}
+
+		// First element holds F_o + iG_o.  
+		// Write Go into the second to last column. (this is the same as G_N)
+		if (bIsFirstElement)
+		{
+			DstValue.xy = LocalBuffer[0][0];
+			DstValue.zw = LocalBuffer[1][0];
+
+			DstTexture[uint2(0, Pixel.y)] = float4(DstValue.x, 0.0f, DstValue.z, 0.0f); // F_o 
+			DstTexture[uint2(N, Pixel.y)] = float4(DstValue.y, 0.0f, DstValue.w, 0.0f); // G_o 
+		}
+	}
+}
+
 #if 0 // テクスチャコピー実験
 [numthreads(512, 1, 1)]
 #else
@@ -260,9 +406,15 @@ void TwoForOneRealFFTImage1D512x512(uint GroupID : SV_GroupID, uint GroupThreadI
 	Complex LocalBuffer[2][RADIX];
 
 	CopyDataSrcWindowToLocal(LocalBuffer, ScanIdx, Head, Stride, SrcRect);
-#endif
 
+	// Fourier Transform  the data
+	// This uses the group shared memory and has appropriate syncs
 	GroupSharedFFT(LocalBuffer[0], SignalLength, ThreadIdx);
 	GroupSharedFFT(LocalBuffer[1], SignalLength, ThreadIdx);
+
+	// Write a frequency space buffer with two-for-one data layout
+	// FFTMemoryBarrier();
+	WriteTwoForOneFrequencyData(LocalBuffer, ScanIdx, Head, Stride, SignalLength);
+#endif
 }
 
