@@ -74,8 +74,6 @@ void DoFFT2D512x512(FRHICommandListImmediate& RHICmdList, EFFTMode Mode, const F
 	TShaderMap<FGlobalShaderType>* ShaderMap = GetGlobalShaderMap(ERHIFeatureLevel::SM5);
 
 	{
-		TShaderMapRef<FTwoForOneRealFFTImage1D512x512> TwoForOneForwardFFTCS(ShaderMap);
-
 		FPooledRenderTargetDesc Desc = FPooledRenderTargetDesc::Create2DDesc(
 			TmpBufferSize,
 			EPixelFormat::PF_A32B32G32R32F,
@@ -88,6 +86,11 @@ void DoFFT2D512x512(FRHICommandListImmediate& RHICmdList, EFFTMode Mode, const F
 		// TODO:Ç±ÇÍÇÕà»ëOé¿å±ÇµÇΩRDGTextureÇÃèëÇ´ï˚Ç≈èëÇØÇÈÇ©Ç‡
 		TRefCountPtr<IPooledRenderTarget> TmpRenderTarget;
 		GRenderTargetPool.FindFreeElement(RHICmdList, Desc, TmpRenderTarget, TEXT("FFT2D Tmp Buffer"));
+
+		TRefCountPtr<IPooledRenderTarget> TmpRenderTarget2;
+		GRenderTargetPool.FindFreeElement(RHICmdList, Desc, TmpRenderTarget2, TEXT("FFT2D Tmp Buffer2"));
+
+		TShaderMapRef<FTwoForOneRealFFTImage1D512x512> TwoForOneForwardFFTCS(ShaderMap);
 
 		FTwoForOneRealFFTImage1D512x512::FParameters* TwoForOneForwardFFTParams = GraphBuilder.AllocParameters<FTwoForOneRealFFTImage1D512x512::FParameters>();
 		TwoForOneForwardFFTParams->Forward = 1;
@@ -106,9 +109,6 @@ void DoFFT2D512x512(FRHICommandListImmediate& RHICmdList, EFFTMode Mode, const F
 			TwoForOneForwardFFTParams,
 			FIntVector(512, 1, 1)
 		);
-
-		TRefCountPtr<IPooledRenderTarget> TmpRenderTarget2;
-		GRenderTargetPool.FindFreeElement(RHICmdList, Desc, TmpRenderTarget2, TEXT("FFT2D Tmp Buffer2"));
 
 		TShaderMapRef<FComplexFFTImage1D512x512> ComplexForwardFFTCS(ShaderMap);
 
@@ -146,6 +146,25 @@ void DoFFT2D512x512(FRHICommandListImmediate& RHICmdList, EFFTMode Mode, const F
 			RDG_EVENT_NAME("ComplexFFTImage1D512x512InverseHorizontal"),
 			*ComplexInverseFFTCS,
 			ComplexInverseFFTParams,
+			FIntVector(512 + FREQUENCY_PADDING, 1, 1)
+		);
+
+		TShaderMapRef<FTwoForOneRealFFTImage1D512x512> TwoForOneInverseFFTCS(ShaderMap);
+
+		FTwoForOneRealFFTImage1D512x512::FParameters* TwoForOneInverseFFTParams = GraphBuilder.AllocParameters<FTwoForOneRealFFTImage1D512x512::FParameters>();
+		TwoForOneInverseFFTParams->Forward = 0;
+		TwoForOneInverseFFTParams->SrcTexture = TmpRenderTarget->GetRenderTargetItem().ShaderResourceTexture;
+		TwoForOneInverseFFTParams->SrcSampler = TStaticSamplerState<SF_Bilinear, AM_Wrap, AM_Wrap, AM_Wrap>::GetRHI();
+		TwoForOneInverseFFTParams->DstTexture = DstUAV;
+		TwoForOneInverseFFTParams->SrcRectMin = TmpRect.Min;
+		TwoForOneInverseFFTParams->SrcRectMax = TmpRect.Max;
+		TwoForOneInverseFFTParams->DstRect = DstRect;
+
+		FComputeShaderUtils::AddPass(
+			GraphBuilder,
+			RDG_EVENT_NAME("TwoForOneRealFFTImage1D512x512InverseHorizontal"),
+			*TwoForOneInverseFFTCS,
+			TwoForOneInverseFFTParams,
 			FIntVector(512 + FREQUENCY_PADDING, 1, 1)
 		);
 	}

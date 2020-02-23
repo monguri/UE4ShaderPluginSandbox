@@ -20,6 +20,17 @@ uint2 SrcRectMin;
 uint2 SrcRectMax;
 uint4 DstRect;
 
+// Utility to replace any NaNs with zeros.
+void ScrubNANs(inout Complex LocalBuffer[2][RADIX])
+{
+	UNROLL
+	for (uint r = 0; r < RADIX; ++r)
+	{	
+		LocalBuffer[0][r] = -min(-LocalBuffer[0][r], Complex(0,0) ); 
+		LocalBuffer[1][r] = -min(-LocalBuffer[1][r], Complex(0,0) ); 
+	}
+}
+
 //const bool bIsHorizontal = true;
 void CopyDataSrcWindowToLocal(inout Complex LocalBuffer[2][RADIX], in uint ScanIdx, uint Loc, uint Stride, uint4 Window)
 {
@@ -281,6 +292,34 @@ void GroupSharedFFT(in const bool bIsForward, inout Complex Local[RADIX], in con
 	FFTMemoryBarrier();
 }
 
+// The Two-For-One trick:  FFT two real signals (f,g) of length N 
+// are transformed simultaneously by treating them as a single complex signal z.
+// z_n = f_n + I * g_n.
+// 
+// Giving the complex amplitudes (i.e. the transform)  Z_k = F_k + I * G_k.
+//
+// The transforms of the real signals can be recovered as
+//
+//  F_k = (1/2) (Z_k + ComplexConjugate(Z_{N-k}))
+//  G_k = (-i/2)(Z_k - ComplexConjugate(Z_{N-k}))
+//
+// Furthermore, the transform of any real signal x_n has the symmetry
+//  X_k = ComplexConjugate(X_{N-k})   
+
+
+// Separate the FFT of two real signals that were processed togehter
+// using the two-for-one trick.
+//
+// On input the data in LocalBuffer across the threads in this group
+// holds the transform  of the complex signal z = f + I * g of lenght N.
+//
+// On return the transform of f and g have been separated and stored
+// in the LocalBuffer in a form consistent with the packing the x-signal transform forward, 
+// followed by the y-signal transform in reverse.
+// 
+// {F_o, G_o}, {F_1}, {F_2},..,{F_{N/2-1}}, {F_N/2, G_N/2}, {G_{N/2 +1}},  {G_{N/2 +2}}, .., {G_{N-2}},    {G_{N-1}} 
+//     0       , 1    , 2    ,..., N/2-1,       N/2,           N/2 +1,      N/2 +2,  ..,  N/2- (2-N/2),   N/2 - (1-N/2)
+// here {} := Complex
 void SplitTwoForOne(inout Complex LocalBuffer[RADIX], in uint Head, in uint Stride, in uint N)
 {
 	const uint Non2 = N / 2;
@@ -372,6 +411,168 @@ void SplitTwoForOne(inout Complex LocalBuffer[RADIX], in uint Head, in uint Stri
 	}
 }
 
+// Inverse of SplitTwoForOne()
+// Combine the FFT of two real signals (f,g) into a single complex signal
+// for use in inverting a "two-for-one" FFT .
+//
+//
+// On return the transform of f and g have been separated and stored
+// in the LocalBuffer in a form consistent with the packing the x-signal transform forward, 
+// followed by the y-signal transform in reverse.
+// 
+// {F_o, G_o}, {F_1}, {F_2},..,{F_{N/2-1}}, {F_N/2, G_N/2}, {G_{N/2 +1}},  {G_{N/2 +2}}, .., { G_{N-2}},    {G_{N-1}} 
+//     0       , 1    , 2    ,..., N/2-1,       N/2,           N/2 +1,      N/2 +2,      ..,  N/2- (2-N/2),  N/2 - (1-N/2)
+// here {} := Complex
+//
+// On return the data in LocalBuffer across the threads in this group
+// hold the transform  of the complex signal z = f + ig of lenght N.
+//
+void MergeTwoForOne(inout Complex LocalBuffer[RADIX], in uint Head, in uint Stride, in uint N)
+{
+	uint Non2 = N / 2;
+
+	// Write the two FFTs into shared memory.
+	float TmpX[RADIX];
+	for (uint i = 0; i < RADIX; ++i)
+	{
+		TmpX[i] = LocalBuffer[i];
+	}
+
+	CopyLocalYToGroupShared(LocalBuffer, Head, Stride);
+
+	FFTMemoryBarrier();
+
+	// Compose the transform of a single f+ig signal from the two real signals in the LocalBuffer
+	UNROLL
+	for (uint i = 0, K = Head; i < RADIX; ++i, K += Stride)
+	{
+		// N - k 
+		FLATTEN uint NmK = (K > 0) ? (N - K) : 0;
+
+		// If k < N/2  : LocalBuffer[i] = F_k,  
+		//               Shared[N-K] =  G[N-K] = Conjugate(G[k]) =  (G[k]_r, -G[k]_i) = Complex(G_r, -G_i)
+		//                          want   I G[k] =  float(-G[k]_i, G[k]_r)
+		//                 Tmp = I * G_k   
+		// If k > N/2  : LocalBuffer[i] = G_k 
+		//               Shared[N-K] = F[N-k] = Conjugate(F[k]) = Complex(F[k]_r, -F[k]_i)
+		//                           want -I F[k] = Complex(F[k]_i, -F[k]_r)
+		//                 Tmp = -I * F   
+		//  ComplexConjugate( Z_{N-k})
+
+		// Tmp = (K < Non2) ? I *  G_k : -I * F
+		float Tmp = SharedReal[NmK];
+
+		Tmp *= (K < Non2) ? 1 : -1;
+
+		LocalBuffer[i].x += Tmp;
+	}
+
+	float2 FirstElement = float2(0, SharedReal[0]);
+	float2 MiddleElement = float2(0, SharedReal[Non2]);
+
+	FFTMemoryBarrier();
+
+	// Copy TmpX to GroupShared
+	UNROLL
+	for (uint r = 0, i = Head; r < RADIX; ++r, i += Stride)
+	{
+		SharedReal[i] = TmpX[r];
+	}
+
+	FFTMemoryBarrier();
+	FirstElement.x = SharedReal[0];
+	MiddleElement.x = SharedReal[Non2];
+
+	UNROLL
+	for (uint i = 0, K = Head; i < RADIX; ++i, K += Stride)
+	{
+		// N - k 
+		FLATTEN uint NmK = (K > 0) ? (N - K) : 0;
+
+		// If k < N/2  : LocalBuffer[i] = F_k,  
+		//               Shared[N-K] =  G[N-K] = Conjugate(G[k]) =  (G[k]_r, -G[k]_i) = Complex(G_r, -G_i)
+		//                          want   I G[k] =  float(-G[k]_i, G[k]_r)
+		//                 Tmp = I * G_k   
+		// If k > N/2  : LocalBuffer[i] = G_k 
+		//               Shared[N-K] = F[N-k] = Conjugate(F[k]) = Complex(F[k]_r, -F[k]_i)
+		//                           want -I F[k] = Complex(F[k]_i, -F[k]_r)
+		//                 Tmp = -I * F   
+		//  ComplexConjugate( Z_{N-k})
+
+		// Tmp = (K < Non2) ? I *  G_k : -I * F
+		float Tmp = SharedReal[ NmK ]; 
+		Tmp *= (K > Non2) ? -1 : 1;
+		
+		LocalBuffer[i].y += Tmp;
+	}
+
+	UNROLL
+	for (uint i = 0, K = Head; i < RADIX; ++i, K += Stride)
+	{
+		// if k > N/2 we have G - I *  F.  Multiply by I to get F + I * G
+		if (K > Non2)
+		{
+			LocalBuffer[i] = ComplexMult(Complex(0, 1), LocalBuffer[i]);
+		}
+
+		if (K == Non2)
+		{
+			// F_N/2 + I * G_N/2
+			LocalBuffer[i] = MiddleElement;
+		}
+	}
+
+	if (Head == 0)
+	{
+		LocalBuffer[0] = FirstElement;
+	}
+}
+
+// The inverse of WriteTwoForOneFrequencyData()
+// Reads into local registers, data written in the TwoForOneFrequency layout back into the form consistent with the transform of a single complex signal.
+//const bool bIsHorizontal = true;
+void ReadTwoForOneFrequencyData(inout Complex LocalBuffer[2][RADIX], in uint ScanIdx, in uint Loc, in uint Stride, in uint N)
+{
+	const bool bIsFirstElement = (Loc == 0);
+	const uint Non2 =  N / 2;
+
+	// last two values
+	float4 NValue = SrcTexture[uint2(N, ScanIdx)];
+	float4 NppValue = SrcTexture[uint2(N + 1, ScanIdx)];
+
+	uint2 Pixel = uint2(Loc, ScanIdx);
+	UNROLL
+	for (uint i = 0; i < RADIX; ++i, Pixel.x += Stride)
+	{
+		float4 SrcValue = SrcTexture[Pixel];
+		LocalBuffer[0][i] = SrcValue.xy;
+		LocalBuffer[1][i] = SrcValue.zw;
+
+		// 以下の2ブロックの処理でパディング分の2ピクセルを埋めている
+
+		if (Pixel.x == Non2)
+		{
+			// local buffer will be pure real with F_N/2,  need to add I * G_N/2 (G_N/2 is real ie float2(G_r, 0))
+			LocalBuffer[0][i] += NppValue.yx;
+			LocalBuffer[1][i] += NppValue.wz;
+		}
+
+		if (bIsFirstElement)
+		{
+			LocalBuffer[0][i] += NValue.yx;
+			LocalBuffer[1][i] += NValue.wz;
+		}
+	}
+
+	// Combine the transforms of the two real signals (F,G) as Z = F + I G
+	MergeTwoForOne(LocalBuffer[ 0 ], Loc, Stride, N);
+	FFTMemoryBarrier();
+	MergeTwoForOne(LocalBuffer[ 1 ], Loc, Stride, N);
+	
+	// Done with the group shared memory that was used in the merge
+	FFTMemoryBarrier();
+}
+
 //const bool bIsHorizontal = true;
 void WriteTwoForOneFrequencyData(inout Complex LocalBuffer[2][RADIX], uint ScanIdx, uint Loc, uint Stride, uint N)
 {
@@ -417,54 +618,6 @@ void WriteTwoForOneFrequencyData(inout Complex LocalBuffer[2][RADIX], uint ScanI
 	}
 }
 
-#if 0 // テクスチャコピー実験
-[numthreads(512, 1, 1)]
-#else
-[numthreads(NUMTHREADSX, 1, 1)]
-#endif
-void TwoForOneRealFFTImage1D512x512(uint GroupID : SV_GroupID, uint GroupThreadID : SV_GroupThreadID)
-{
-#if 0 // テクスチャコピー実験
-	uint2 Pixel = uint2(GroupThreadID, GroupID);
-	DstTexture[Pixel] = float4(SrcTexture[Pixel].r, 0.0f, 0.0f, SrcTexture[Pixel].a);
-#else
-	//const bool bIsHorizontal = (TransformType & 0x1);
-	//const bool bIsForward    = (TransformType & 0x2);
-	const bool bIsForward = (Forward > 0);
-	//const bool bModifyInput  = (TransformType & 0x4);
-	//const bool bIsHorizontal = true;
-	//const bool bIsForward    = true;
-	//const bool bModifyInput  = false;
-
-	// Threads are defined in a 1d array.
-	const uint ThreadIdx = GroupThreadID;
-	// The (horizontal / vertical) scan line this thread works on
-	const uint ScanIdx  = GroupID;
-	// The length of the signal to be transformed
-	const uint SignalLength = SCAN_LINE_LENGTH;
-	// The main memory access pattern for this thread.
-	uint Head = ThreadIdx;
-	const uint Stride = STRIDE;   
-
-	// Thread-local memory.  Reserve two arrays since we plit .xy and .zw channels   
-	Complex LocalBuffer[2][RADIX];
-
-	uint4 SrcRect;
-	SrcRect.xy = SrcRectMin.xy;
-	SrcRect.zw = SrcRectMax.xy;
-	CopyDataSrcWindowToLocal(LocalBuffer, ScanIdx, Head, Stride, SrcRect);
-
-	// Fourier Transform  the data
-	// This uses the group shared memory and has appropriate syncs
-	GroupSharedFFT(bIsForward, LocalBuffer[0], SignalLength, ThreadIdx);
-	GroupSharedFFT(bIsForward, LocalBuffer[1], SignalLength, ThreadIdx);
-
-	// Write a frequency space buffer with two-for-one data layout
-	// FFTMemoryBarrier();
-	WriteTwoForOneFrequencyData(LocalBuffer, ScanIdx, Head, Stride, SignalLength);
-#endif
-}
-
 //const bool bIsHorizontal = false;
 void CopyDataSrcWindowToLocal(inout Complex LocalBuffer[2][RADIX], uint ScanIdx, uint Loc, uint Stride, uint2 WindowMin, uint2 WindowMax)
 {
@@ -503,6 +656,77 @@ void CopyDataLocalToDstWindow(in Complex LocalBuffer[2][RADIX], in uint ScanIdx,
 
 		DstTexture[Pixel] = DstValue;
 	}
+}
+
+#if 0 // テクスチャコピー実験
+[numthreads(512, 1, 1)]
+#else
+[numthreads(NUMTHREADSX, 1, 1)]
+#endif
+void TwoForOneRealFFTImage1D512x512(uint GroupID : SV_GroupID, uint GroupThreadID : SV_GroupThreadID)
+{
+#if 0 // テクスチャコピー実験
+	uint2 Pixel = uint2(GroupThreadID, GroupID);
+	DstTexture[Pixel] = float4(SrcTexture[Pixel].r, 0.0f, 0.0f, SrcTexture[Pixel].a);
+#else
+	//const bool bIsHorizontal = (TransformType & 0x1);
+	//const bool bIsForward    = (TransformType & 0x2);
+	const bool bIsForward = (Forward > 0);
+	//const bool bModifyInput  = (TransformType & 0x4);
+	//const bool bIsHorizontal = true;
+	//const bool bIsForward    = true;
+	//const bool bModifyInput  = false;
+
+	// Threads are defined in a 1d array.
+	const uint ThreadIdx = GroupThreadID;
+	// The (horizontal / vertical) scan line this thread works on
+	const uint ScanIdx  = GroupID;
+	// The length of the signal to be transformed
+	const uint SignalLength = SCAN_LINE_LENGTH;
+	// The main memory access pattern for this thread.
+	uint Head = ThreadIdx;
+	const uint Stride = STRIDE;   
+
+	// Thread-local memory.  Reserve two arrays since we plit .xy and .zw channels   
+	Complex LocalBuffer[2][RADIX];
+
+	if (bIsForward)
+	{
+		uint4 SrcRect;
+		SrcRect.xy = SrcRectMin.xy;
+		SrcRect.zw = SrcRectMax.xy;
+		// Read from an image buffer
+		CopyDataSrcWindowToLocal(LocalBuffer, ScanIdx, Head, Stride, SrcRect);
+	}
+	else
+	{
+		// Read a frequency space buffer with two-for-one data layout
+		ReadTwoForOneFrequencyData(LocalBuffer, ScanIdx, Head, Stride, SignalLength);
+	}
+
+	// Fourier Transform  the data
+	// This uses the group shared memory and has appropriate syncs
+	GroupSharedFFT(bIsForward, LocalBuffer[0], SignalLength, ThreadIdx);
+	GroupSharedFFT(bIsForward, LocalBuffer[1], SignalLength, ThreadIdx);
+
+	if (bIsForward)
+	{
+		// Write a frequency space buffer with two-for-one data layout
+		// FFTMemoryBarrier();
+		WriteTwoForOneFrequencyData(LocalBuffer, ScanIdx, Head, Stride, SignalLength);
+	}
+	else
+	{
+		// Write image space data.
+		// FFTMemoryBarrier();
+
+		// This is specialized for images, where floating point errors may have
+		// resulted in (very very small) negative color values.
+		ScrubNANs(LocalBuffer);
+
+		CopyDataLocalToDstWindow(LocalBuffer, ScanIdx, Head, Stride, DstRect);
+	}
+#endif
 }
 
 [numthreads(NUMTHREADSX, 1, 1)]
