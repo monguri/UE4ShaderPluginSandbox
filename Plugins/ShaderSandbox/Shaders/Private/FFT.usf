@@ -31,30 +31,6 @@ void ScrubNANs(inout Complex LocalBuffer[2][RADIX])
 	}
 }
 
-//const bool bIsHorizontal = true;
-void CopyDataSrcWindowToLocal(inout Complex LocalBuffer[2][RADIX], in uint ScanIdx, uint Loc, uint Stride, uint4 Window)
-{
-	for (uint i = 0; i < RADIX; i++)
-	{
-		LocalBuffer[0][i] = Complex(0.0f, 0.0f);
-		LocalBuffer[1][i] = Complex(0.0f, 0.0f);
-	}
-
-	uint2 Pixel = uint2(Loc, ScanIdx) + Window.xy;
-	UNROLL
-	for (uint i = 0; i < RADIX; ++i, Pixel.x += Stride)
-	{
-		bool IsWindow = !(Pixel.x > Window.z);
-		if (IsWindow)
-		{
-			// RGBAの4チャンネルを2つの複素数で保持する
-			float4 SrcValue = SrcTexture[Pixel];
-			LocalBuffer[0][i] = SrcValue.xy;
-			LocalBuffer[1][i] = SrcValue.zw;
-		}
-	}
-}
-
 // Complex Multiplication using Complex as a complex number
 // The full complex arithmetic is defined as:
 // Real(A) = A.x,                          Image(A) = A.y
@@ -334,7 +310,6 @@ void SplitTwoForOne(inout Complex LocalBuffer[RADIX], in uint Head, in uint Stri
 
 	// Construct the transform for the two real signals in the LocalBuffer
 	UNROLL
-
 	for (uint i = 0, K = Head; i < RADIX; ++i, K += Stride)
 	{
 		//
@@ -556,12 +531,12 @@ void ReadTwoForOneFrequencyData(inout Complex LocalBuffer[2][RADIX], in uint Sca
 			LocalBuffer[0][i] += NppValue.yx;
 			LocalBuffer[1][i] += NppValue.wz;
 		}
+	}
 
-		if (bIsFirstElement)
-		{
-			LocalBuffer[0][i] += NValue.yx;
-			LocalBuffer[1][i] += NValue.wz;
-		}
+	if (bIsFirstElement)
+	{
+		LocalBuffer[0][0] += NValue.yx;
+		LocalBuffer[1][0] += NValue.wz;
 	}
 
 	// Combine the transforms of the two real signals (F,G) as Z = F + I G
@@ -618,6 +593,31 @@ void WriteTwoForOneFrequencyData(inout Complex LocalBuffer[2][RADIX], uint ScanI
 	}
 }
 
+//const bool bIsHorizontal = true;
+void CopyDataSrcWindowToLocal(inout Complex LocalBuffer[2][RADIX], in uint ScanIdx, uint Loc, uint Stride, uint4 Window)
+{
+	for (uint i = 0; i < RADIX; i++)
+	{
+		LocalBuffer[0][i] = Complex(0.0f, 0.0f);
+		LocalBuffer[1][i] = Complex(0.0f, 0.0f);
+	}
+
+	// offset for window start
+	uint2 Pixel = uint2(Loc, ScanIdx) + Window.xy;
+	UNROLL
+	for (uint i = 0; i < RADIX; ++i, Pixel.x += Stride)
+	{
+		bool IsWindow = !(Pixel.x > Window.z);
+		if (IsWindow)
+		{
+			// RGBAの4チャンネルを2つの複素数で保持する
+			float4 SrcValue = SrcTexture[Pixel];
+			LocalBuffer[0][i] = SrcValue.xy;
+			LocalBuffer[1][i] = SrcValue.zw;
+		}
+	}
+}
+
 //const bool bIsHorizontal = false;
 void CopyDataSrcWindowToLocal(inout Complex LocalBuffer[2][RADIX], uint ScanIdx, uint Loc, uint Stride, uint2 WindowMin, uint2 WindowMax)
 {
@@ -642,19 +642,35 @@ void CopyDataSrcWindowToLocal(inout Complex LocalBuffer[2][RADIX], uint ScanIdx,
 	}
 }
 
-//const bool bIsHorizontal = false;
-void CopyDataLocalToDstWindow(in Complex LocalBuffer[2][RADIX], in uint ScanIdx, uint Loc, uint Stride, uint4 ROIRect)
+void CopyDataLocalToDstWindow(in Complex LocalBuffer[2][RADIX], bool bIsHorizontal, in uint ScanIdx, uint Loc, uint Stride, uint4 ROIRect)
 {
-	uint2 Pixel = uint2(ScanIdx + ROIRect.x, Loc + ROIRect.y);
-
-	UNROLL
-	for (uint r = 0; r < RADIX && Pixel.y < ROIRect.w; ++r, Pixel.y += Stride)
+	if(bIsHorizontal)
 	{
-		float4 DstValue;
-		DstValue.xy = LocalBuffer[0][r];
-		DstValue.zw = LocalBuffer[1][r];
+		uint2 Pixel = uint2(Loc + ROIRect.x, ScanIdx + ROIRect.y);
 
-		DstTexture[Pixel] = DstValue;
+		UNROLL
+		for (uint r = 0; r < RADIX && Pixel.x < ROIRect.z; ++r, Pixel.x += Stride)
+		{
+			float4 DstValue;
+			DstValue.xy = LocalBuffer[0][r];
+			DstValue.zw = LocalBuffer[1][r];
+
+			DstTexture[Pixel] = DstValue;
+		}
+	}
+	else
+	{
+		uint2 Pixel = uint2(ScanIdx + ROIRect.x, Loc + ROIRect.y);
+
+		UNROLL
+		for (uint r = 0; r < RADIX && Pixel.y < ROIRect.w; ++r, Pixel.y += Stride)
+		{
+			float4 DstValue;
+			DstValue.xy = LocalBuffer[0][r];
+			DstValue.zw = LocalBuffer[1][r];
+
+			DstTexture[Pixel] = DstValue;
+		}
 	}
 }
 
@@ -673,7 +689,7 @@ void TwoForOneRealFFTImage1D512x512(uint GroupID : SV_GroupID, uint GroupThreadI
 	//const bool bIsForward    = (TransformType & 0x2);
 	const bool bIsForward = (Forward > 0);
 	//const bool bModifyInput  = (TransformType & 0x4);
-	//const bool bIsHorizontal = true;
+	const bool bIsHorizontal = true;
 	//const bool bIsForward    = true;
 	//const bool bModifyInput  = false;
 
@@ -724,7 +740,7 @@ void TwoForOneRealFFTImage1D512x512(uint GroupID : SV_GroupID, uint GroupThreadI
 		// resulted in (very very small) negative color values.
 		ScrubNANs(LocalBuffer);
 
-		CopyDataLocalToDstWindow(LocalBuffer, ScanIdx, Head, Stride, DstRect);
+		CopyDataLocalToDstWindow(LocalBuffer, bIsHorizontal, ScanIdx, Head, Stride, DstRect);
 	}
 #endif
 }
@@ -735,7 +751,7 @@ void ComplexFFTImage1D512x512(uint GroupID : SV_GroupID, uint GroupThreadID : SV
 	//const bool bIsHorizontal = (TransformType & 0x1);
 	//const bool bIsForward    = (TransformType & 0x2);
 	const bool bIsForward = (Forward > 0);
-	//const bool bIsHorizontal = false;
+	const bool bIsHorizontal = false;
 	//const bool bIsForward    = true;
 
 	// Threads are defined in a 1d array.
@@ -766,6 +782,6 @@ void ComplexFFTImage1D512x512(uint GroupID : SV_GroupID, uint GroupThreadID : SV
 	// Copy data to target buffer
 	// Write image space data.
 	//FFTMemoryBarrier();
-	CopyDataLocalToDstWindow(LocalBuffer, ScanIdx, Head, Stride, DstRect); // DstRect.MinがFIntPoint(0,0)である前提
+	CopyDataLocalToDstWindow(LocalBuffer, bIsHorizontal, ScanIdx, Head, Stride, DstRect); // DstRect.MinがFIntPoint(0,0)である前提
 }
 
