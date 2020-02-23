@@ -579,17 +579,17 @@ void WriteTwoForOneFrequencyData(inout Complex LocalBuffer[2][RADIX], uint ScanI
 			DstTexture[Pixel] = float4(DstValue.x, 0.0f, DstValue.z, 0.0f);
 			DstTexture[uint2(N + 1, Pixel.y)] = float4(DstValue.y, 0.0f, DstValue.w, 0.0f);
 		}
+	}
 
-		// First element holds F_o + iG_o.  
-		// Write Go into the second to last column. (this is the same as G_N)
-		if (bIsFirstElement)
-		{
-			DstValue.xy = LocalBuffer[0][0];
-			DstValue.zw = LocalBuffer[1][0];
+	// First element holds F_o + iG_o.  
+	// Write Go into the second to last column. (this is the same as G_N)
+	if (bIsFirstElement)
+	{
+		DstValue.xy = LocalBuffer[0][0];
+		DstValue.zw = LocalBuffer[1][0];
 
-			DstTexture[uint2(0, Pixel.y)] = float4(DstValue.x, 0.0f, DstValue.z, 0.0f); // F_o 
-			DstTexture[uint2(N, Pixel.y)] = float4(DstValue.y, 0.0f, DstValue.w, 0.0f); // G_o 
-		}
+		DstTexture[uint2(0, Pixel.y)] = float4(DstValue.x, 0.0f, DstValue.z, 0.0f); // F_o 
+		DstTexture[uint2(N, Pixel.y)] = float4(DstValue.y, 0.0f, DstValue.w, 0.0f); // G_o 
 	}
 }
 
