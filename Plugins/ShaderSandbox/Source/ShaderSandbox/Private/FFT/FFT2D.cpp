@@ -63,6 +63,7 @@ void DoFFT2D512x512(FRHICommandListImmediate& RHICmdList, EFFTMode Mode, const F
 		ForwardFFTParams->SrcTexture = SrcTexture;
 		ForwardFFTParams->SrcSampler = TStaticSamplerState<SF_Bilinear, AM_Wrap, AM_Wrap, AM_Wrap>::GetRHI();
 		ForwardFFTParams->DstTexture = TmpRenderTarget->GetRenderTargetItem().UAV;
+		//ForwardFFTParams->DstTexture = DstUAV;
 		ForwardFFTParams->SrcRect = SrcRect;
 		ForwardFFTParams->DstRect = TmpRect;
 
