@@ -13,6 +13,7 @@
 
 #define FFTMemoryBarrier() GroupMemoryBarrierWithGroupSync()
 
+uint Forward;
 Texture2D<float4> SrcTexture;
 RWTexture2D<float4> DstTexture;
 uint2 SrcRectMin;
@@ -54,23 +55,34 @@ Complex ComplexMult(in Complex A, in Complex B)
 }
 
 //const bool bIsForward = true;
-void Radix2FFT(inout Complex V0, inout Complex V1)
+void Radix2FFT(in bool bIsForward, inout Complex V0, inout Complex V1)
 {
 	V0 = V0 + V1;
 	V1 = V0 - V1 - V1; // V0 - V1
 }
 
 //const bool bIsForward = true;
-void Radix4FFT(inout Complex V0, inout Complex V1, inout Complex V2, inout Complex V3)
+void Radix4FFT(in bool bIsForward, inout Complex V0, inout Complex V1, inout Complex V2, inout Complex V3)
 {
 	// The even and odd transforms
-	Radix2FFT(V0, V2); 
-	Radix2FFT(V1, V3); 
+	Radix2FFT(bIsForward, V0, V2); 
+	Radix2FFT(bIsForward, V1, V3); 
 
 	// The butterfly merge of the even and odd transforms
 	// Complex(0, 1) * V3
-	Complex Tmp = Complex(-V3.y, V3.x);
+	Complex Tmp;
 	Complex TmpV1 = V1;
+
+	if (bIsForward)
+	{
+		// Complex(0, 1) * V3
+		 Tmp = Complex(-V3.y, V3.x);
+	}
+	else
+	{
+		// Complex(0, -1) * V3
+		 Tmp = Complex(V3.y, -V3.x);
+	}
 
 	V0 = V0 + TmpV1;
 	V1 = V2 + Tmp;
@@ -79,15 +91,23 @@ void Radix4FFT(inout Complex V0, inout Complex V1, inout Complex V2, inout Compl
 }
 
 //const bool bIsForward = true;
-void Radix8FFT(inout Complex V0, inout Complex V1, inout Complex V2, inout Complex V3, inout Complex V4, inout Complex V5, inout Complex V6, inout Complex V7)
+void Radix8FFT(in bool bIsForward, inout Complex V0, inout Complex V1, inout Complex V2, inout Complex V3, inout Complex V4, inout Complex V5, inout Complex V6, inout Complex V7)
 {
 	// The even and odd transforms
-	Radix4FFT(V0, V2, V4, V6);
-	Radix4FFT(V1, V3, V5, V7);
+	Radix4FFT(bIsForward, V0, V2, V4, V6);
+	Radix4FFT(bIsForward, V1, V3, V5, V7);
 
 	// 0.7071067811865475 = 1/sqrt(2)
 	float InvSqrtTwo = float(1.f) / sqrt(2.f);
-	Complex Twiddle = Complex(InvSqrtTwo, InvSqrtTwo);
+	Complex Twiddle;
+	if (bIsForward)
+	{
+		 Twiddle = Complex(InvSqrtTwo, InvSqrtTwo);
+	}
+	else
+	{
+		 Twiddle = Complex(InvSqrtTwo, -InvSqrtTwo);
+	}
 
 	Complex Rslt[8];
 	Complex Tmp = ComplexMult(Twiddle, V3);
@@ -98,10 +118,20 @@ void Radix8FFT(inout Complex V0, inout Complex V1, inout Complex V2, inout Compl
 	Rslt[1] = V2 + Tmp;
 	Rslt[5] = V2 - Tmp;
 
-	// V4 + i V5
-	Rslt[2] = Complex(V4.x - V5.y, V4.y + V5.x);
-	// V4 - i V5
-	Rslt[6] = Complex(V4.x + V5.y, V4.y - V5.x);
+	if (bIsForward)
+	{
+		// V4 + i V5
+		Rslt[2] = Complex(V4.x - V5.y, V4.y + V5.x);
+		// V4 - i V5
+		Rslt[6] = Complex(V4.x + V5.y, V4.y - V5.x);
+	}
+	else
+	{
+		// V4 - i V5
+		Rslt[2] = Complex(V4.x + V5.y, V4.y - V5.x);
+		// V4 + i V5
+		Rslt[6] = Complex(V4.x - V5.y, V4.y + V5.x);
+	}
 
 	Twiddle.x = -Twiddle.x;
 	Tmp = ComplexMult(Twiddle, V7);
@@ -120,9 +150,9 @@ void Radix8FFT(inout Complex V0, inout Complex V1, inout Complex V2, inout Compl
 }
 
 //const bool bIsForward = true;
-void RadixFFT(inout Complex v[RADIX])
+void RadixFFT(in bool bIsForward, inout Complex v[RADIX])
 {
-	Radix8FFT(v[0], v[1], v[2], v[3], v[4], v[5], v[6], v[7]);
+	Radix8FFT(bIsForward, v[0], v[1], v[2], v[3], v[4], v[5], v[6], v[7]);
 }
 
 groupshared float SharedReal[2 * SCAN_LINE_LENGTH];
@@ -194,9 +224,13 @@ void TransposeData(inout Complex Local[RADIX], uint AHead, uint AStride, uint BH
 
 // This accounts for about 9% of total time
 //const bool bIsForward = true;
-void Butterfly(inout Complex Local[RADIX], uint ThreadIdx, uint Length)
+void Butterfly(in const bool bIsForward, inout Complex Local[RADIX], uint ThreadIdx, uint Length)
 {
 	float angle = TWO_PI * (ThreadIdx % Length) / float(Length * RADIX);
+	if (!bIsForward)
+	{
+		angle *= -1;
+	}
 
 	Complex TwiddleInc;
 	sincos(angle, TwiddleInc.y, TwiddleInc.x);
@@ -218,7 +252,7 @@ uint Expand(in uint j, in uint Ns, in uint R) {
 
 //const bool bIsForward = true;
 // Performs a single pass Stockham FFT using group shared memory.
-void GroupSharedFFT(inout Complex Local[RADIX], in const uint ArrayLength, in const uint ThreadIdx)
+void GroupSharedFFT(in const bool bIsForward, inout Complex Local[RADIX], in const uint ArrayLength, in const uint ThreadIdx)
 {
 	uint NumCols = ArrayLength / RADIX;
 	//uint IdxS = Expand(j, NumCols, RADIX);
@@ -229,21 +263,21 @@ void GroupSharedFFT(inout Complex Local[RADIX], in const uint ArrayLength, in co
 	// Expand(j, Ns, RADIX);
 	uint IdxD = ThreadIdx * RADIX;
 
-	RadixFFT(Local);
+	RadixFFT(bIsForward, Local);
 	TransposeData(Local, IdxD, 1, IdxS, NumCols);		
 
 	uint Ns = RADIX;
 	for (; Ns < NumCols; Ns *= RADIX)
 	{
-		Butterfly(Local, ThreadIdx, Ns);
+		Butterfly(bIsForward, Local, ThreadIdx, Ns);
 		IdxD = Expand(ThreadIdx, Ns, RADIX);
-		RadixFFT(Local);
+		RadixFFT(bIsForward, Local);
 		FFTMemoryBarrier();
 		TransposeData(Local, IdxD, Ns, IdxS, NumCols);
 	}
 
-	Butterfly(Local, ThreadIdx, Ns);
-	RadixFFT(Local);
+	Butterfly(bIsForward, Local, ThreadIdx, Ns);
+	RadixFFT(bIsForward, Local);
 	FFTMemoryBarrier();
 }
 
@@ -396,6 +430,7 @@ void TwoForOneRealFFTImage1D512x512(uint GroupID : SV_GroupID, uint GroupThreadI
 #else
 	//const bool bIsHorizontal = (TransformType & 0x1);
 	//const bool bIsForward    = (TransformType & 0x2);
+	const bool bIsForward = (Forward > 0);
 	//const bool bModifyInput  = (TransformType & 0x4);
 	//const bool bIsHorizontal = true;
 	//const bool bIsForward    = true;
@@ -421,8 +456,8 @@ void TwoForOneRealFFTImage1D512x512(uint GroupID : SV_GroupID, uint GroupThreadI
 
 	// Fourier Transform  the data
 	// This uses the group shared memory and has appropriate syncs
-	GroupSharedFFT(LocalBuffer[0], SignalLength, ThreadIdx);
-	GroupSharedFFT(LocalBuffer[1], SignalLength, ThreadIdx);
+	GroupSharedFFT(bIsForward, LocalBuffer[0], SignalLength, ThreadIdx);
+	GroupSharedFFT(bIsForward, LocalBuffer[1], SignalLength, ThreadIdx);
 
 	// Write a frequency space buffer with two-for-one data layout
 	// FFTMemoryBarrier();
@@ -475,6 +510,7 @@ void ComplexFFTImage1D512x512(uint GroupID : SV_GroupID, uint GroupThreadID : SV
 {
 	//const bool bIsHorizontal = (TransformType & 0x1);
 	//const bool bIsForward    = (TransformType & 0x2);
+	const bool bIsForward = (Forward > 0);
 	//const bool bIsHorizontal = false;
 	//const bool bIsForward    = true;
 
@@ -500,8 +536,8 @@ void ComplexFFTImage1D512x512(uint GroupID : SV_GroupID, uint GroupThreadID : SV
 
 	// Fourier Transform  the data
 	// This uses the group shared memory and has appropriate syncs
-	GroupSharedFFT(LocalBuffer[0], SignalLength, ThreadIdx);
-	GroupSharedFFT(LocalBuffer[1], SignalLength, ThreadIdx);
+	GroupSharedFFT(bIsForward, LocalBuffer[0], SignalLength, ThreadIdx);
+	GroupSharedFFT(bIsForward, LocalBuffer[1], SignalLength, ThreadIdx);
 
 	// Copy data to target buffer
 	// Write image space data.
