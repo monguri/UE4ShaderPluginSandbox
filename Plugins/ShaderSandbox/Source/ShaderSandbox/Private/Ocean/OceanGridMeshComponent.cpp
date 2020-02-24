@@ -158,14 +158,17 @@ public:
 		H0Buffer.Initialize(H0Data, sizeof(FVector2D));
 		Omega0Buffer.Initialize(Omega0Data, sizeof(float));
 
-		ZeroInitData.Init(0.0f, 3 * DispMapDimension * DispMapDimension * 2);
+		HtZeroInitData.Init(0.0f, DispMapDimension * DispMapDimension * 2);
+		HtBuffer.Initialize(HtZeroInitData, 2 * sizeof(float));
 
-		HtBuffer.Initialize(ZeroInitData, 2 * sizeof(float));
+		DkxZeroInitData.Init(0.0f, DispMapDimension * DispMapDimension * 2);
+		DkxBuffer.Initialize(DkxZeroInitData, 2 * sizeof(float));
 
-		ZeroInitData2.Empty();
-		ZeroInitData2.Init(0.0f, 3 * DispMapDimension * DispMapDimension * 2);
+		DkyZeroInitData.Init(0.0f, DispMapDimension * DispMapDimension * 2);
+		DkyBuffer.Initialize(DkyZeroInitData, 2 * sizeof(float));
 
-		DxyzBuffer.Initialize(ZeroInitData2, 2 * sizeof(float));
+		DxyzZeroInitData.Init(0.0f, 3 * DispMapDimension * DispMapDimension * 2);
+		DxyzBuffer.Initialize(DxyzZeroInitData, 2 * sizeof(float));
 	}
 
 	virtual ~FOceanGridMeshSceneProxy()
@@ -178,6 +181,8 @@ public:
 		H0Buffer.ReleaseResource();
 		Omega0Buffer.ReleaseResource();
 		HtBuffer.ReleaseResource();
+		DkxBuffer.ReleaseResource();
+		DkyBuffer.ReleaseResource();
 		DxyzBuffer.ReleaseResource();
 	}
 
@@ -311,6 +316,10 @@ public:
 			Omega0Buffer.GetSRV(),
 			HtBuffer.GetSRV(),
 			HtBuffer.GetUAV(),
+			DkxBuffer.GetSRV(),
+			DkxBuffer.GetUAV(),
+			DkyBuffer.GetSRV(),
+			DkyBuffer.GetUAV(),
 			Component->GetDisplacementMapUAV(),
 			Component->GetH0DebugViewUAV(),
 			Component->GetHtDebugViewUAV(),
@@ -328,11 +337,15 @@ private:
 
 	TResourceArray<FVector2D> H0Data;
 	TResourceArray<float> Omega0Data;
-	TResourceArray<float> ZeroInitData;
-	TResourceArray<float> ZeroInitData2;
+	TResourceArray<float> HtZeroInitData;
+	TResourceArray<float> DkxZeroInitData;
+	TResourceArray<float> DkyZeroInitData;
+	TResourceArray<float> DxyzZeroInitData;
 	FResourceArrayStructuredBuffer H0Buffer;
 	FResourceArrayStructuredBuffer Omega0Buffer;
 	FResourceArrayStructuredBuffer HtBuffer;
+	FResourceArrayStructuredBuffer DkxBuffer;
+	FResourceArrayStructuredBuffer DkyBuffer;
 	FResourceArrayStructuredBuffer DxyzBuffer;
 
 	FMaterialRelevance MaterialRelevance;

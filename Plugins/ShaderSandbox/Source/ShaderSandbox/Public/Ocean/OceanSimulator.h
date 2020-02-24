@@ -26,7 +26,7 @@ struct FOceanSpectrumParameters
 	float AccumulatedTime = 0.0f;
 };
 
-void SimulateOcean(FRHICommandListImmediate& RHICmdList, const FOceanSpectrumParameters& Params, FRHIShaderResourceView* H0SRV, FRHIShaderResourceView* OmegaSRV, FRHIShaderResourceView* HtSRV, FRHIUnorderedAccessView* HtUAV, FRHIUnorderedAccessView* DisplacementMapUAV, FRHIUnorderedAccessView* H0DebugViewUAV, FRHIUnorderedAccessView* HtDebugViewUAV, FRHIUnorderedAccessView* DkxDebugViewUAV, FRHIUnorderedAccessView* DkyDebugViewUAV);
+void SimulateOcean(FRHICommandListImmediate& RHICmdList, const FOceanSpectrumParameters& Params, FRHIShaderResourceView* H0SRV, FRHIShaderResourceView* OmegaSRV, FRHIShaderResourceView* HtSRV, FRHIUnorderedAccessView* HtUAV, FRHIShaderResourceView* DkxSRV, FRHIUnorderedAccessView* DkxUAV, FRHIShaderResourceView* DkySRV, FRHIUnorderedAccessView* DkyUAV, FRHIUnorderedAccessView* DisplacementMapUAV, FRHIUnorderedAccessView* H0DebugViewUAV, FRHIUnorderedAccessView* HtDebugViewUAV, FRHIUnorderedAccessView* DkxDebugViewUAV, FRHIUnorderedAccessView* DkyDebugViewUAV);
 
 struct FOceanSinWaveParameters
 {
