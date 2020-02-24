@@ -1,7 +1,7 @@
 #include "/Engine/Public/Platform.ush"
 
 #ifndef TWO_PI
-	#define TWO_PI 2.0f * 3.1415926535897932f // Common.ush‚©‚çPI‚Ì’l‚ð‚Æ‚Á‚Ä‚«‚½
+	#define TWO_PI (2.0f * 3.1415926535897932f) // Common.ush‚©‚çPI‚Ì’l‚ð‚Æ‚Á‚Ä‚«‚½
 #endif
 
 #define Complex float2
@@ -39,6 +39,16 @@ void ScrubNANs(inout Complex LocalBuffer[2][RADIX])
 Complex ComplexMult(in Complex A, in Complex B)
 {
 	return Complex(A.x * B.x - A.y * B.y, A.x * B.y + B.x * A.y);
+}
+
+float ForwardScale(uint ArrayLength)
+{	
+	return float(1); 
+}
+
+float InverseScale(uint ArrayLength)
+{
+	return (float(1) / float(ArrayLength));
 }
 
 //const bool bIsForward = true;
@@ -241,6 +251,17 @@ uint Expand(in uint j, in uint Ns, in uint R) {
 // Performs a single pass Stockham FFT using group shared memory.
 void GroupSharedFFT(in const bool bIsForward, inout Complex Local[RADIX], in const uint ArrayLength, in const uint ThreadIdx)
 {
+	// Parallelism from writting the 1d array as a 2d row-major array: n = J *m + j.  0 <= j < m,  0 <= J < M
+	// f(n) = f(J*m + j) = f(J,j) transforms to
+	// F(k) = F(w*M + W) = f(w, W)                                                    0 <= w < m,  0 <= K < M 
+	//
+	//  F(k) = sum_{n=0}^{N-1} \exp\left( 2\pi i \frac{n k}{N} \right) f(n)
+	//
+	// can be expressed as
+	// 
+	//  F(w*m + W) = sum_{j=0}^{m-1} \exp\left( 2 \pi i \frac{w j}{m}\right)  \left[  \exp\left(2\pi i \frac{W j}{m M} \sum_{J=0}^{M-1} \exp(2\pi i \frac{J W}{M} f(J,j) \right]
+	
+	// Number of rows in 2d row-major layout of an array of lenght ArrayLength
 	uint NumCols = ArrayLength / RADIX;
 	//uint IdxS = Expand(j, NumCols, RADIX);
 	//uint IdxS = (ThreadIdx / NumCols) * ArrayLength + (ThreadIdx % NumCols);
@@ -250,22 +271,73 @@ void GroupSharedFFT(in const bool bIsForward, inout Complex Local[RADIX], in con
 	// Expand(j, Ns, RADIX);
 	uint IdxD = ThreadIdx * RADIX;
 
+	// Transform these RADIX values.
 	RadixFFT(bIsForward, Local);
+
+	// Exchange data with other threads 
 	TransposeData(Local, IdxD, 1, IdxS, NumCols);		
 
+	// NumCols = ArrayLength / RADIX: NumCols is an int power of RADIX (ie. 0, 1, 2..)
 	uint Ns = RADIX;
+
 	for (; Ns < NumCols; Ns *= RADIX)
 	{
 		Butterfly(bIsForward, Local, ThreadIdx, Ns);
+
+		// IdxD(ThreadIdx) is contiguous blocks of lenght Ns
 		IdxD = Expand(ThreadIdx, Ns, RADIX);
+		//uint Expand(in uint j, in uint Ns, in uint R) { return (j / Ns) * Ns * R + (j % Ns);}
+
+		// Transform these RADIX values.
 		RadixFFT(bIsForward, Local);
+
+		// Wait for the rest of the thread group to finish working on this ArrayLength of data. 
 		FFTMemoryBarrier();
+
 		TransposeData(Local, IdxD, Ns, IdxS, NumCols);
 	}
 
 	Butterfly(bIsForward, Local, ThreadIdx, Ns);
+
+	// Transform these RADIX values.
 	RadixFFT(bIsForward, Local);
+
+	// not needed for the simple case
 	FFTMemoryBarrier();
+}
+
+// Scale two complex signals.
+void Scale(inout Complex LocalBuffer[2][RADIX], in float ScaleValue)
+{
+	for (uint r = 0; r < RADIX; ++r)
+	{
+		LocalBuffer[0][r] *= ScaleValue;
+	}
+	for (uint r = 0; r < RADIX; ++r)
+	{
+		LocalBuffer[1][r] *= ScaleValue;
+	}
+}
+
+// Transforming two Complex signals.
+void GroupSharedFFT(in bool bIsForward, inout Complex LocalBuffer[2][RADIX], in uint ArrayLength, in uint ThreadIdx)
+{
+	// Note: The forward and inverse FFT require a 'normalization' scale, such that the normalization scale
+	// of the forward times normalization scale of the inverse = 1 / ArrayLenght.
+	// ForwardScale(ArrayLength) * InverseScale(ArrayLength) = 1 / ArrayLength;
+	
+	if (bIsForward)
+	{
+		Scale(LocalBuffer, ForwardScale(ArrayLength));
+	}
+	else
+	{
+		Scale(LocalBuffer, InverseScale(ArrayLength));
+	}
+
+	// Transform each buffer.
+	GroupSharedFFT(bIsForward, LocalBuffer[0], ArrayLength, ThreadIdx);
+	GroupSharedFFT(bIsForward, LocalBuffer[1], ArrayLength, ThreadIdx);
 }
 
 // The Two-For-One trick:  FFT two real signals (f,g) of length N 
@@ -722,8 +794,7 @@ void TwoForOneRealFFTImage1D512x512(uint GroupID : SV_GroupID, uint GroupThreadI
 
 	// Fourier Transform  the data
 	// This uses the group shared memory and has appropriate syncs
-	GroupSharedFFT(bIsForward, LocalBuffer[0], SignalLength, ThreadIdx);
-	GroupSharedFFT(bIsForward, LocalBuffer[1], SignalLength, ThreadIdx);
+	GroupSharedFFT(bIsForward, LocalBuffer, SignalLength, ThreadIdx);
 
 	if (bIsForward)
 	{
@@ -776,8 +847,7 @@ void ComplexFFTImage1D512x512(uint GroupID : SV_GroupID, uint GroupThreadID : SV
 
 	// Fourier Transform  the data
 	// This uses the group shared memory and has appropriate syncs
-	GroupSharedFFT(bIsForward, LocalBuffer[0], SignalLength, ThreadIdx);
-	GroupSharedFFT(bIsForward, LocalBuffer[1], SignalLength, ThreadIdx);
+	GroupSharedFFT(bIsForward, LocalBuffer, SignalLength, ThreadIdx);
 
 	// Copy data to target buffer
 	// Write image space data.
