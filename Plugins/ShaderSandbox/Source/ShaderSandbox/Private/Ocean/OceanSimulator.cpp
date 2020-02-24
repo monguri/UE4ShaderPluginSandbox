@@ -108,7 +108,7 @@ public:
 
 IMPLEMENT_GLOBAL_SHADER(FOceanUpdateSpectrumCS, "/Plugin/ShaderSandbox/Private/OceanSimulation.usf", "UpdateSpectrumCS", SF_Compute);
 
-void SimulateOcean(FRHICommandListImmediate& RHICmdList, const FOceanSpectrumParameters& Params, FRHIShaderResourceView* H0SRV, FRHIShaderResourceView* OmegaSRV, FRHIShaderResourceView* HtSRV, FRHIUnorderedAccessView* HtUAV, FRHIShaderResourceView* DkxSRV, FRHIUnorderedAccessView* DkxUAV, FRHIShaderResourceView* DkySRV, FRHIUnorderedAccessView* DkyUAV, FRHIUnorderedAccessView* DisplacementMapUAV, FRHIUnorderedAccessView* H0DebugViewUAV, FRHIUnorderedAccessView* HtDebugViewUAV, FRHIUnorderedAccessView* DkxDebugViewUAV, FRHIUnorderedAccessView* DkyDebugViewUAV)
+void SimulateOcean(FRHICommandListImmediate& RHICmdList, const FOceanSpectrumParameters& Params, const FOceanBufferViews& Views)
 {
 	uint32 DispatchCountX = FMath::DivideAndRoundUp((Params.DispMapDimension), (uint32)8);
 	uint32 DispatchCountY = FMath::DivideAndRoundUp(Params.DispMapDimension, (uint32)8);
@@ -120,14 +120,14 @@ void SimulateOcean(FRHICommandListImmediate& RHICmdList, const FOceanSpectrumPar
 	FRDGBuilder GraphBuilder(RHICmdList);
 
 	// TODO:ÉuÉçÉbÉNÇÊÇËä÷êîâª
-	if (H0DebugViewUAV != nullptr)
+	if (Views.H0DebugViewUAV != nullptr)
 	{
 		TShaderMapRef<FOceanDebugH0CS> OceanDebugH0CS(ShaderMap);
 
 		FOceanDebugH0CS::FParameters* OceanDebugH0Params = GraphBuilder.AllocParameters<FOceanDebugH0CS::FParameters>();
 		OceanDebugH0Params->MapSize = Params.DispMapDimension;
-		OceanDebugH0Params->H0Buffer = H0SRV;
-		OceanDebugH0Params->H0DebugTexture = H0DebugViewUAV;
+		OceanDebugH0Params->H0Buffer = Views.H0SRV;
+		OceanDebugH0Params->H0DebugTexture = Views.H0DebugViewUAV;
 
 		FComputeShaderUtils::AddPass(
 			GraphBuilder,
@@ -144,11 +144,11 @@ void SimulateOcean(FRHICommandListImmediate& RHICmdList, const FOceanSpectrumPar
 		FOceanUpdateSpectrumCS::FParameters* UpdateSpectrumParams = GraphBuilder.AllocParameters<FOceanUpdateSpectrumCS::FParameters>();
 		UpdateSpectrumParams->MapSize = Params.DispMapDimension;
 		UpdateSpectrumParams->Time = Params.AccumulatedTime;
-		UpdateSpectrumParams->H0Buffer = H0SRV;
-		UpdateSpectrumParams->OmegaBuffer = OmegaSRV;
-		UpdateSpectrumParams->OutHtBuffer = HtUAV;
-		UpdateSpectrumParams->OutDkxBuffer = DkxUAV;
-		UpdateSpectrumParams->OutDkyBuffer = DkyUAV;
+		UpdateSpectrumParams->H0Buffer = Views.H0SRV;
+		UpdateSpectrumParams->OmegaBuffer = Views.OmegaSRV;
+		UpdateSpectrumParams->OutHtBuffer = Views.HtUAV;
+		UpdateSpectrumParams->OutDkxBuffer = Views.DkxUAV;
+		UpdateSpectrumParams->OutDkyBuffer = Views.DkyUAV;
 
 		FComputeShaderUtils::AddPass(
 			GraphBuilder,
@@ -159,14 +159,14 @@ void SimulateOcean(FRHICommandListImmediate& RHICmdList, const FOceanSpectrumPar
 		);
 	}
 
-	if (HtDebugViewUAV != nullptr)
+	if (Views.HtDebugViewUAV != nullptr)
 	{
 		TShaderMapRef<FOceanDebugHtCS> OceanDebugHtCS(ShaderMap);
 
 		FOceanDebugHtCS::FParameters* OceanDebugHtParams = GraphBuilder.AllocParameters<FOceanDebugHtCS::FParameters>();
 		OceanDebugHtParams->MapSize = Params.DispMapDimension;
-		OceanDebugHtParams->HtBuffer = HtSRV;
-		OceanDebugHtParams->HtDebugTexture = HtDebugViewUAV;
+		OceanDebugHtParams->HtBuffer = Views.HtSRV;
+		OceanDebugHtParams->HtDebugTexture = Views.HtDebugViewUAV;
 
 		FComputeShaderUtils::AddPass(
 			GraphBuilder,
@@ -177,14 +177,14 @@ void SimulateOcean(FRHICommandListImmediate& RHICmdList, const FOceanSpectrumPar
 		);
 	}
 
-	if (DkxDebugViewUAV != nullptr)
+	if (Views.DkxDebugViewUAV != nullptr)
 	{
 		TShaderMapRef<FOceanDebugDkxCS> OceanDebugDkxCS(ShaderMap);
 
 		FOceanDebugDkxCS::FParameters* OceanDebugDkxParams = GraphBuilder.AllocParameters<FOceanDebugDkxCS::FParameters>();
 		OceanDebugDkxParams->MapSize = Params.DispMapDimension;
-		OceanDebugDkxParams->DkxBuffer = DkxSRV;
-		OceanDebugDkxParams->DkxDebugTexture = DkxDebugViewUAV;
+		OceanDebugDkxParams->DkxBuffer = Views.DkxSRV;
+		OceanDebugDkxParams->DkxDebugTexture = Views.DkxDebugViewUAV;
 
 		FComputeShaderUtils::AddPass(
 			GraphBuilder,
@@ -195,14 +195,14 @@ void SimulateOcean(FRHICommandListImmediate& RHICmdList, const FOceanSpectrumPar
 		);
 	}
 
-	if (DkyDebugViewUAV != nullptr)
+	if (Views.DkyDebugViewUAV != nullptr)
 	{
 		TShaderMapRef<FOceanDebugDkyCS> OceanDebugDkyCS(ShaderMap);
 
 		FOceanDebugDkyCS::FParameters* OceanDebugDkyParams = GraphBuilder.AllocParameters<FOceanDebugDkyCS::FParameters>();
 		OceanDebugDkyParams->MapSize = Params.DispMapDimension;
-		OceanDebugDkyParams->DkyBuffer = DkySRV;
-		OceanDebugDkyParams->DkyDebugTexture = DkyDebugViewUAV;
+		OceanDebugDkyParams->DkyBuffer = Views.DkySRV;
+		OceanDebugDkyParams->DkyDebugTexture = Views.DkyDebugViewUAV;
 
 		FComputeShaderUtils::AddPass(
 			GraphBuilder,

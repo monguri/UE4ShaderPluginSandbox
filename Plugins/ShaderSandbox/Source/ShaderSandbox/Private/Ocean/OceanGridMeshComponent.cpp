@@ -309,23 +309,22 @@ public:
 		Params.ChoppyScale = Component->GetChoppyScale();
 		Params.AccumulatedTime = Component->GetAccumulatedTime() * Component->GetTimeScale();
 
-		SimulateOcean(
-			RHICmdList,
-			Params,
-			H0Buffer.GetSRV(),
-			Omega0Buffer.GetSRV(),
-			HtBuffer.GetSRV(),
-			HtBuffer.GetUAV(),
-			DkxBuffer.GetSRV(),
-			DkxBuffer.GetUAV(),
-			DkyBuffer.GetSRV(),
-			DkyBuffer.GetUAV(),
-			Component->GetDisplacementMapUAV(),
-			Component->GetH0DebugViewUAV(),
-			Component->GetHtDebugViewUAV(),
-			Component->GetDkxDebugViewUAV(),
-			Component->GetDkyDebugViewUAV()
-		);
+		FOceanBufferViews Views;
+		Views.H0SRV = H0Buffer.GetSRV();
+		Views.OmegaSRV = Omega0Buffer.GetSRV();
+		Views.HtSRV = HtBuffer.GetSRV();
+		Views.HtUAV = HtBuffer.GetUAV();
+		Views.DkxSRV = DkxBuffer.GetSRV();
+		Views.DkxUAV = DkxBuffer.GetUAV();
+		Views.DkySRV = DkyBuffer.GetSRV();
+		Views.DkyUAV = DkyBuffer.GetUAV();
+		Views.DisplacementMapUAV = Component->GetDisplacementMapUAV();
+		Views.H0DebugViewUAV = Component->GetH0DebugViewUAV();
+		Views.HtDebugViewUAV = Component->GetHtDebugViewUAV();
+		Views.DkxDebugViewUAV = Component->GetDkxDebugViewUAV();
+		Views.DkyDebugViewUAV = Component->GetDkyDebugViewUAV();
+
+		SimulateOcean(RHICmdList, Params, Views);
 	}
 
 private:

@@ -26,7 +26,24 @@ struct FOceanSpectrumParameters
 	float AccumulatedTime = 0.0f;
 };
 
-void SimulateOcean(FRHICommandListImmediate& RHICmdList, const FOceanSpectrumParameters& Params, FRHIShaderResourceView* H0SRV, FRHIShaderResourceView* OmegaSRV, FRHIShaderResourceView* HtSRV, FRHIUnorderedAccessView* HtUAV, FRHIShaderResourceView* DkxSRV, FRHIUnorderedAccessView* DkxUAV, FRHIShaderResourceView* DkySRV, FRHIUnorderedAccessView* DkyUAV, FRHIUnorderedAccessView* DisplacementMapUAV, FRHIUnorderedAccessView* H0DebugViewUAV, FRHIUnorderedAccessView* HtDebugViewUAV, FRHIUnorderedAccessView* DkxDebugViewUAV, FRHIUnorderedAccessView* DkyDebugViewUAV);
+struct FOceanBufferViews
+{
+	FRHIShaderResourceView* H0SRV = nullptr;
+	FRHIShaderResourceView* OmegaSRV = nullptr;
+	FRHIShaderResourceView* HtSRV = nullptr;
+	FRHIUnorderedAccessView* HtUAV = nullptr;
+	FRHIShaderResourceView* DkxSRV = nullptr;
+	FRHIUnorderedAccessView* DkxUAV = nullptr;
+	FRHIShaderResourceView* DkySRV = nullptr;
+	FRHIUnorderedAccessView* DkyUAV = nullptr;
+	FRHIUnorderedAccessView* DisplacementMapUAV = nullptr;
+	FRHIUnorderedAccessView* H0DebugViewUAV = nullptr;
+	FRHIUnorderedAccessView* HtDebugViewUAV = nullptr;
+	FRHIUnorderedAccessView* DkxDebugViewUAV = nullptr;
+	FRHIUnorderedAccessView* DkyDebugViewUAV = nullptr;
+};
+
+void SimulateOcean(FRHICommandListImmediate& RHICmdList, const FOceanSpectrumParameters& Params, const FOceanBufferViews& Views);
 
 struct FOceanSinWaveParameters
 {
