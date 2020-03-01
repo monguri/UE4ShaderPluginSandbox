@@ -330,7 +330,6 @@ public:
 		Views.DkxUAV = DkxBuffer.GetUAV();
 		Views.DkySRV = DkyBuffer.GetSRV();
 		Views.DkyUAV = DkyBuffer.GetUAV();
-		Views.FFTWorkSRV = FFTWorkBuffer.GetSRV();
 		Views.FFTWorkUAV = FFTWorkBuffer.GetUAV();
 		Views.DxSRV = DxBuffer.GetSRV();
 		Views.DxUAV = DxBuffer.GetUAV();

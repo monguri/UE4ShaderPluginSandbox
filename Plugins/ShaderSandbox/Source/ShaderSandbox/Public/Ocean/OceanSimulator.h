@@ -36,7 +36,6 @@ struct FOceanBufferViews
 	FRHIUnorderedAccessView* DkxUAV = nullptr;
 	FRHIShaderResourceView* DkySRV = nullptr;
 	FRHIUnorderedAccessView* DkyUAV = nullptr;
-	FRHIShaderResourceView* FFTWorkSRV = nullptr;
 	FRHIUnorderedAccessView* FFTWorkUAV = nullptr;
 	FRHIShaderResourceView* DxSRV = nullptr;
 	FRHIUnorderedAccessView* DxUAV = nullptr;

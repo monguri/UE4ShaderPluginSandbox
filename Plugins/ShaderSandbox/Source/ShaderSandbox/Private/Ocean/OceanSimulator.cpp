@@ -118,7 +118,6 @@ class FOceanIFFTCS : public FGlobalShader
 		SHADER_PARAMETER_SRV(StructuredBuffer<FVector2D>, InDkxBuffer)
 		SHADER_PARAMETER_SRV(StructuredBuffer<FVector2D>, InDkyBuffer)
 		SHADER_PARAMETER_SRV(StructuredBuffer<FVector2D>, InDkzBuffer)
-		SHADER_PARAMETER_SRV(StructuredBuffer<FVector2D>, FFTWorkBufferSRV)
 		SHADER_PARAMETER_UAV(RWStructuredBuffer<float>, OutDxBuffer)
 		SHADER_PARAMETER_UAV(RWStructuredBuffer<float>, OutDyBuffer)
 		SHADER_PARAMETER_UAV(RWStructuredBuffer<float>, OutDzBuffer)
@@ -268,7 +267,6 @@ void SimulateOcean(FRHICommandListImmediate& RHICmdList, const FOceanSpectrumPar
 		IFFTParams->InDkxBuffer = Views.DkxSRV;
 		IFFTParams->InDkyBuffer = Views.DkySRV;
 		IFFTParams->InDkzBuffer = Views.HtSRV;
-		IFFTParams->FFTWorkBufferSRV = Views.FFTWorkSRV;
 		IFFTParams->OutDxBuffer = Views.DxUAV;
 		IFFTParams->OutDyBuffer = Views.DyUAV;
 		IFFTParams->OutDzBuffer = Views.DzUAV;
