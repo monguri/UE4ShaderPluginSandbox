@@ -32,7 +32,7 @@ public:
 	}
 };
 
-IMPLEMENT_GLOBAL_SHADER(FTwoForOneRealFFTImage512x512, "/Plugin/ShaderSandbox/Private/FFT.usf", "TwoForOneRealFFTImage512x512", SF_Compute);
+IMPLEMENT_GLOBAL_SHADER(FTwoForOneRealFFTImage512x512, "/Plugin/ShaderSandbox/Private/FFTTexture2D.usf", "TwoForOneRealFFTImage512x512", SF_Compute);
 
 class FComplexFFTImage512x512 : public FGlobalShader
 {
@@ -56,7 +56,7 @@ public:
 	}
 };
 
-IMPLEMENT_GLOBAL_SHADER(FComplexFFTImage512x512, "/Plugin/ShaderSandbox/Private/FFT.usf", "ComplexFFTImage512x512", SF_Compute);
+IMPLEMENT_GLOBAL_SHADER(FComplexFFTImage512x512, "/Plugin/ShaderSandbox/Private/FFTTexture2D.usf", "ComplexFFTImage512x512", SF_Compute);
 
 void DoFFT2D512x512(FRHICommandListImmediate& RHICmdList, EFFTMode Mode, const FTextureRHIRef& SrcTexture, FRHIUnorderedAccessView* DstUAV)
 {
