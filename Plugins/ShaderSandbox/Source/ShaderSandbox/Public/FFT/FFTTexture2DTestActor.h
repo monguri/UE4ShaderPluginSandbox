@@ -3,10 +3,10 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "FFTTexture2D.h"
-#include "FFT2DTestActor.generated.h"
+#include "FFTTexture2DTestActor.generated.h"
 
 UCLASS()
-class SHADERSANDBOX_API AFFT2DTestActor : public AActor {
+class SHADERSANDBOX_API AFFTTexture2DTestActor : public AActor {
 	GENERATED_BODY()
 
 public:

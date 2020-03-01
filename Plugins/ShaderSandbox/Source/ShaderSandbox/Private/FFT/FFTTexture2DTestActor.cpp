@@ -1,9 +1,9 @@
-#include "FFT2DTestActor.h"
+#include "FFTTexture2DTestActor.h"
 #include "Engine/Texture2D.h"
 #include "Engine/CanvasRenderTarget2D.h"
 #include "RHICommandList.h"
 
-void AFFT2DTestActor::BeginPlay()
+void AFFTTexture2DTestActor::BeginPlay()
 {
 	if (SrcTexture == nullptr || DstTexture == nullptr)
 	{
@@ -18,7 +18,7 @@ void AFFT2DTestActor::BeginPlay()
 		return;
 	}
 
-	ENQUEUE_RENDER_COMMAND(FFT2DTestCmmand)(
+	ENQUEUE_RENDER_COMMAND(FFTTexture2DTestCmmand)(
 		[this](FRHICommandListImmediate& RHICmdList)
 		{
 			if (_DstUAV.IsValid())
@@ -29,7 +29,7 @@ void AFFT2DTestActor::BeginPlay()
 	);
 }
 
-void AFFT2DTestActor::EndPlay(const EEndPlayReason::Type EndPlayReason)
+void AFFTTexture2DTestActor::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	if (_DstUAV.IsValid())
 	{
