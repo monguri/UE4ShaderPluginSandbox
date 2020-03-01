@@ -94,9 +94,9 @@ class FOceanUpdateSpectrumCS : public FGlobalShader
 		SHADER_PARAMETER(float, Time)
 		SHADER_PARAMETER_SRV(StructuredBuffer<FVector2D>, H0Buffer)
 		SHADER_PARAMETER_SRV(StructuredBuffer<float>, OmegaBuffer)
-		SHADER_PARAMETER_UAV(RWTexture2D<float4>, OutHtBuffer)
-		SHADER_PARAMETER_UAV(RWTexture2D<float4>, OutDkxBuffer)
-		SHADER_PARAMETER_UAV(RWTexture2D<float4>, OutDkyBuffer)
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<FVector2D>, OutHtBuffer)
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<FVector2D>, OutDkxBuffer)
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<FVector2D>, OutDkyBuffer)
 	END_SHADER_PARAMETER_STRUCT()
 
 public:
@@ -107,6 +107,54 @@ public:
 };
 
 IMPLEMENT_GLOBAL_SHADER(FOceanUpdateSpectrumCS, "/Plugin/ShaderSandbox/Private/OceanSimulation.usf", "UpdateSpectrumCS", SF_Compute);
+
+class FOceanIFFTCS : public FGlobalShader
+{
+	DECLARE_GLOBAL_SHADER(FOceanIFFTCS);
+	SHADER_USE_PARAMETER_STRUCT(FOceanIFFTCS, FGlobalShader);
+
+	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
+		//SHADER_PARAMETER(uint32, MapSize)
+		SHADER_PARAMETER_SRV(StructuredBuffer<FVector2D>, InDkxBuffer)
+		SHADER_PARAMETER_SRV(StructuredBuffer<FVector2D>, InDkyBuffer)
+		SHADER_PARAMETER_SRV(StructuredBuffer<FVector2D>, InDkzBuffer)
+		SHADER_PARAMETER_SRV(StructuredBuffer<FVector2D>, FFTWorkBufferSRV)
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<float>, OutDxBuffer)
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<float>, OutDyBuffer)
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<float>, OutDzBuffer)
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<FVector2D>, FFTWorkBufferUAV)
+	END_SHADER_PARAMETER_STRUCT()
+
+public:
+	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters)
+	{
+		return IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
+	}
+};
+
+IMPLEMENT_GLOBAL_SHADER(FOceanIFFTCS, "/Plugin/ShaderSandbox/Private/OceanSimulation.usf", "OceanIFFT512x512CS", SF_Compute);
+
+class FOceanUpdateDisplacementMapCS : public FGlobalShader
+{
+	DECLARE_GLOBAL_SHADER(FOceanUpdateDisplacementMapCS);
+	SHADER_USE_PARAMETER_STRUCT(FOceanUpdateDisplacementMapCS, FGlobalShader);
+
+	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
+		SHADER_PARAMETER(uint32, MapSize)
+		SHADER_PARAMETER_SRV(StructuredBuffer<float>, InDxBuffer)
+		SHADER_PARAMETER_SRV(StructuredBuffer<float>, InDyBuffer)
+		SHADER_PARAMETER_SRV(StructuredBuffer<float>, InDzBuffer)
+		SHADER_PARAMETER_UAV(RWTexture2D<float4>, OutDisplacementMap) // TODO:なぜ<float4>という書き方で大丈夫？
+	END_SHADER_PARAMETER_STRUCT()
+
+public:
+	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters)
+	{
+		return IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
+	}
+};
+
+IMPLEMENT_GLOBAL_SHADER(FOceanUpdateDisplacementMapCS, "/Plugin/ShaderSandbox/Private/OceanSimulation.usf", "UpdateDisplacementMapCS", SF_Compute);
 
 void SimulateOcean(FRHICommandListImmediate& RHICmdList, const FOceanSpectrumParameters& Params, const FOceanBufferViews& Views)
 {
@@ -213,6 +261,50 @@ void SimulateOcean(FRHICommandListImmediate& RHICmdList, const FOceanSpectrumPar
 		);
 	}
 
+	{
+		TShaderMapRef<FOceanIFFTCS> OceanIFFTCS(ShaderMap);
+
+		FOceanIFFTCS::FParameters* IFFTParams = GraphBuilder.AllocParameters<FOceanIFFTCS::FParameters>();
+		// サイズをパラメータで与えない。IFFTはデータは512x512、RADIX8を前提としている
+		IFFTParams->InDkxBuffer = Views.DkxSRV;
+		IFFTParams->InDkyBuffer = Views.DkySRV;
+		IFFTParams->InDkzBuffer = Views.HtSRV;
+		IFFTParams->FFTWorkBufferSRV = Views.FFTWorkSRV;
+		IFFTParams->OutDxBuffer = Views.DxUAV;
+		IFFTParams->OutDyBuffer = Views.DyUAV;
+		IFFTParams->OutDzBuffer = Views.DzUAV;
+		IFFTParams->FFTWorkBufferUAV = Views.FFTWorkUAV;
+
+		const int32 RADIX = 8;
+
+		FComputeShaderUtils::AddPass(
+			GraphBuilder,
+			RDG_EVENT_NAME("OceanIFFTCS"),
+			*OceanIFFTCS,
+			IFFTParams,
+			FIntVector(RADIX, 1, 1)
+		);
+	}
+
+	{
+		TShaderMapRef<FOceanUpdateDisplacementMapCS> OceanUpdateDisplacementMapCS(ShaderMap);
+
+		FOceanUpdateDisplacementMapCS::FParameters* UpdateDisplacementMapParams = GraphBuilder.AllocParameters<FOceanUpdateDisplacementMapCS::FParameters>();
+		UpdateDisplacementMapParams->MapSize = Params.DispMapDimension;
+		UpdateDisplacementMapParams->InDxBuffer = Views.DxSRV;
+		UpdateDisplacementMapParams->InDyBuffer = Views.DySRV;
+		UpdateDisplacementMapParams->InDzBuffer = Views.DzSRV;
+		UpdateDisplacementMapParams->OutDisplacementMap = Views.DisplacementMapUAV;
+
+		FComputeShaderUtils::AddPass(
+			GraphBuilder,
+			RDG_EVENT_NAME("OceanUpdateDisplacementMapCS"),
+			*OceanUpdateDisplacementMapCS,
+			UpdateDisplacementMapParams,
+			FIntVector(DispatchCountX, DispatchCountY, 1)
+		);
+	}
+
 	GraphBuilder.Execute();
 }
 
@@ -231,7 +323,7 @@ class FOceanSinWaveCS : public FGlobalShader
 		SHADER_PARAMETER(float, Period)
 		SHADER_PARAMETER(float, Amplitude)
 		SHADER_PARAMETER(float, Time)
-		SHADER_PARAMETER_UAV(RWTexture2D<float4>, DisplacementMap)
+		SHADER_PARAMETER_UAV(RWTexture2D<float4>, OutDisplacementMap)
 	END_SHADER_PARAMETER_STRUCT()
 
 public:
@@ -267,7 +359,7 @@ void TestSinWave(FRHICommandListImmediate& RHICmdList, const FOceanSinWaveParame
 	OceanSinWaveParams->Period = Params.Period;
 	OceanSinWaveParams->Amplitude = Params.Amplitude;
 	OceanSinWaveParams->Time = Params.AccumulatedTime;
-	OceanSinWaveParams->DisplacementMap = DisplacementMapUAV;
+	OceanSinWaveParams->OutDisplacementMap = DisplacementMapUAV;
 
 	FComputeShaderUtils::AddPass(
 		GraphBuilder,

@@ -167,8 +167,17 @@ public:
 		DkyZeroInitData.Init(0.0f, DispMapDimension * DispMapDimension * 2);
 		DkyBuffer.Initialize(DkyZeroInitData, 2 * sizeof(float));
 
-		DxyzZeroInitData.Init(0.0f, 3 * DispMapDimension * DispMapDimension * 2);
-		DxyzBuffer.Initialize(DxyzZeroInitData, 2 * sizeof(float));
+		FFTWorkZeroInitData.Init(0.0f, DispMapDimension * DispMapDimension * 2);
+		FFTWorkBuffer.Initialize(FFTWorkZeroInitData, sizeof(float) * 2);
+
+		DxZeroInitData.Init(0.0f, DispMapDimension * DispMapDimension);
+		DxBuffer.Initialize(DxZeroInitData, sizeof(float));
+
+		DyZeroInitData.Init(0.0f, DispMapDimension * DispMapDimension);
+		DyBuffer.Initialize(DyZeroInitData, sizeof(float));
+
+		DzZeroInitData.Init(0.0f, DispMapDimension * DispMapDimension);
+		DzBuffer.Initialize(DyZeroInitData, sizeof(float));
 	}
 
 	virtual ~FOceanGridMeshSceneProxy()
@@ -181,9 +190,12 @@ public:
 		H0Buffer.ReleaseResource();
 		Omega0Buffer.ReleaseResource();
 		HtBuffer.ReleaseResource();
+		FFTWorkBuffer.ReleaseResource();
 		DkxBuffer.ReleaseResource();
 		DkyBuffer.ReleaseResource();
-		DxyzBuffer.ReleaseResource();
+		DxBuffer.ReleaseResource();
+		DyBuffer.ReleaseResource();
+		DzBuffer.ReleaseResource();
 	}
 
 	virtual void GetDynamicMeshElements(const TArray<const FSceneView*>& Views, const FSceneViewFamily& ViewFamily, uint32 VisibilityMap, FMeshElementCollector& Collector) const override
@@ -318,11 +330,19 @@ public:
 		Views.DkxUAV = DkxBuffer.GetUAV();
 		Views.DkySRV = DkyBuffer.GetSRV();
 		Views.DkyUAV = DkyBuffer.GetUAV();
-		Views.DisplacementMapUAV = Component->GetDisplacementMapUAV();
+		Views.FFTWorkSRV = FFTWorkBuffer.GetSRV();
+		Views.FFTWorkUAV = FFTWorkBuffer.GetUAV();
+		Views.DxSRV = DxBuffer.GetSRV();
+		Views.DxUAV = DxBuffer.GetUAV();
+		Views.DySRV = DyBuffer.GetSRV();
+		Views.DyUAV = DyBuffer.GetUAV();
+		Views.DzSRV = DzBuffer.GetSRV();
+		Views.DzUAV = DzBuffer.GetUAV();
 		Views.H0DebugViewUAV = Component->GetH0DebugViewUAV();
 		Views.HtDebugViewUAV = Component->GetHtDebugViewUAV();
 		Views.DkxDebugViewUAV = Component->GetDkxDebugViewUAV();
 		Views.DkyDebugViewUAV = Component->GetDkyDebugViewUAV();
+		Views.DisplacementMapUAV = Component->GetDisplacementMapUAV();
 
 		SimulateOcean(RHICmdList, Params, Views);
 	}
@@ -339,13 +359,19 @@ private:
 	TResourceArray<float> HtZeroInitData;
 	TResourceArray<float> DkxZeroInitData;
 	TResourceArray<float> DkyZeroInitData;
-	TResourceArray<float> DxyzZeroInitData;
+	TResourceArray<float> FFTWorkZeroInitData;
+	TResourceArray<float> DxZeroInitData;
+	TResourceArray<float> DyZeroInitData;
+	TResourceArray<float> DzZeroInitData;
 	FResourceArrayStructuredBuffer H0Buffer;
 	FResourceArrayStructuredBuffer Omega0Buffer;
 	FResourceArrayStructuredBuffer HtBuffer;
 	FResourceArrayStructuredBuffer DkxBuffer;
 	FResourceArrayStructuredBuffer DkyBuffer;
-	FResourceArrayStructuredBuffer DxyzBuffer;
+	FResourceArrayStructuredBuffer FFTWorkBuffer;
+	FResourceArrayStructuredBuffer DxBuffer;
+	FResourceArrayStructuredBuffer DyBuffer;
+	FResourceArrayStructuredBuffer DzBuffer;
 
 	FMaterialRelevance MaterialRelevance;
 };

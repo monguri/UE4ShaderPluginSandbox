@@ -36,11 +36,19 @@ struct FOceanBufferViews
 	FRHIUnorderedAccessView* DkxUAV = nullptr;
 	FRHIShaderResourceView* DkySRV = nullptr;
 	FRHIUnorderedAccessView* DkyUAV = nullptr;
-	FRHIUnorderedAccessView* DisplacementMapUAV = nullptr;
+	FRHIShaderResourceView* FFTWorkSRV = nullptr;
+	FRHIUnorderedAccessView* FFTWorkUAV = nullptr;
+	FRHIShaderResourceView* DxSRV = nullptr;
+	FRHIUnorderedAccessView* DxUAV = nullptr;
+	FRHIShaderResourceView* DySRV = nullptr;
+	FRHIUnorderedAccessView* DyUAV = nullptr;
+	FRHIShaderResourceView* DzSRV = nullptr;
+	FRHIUnorderedAccessView* DzUAV = nullptr;
 	FRHIUnorderedAccessView* H0DebugViewUAV = nullptr;
 	FRHIUnorderedAccessView* HtDebugViewUAV = nullptr;
 	FRHIUnorderedAccessView* DkxDebugViewUAV = nullptr;
 	FRHIUnorderedAccessView* DkyDebugViewUAV = nullptr;
+	FRHIUnorderedAccessView* DisplacementMapUAV = nullptr;
 };
 
 void SimulateOcean(FRHICommandListImmediate& RHICmdList, const FOceanSpectrumParameters& Params, const FOceanBufferViews& Views);

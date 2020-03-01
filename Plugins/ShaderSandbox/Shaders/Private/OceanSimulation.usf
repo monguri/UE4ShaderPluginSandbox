@@ -1,4 +1,5 @@
 #include "/Engine/Public/Platform.ush"
+#include "FFT.ush"
 
 uint MapSize;
 float Time;
@@ -102,6 +103,163 @@ void UpdateSpectrumCS(uint2 DispatchThreadId : SV_DispatchThreadID)
 	OutDkyBuffer[Index] = Dkyt;
 }
 
+StructuredBuffer<float2> InDkxBuffer;
+StructuredBuffer<float2> InDkyBuffer;
+StructuredBuffer<float2> InDkzBuffer; // Ht Buffer
+StructuredBuffer<float2> FFTWorkBufferSRV;
+RWStructuredBuffer<float2> FFTWorkBufferUAV;
+RWStructuredBuffer<float> OutDxBuffer;
+RWStructuredBuffer<float> OutDyBuffer;
+RWStructuredBuffer<float> OutDzBuffer;
+
+void CopyComplexDataSrcToLocal(inout Complex LocalBuffer[RADIX], bool bIsHorizontal, in uint ScanIdx, uint Loc, uint Stride, uint Size, StructuredBuffer<float2> SrcBuffer)
+{
+	for (uint i = 0; i < RADIX; ++i)
+	{
+		LocalBuffer[i] = float2(0.f, 0.f);
+	}
+	
+	if (bIsHorizontal)
+	{
+		uint2 Pixel = uint2(Loc, ScanIdx);
+
+		UNROLL
+		for (uint i = 0; i < RADIX; ++i, Pixel.x += Stride)
+		{
+			uint Index = Pixel.y * Size + Pixel.x;
+			LocalBuffer[i] = SrcBuffer[Index];
+		}
+	}
+	else
+	{
+		uint2 Pixel = uint2(ScanIdx, Loc);
+
+		UNROLL
+		for (uint i = 0; i < RADIX; ++i, Pixel.y += Stride)
+		{
+			uint Index = Pixel.y * Size + Pixel.x;
+			LocalBuffer[i] = SrcBuffer[Index];
+		}
+	}
+}
+
+// bIsHorizontal = true
+void CopyComplexDataLocalToWorkBuffer(in Complex LocalBuffer[RADIX], uint ScanIdx, uint Loc, uint Stride, uint Size)
+{
+	uint2 Pixel = uint2(Loc, ScanIdx);
+
+	UNROLL
+	for (uint r = 0; r < RADIX && Pixel.x < Size; ++r, Pixel.x += Stride)
+	{
+		uint Index = Pixel.y * Size + Pixel.x;
+		FFTWorkBufferUAV[Index] = LocalBuffer[r];
+	}
+}
+
+// bIsHorizontal = false
+void CopyRealDataLocalToDxBuffer(in Complex LocalBuffer[RADIX], uint ScanIdx, uint Loc, uint Stride, uint Size)
+{
+	uint2 Pixel = uint2(ScanIdx, Loc);
+
+	UNROLL
+	for (uint r = 0; r < RADIX && Pixel.y < Size; ++r, Pixel.y += Stride)
+	{
+		uint Index = Pixel.y * SCAN_LINE_LENGTH + Pixel.x;
+		OutDxBuffer[Index] = LocalBuffer[r].x;
+		//OutDxBuffer[Index] = 1.0;
+	}
+}
+// bIsHorizontal = false
+void CopyRealDataLocalToDyBuffer(in Complex LocalBuffer[RADIX], uint ScanIdx, uint Loc, uint Stride, uint Size)
+{
+	uint2 Pixel = uint2(ScanIdx, Loc);
+
+	UNROLL
+	for (uint r = 0; r < RADIX && Pixel.y < Size; ++r, Pixel.y += Stride)
+	{
+		uint Index = Pixel.y * SCAN_LINE_LENGTH + Pixel.x;
+		OutDyBuffer[Index] = LocalBuffer[r].x;
+		//OutDyBuffer[Index] = 1.0;
+	}
+}
+
+// bIsHorizontal = false
+void CopyRealDataLocalToDzBuffer(in Complex LocalBuffer[RADIX], uint ScanIdx, uint Loc, uint Stride, uint Size)
+{
+	uint2 Pixel = uint2(ScanIdx, Loc);
+
+	UNROLL
+	for (uint r = 0; r < RADIX && Pixel.y < Size; ++r, Pixel.y += Stride)
+	{
+		uint Index = Pixel.y * SCAN_LINE_LENGTH + Pixel.x;
+		OutDzBuffer[Index] = LocalBuffer[r].x;
+		//OutDzBuffer[Index] = 1.0;
+	}
+}
+
+[numthreads(NUMTHREADSX, 1, 1)]
+void OceanIFFT512x512CS(uint GroupID : SV_GroupID, uint GroupThreadID : SV_GroupThreadID)
+{
+	// ComplexFFTImage512x512を、float4チャンネルでなくfloat2チャンネルに直したもの
+
+	const uint ThreadIdx = GroupThreadID;
+	const uint ScanIdx  = GroupID;
+	const uint SignalLength = SCAN_LINE_LENGTH;
+
+	uint Head = ThreadIdx;
+	const uint Stride = STRIDE;   
+
+	Complex LocalBuffer[RADIX];
+
+	CopyComplexDataSrcToLocal(LocalBuffer, true, ScanIdx, Head, Stride, SignalLength, InDkxBuffer);
+	GroupSharedFFT(false, LocalBuffer, SignalLength, ThreadIdx);
+	CopyComplexDataLocalToWorkBuffer(LocalBuffer, ScanIdx, Head, Stride, SignalLength);
+	//TODO:いるか？
+	FFTMemoryBarrier();
+
+	CopyComplexDataSrcToLocal(LocalBuffer, false, ScanIdx, Head, Stride, SignalLength, FFTWorkBufferSRV);
+	GroupSharedFFT(false, LocalBuffer, SignalLength, ThreadIdx);
+	CopyRealDataLocalToDxBuffer(LocalBuffer, ScanIdx, Head, Stride, SignalLength);
+	//TODO:いるか？
+	FFTMemoryBarrier();
+
+	CopyComplexDataSrcToLocal(LocalBuffer, true, ScanIdx, Head, Stride, SignalLength, InDkyBuffer);
+	GroupSharedFFT(false, LocalBuffer, SignalLength, ThreadIdx);
+	CopyComplexDataLocalToWorkBuffer(LocalBuffer, ScanIdx, Head, Stride, SignalLength);
+	//TODO:いるか？
+	FFTMemoryBarrier();
+
+	CopyComplexDataSrcToLocal(LocalBuffer, false, ScanIdx, Head, Stride, SignalLength, FFTWorkBufferSRV);
+	GroupSharedFFT(false, LocalBuffer, SignalLength, ThreadIdx);
+	CopyRealDataLocalToDyBuffer(LocalBuffer, ScanIdx, Head, Stride, SignalLength);
+	//TODO:いるか？
+	FFTMemoryBarrier();
+
+	CopyComplexDataSrcToLocal(LocalBuffer, true, ScanIdx, Head, Stride, SignalLength, InDkzBuffer);
+	GroupSharedFFT(false, LocalBuffer, SignalLength, ThreadIdx);
+	CopyComplexDataLocalToWorkBuffer(LocalBuffer, ScanIdx, Head, Stride, SignalLength);
+	//TODO:いるか？
+	FFTMemoryBarrier();
+
+	CopyComplexDataSrcToLocal(LocalBuffer, false, ScanIdx, Head, Stride, SignalLength, FFTWorkBufferSRV);
+	GroupSharedFFT(false, LocalBuffer, SignalLength, ThreadIdx);
+	CopyRealDataLocalToDzBuffer(LocalBuffer, ScanIdx, Head, Stride, SignalLength);
+}
+
+StructuredBuffer<float> InDxBuffer;
+StructuredBuffer<float> InDyBuffer;
+StructuredBuffer<float> InDzBuffer;
+RWTexture2D<float4> OutDisplacementMap;
+
+[numthreads(8, 8, 1)]
+void UpdateDisplacementMapCS(uint2 DispatchThreadId : SV_DispatchThreadID)
+{
+	uint2 PixelCoord = DispatchThreadId;
+	uint Index = PixelCoord.y * MapSize + PixelCoord.x; // Structured Buffer index corresponding wave number k
+
+	OutDisplacementMap[PixelCoord] = float4(InDxBuffer[Index], InDyBuffer[Index], InDzBuffer[Index], 1.0);
+}
+
 uint MapWidth;
 uint MapHeight;
 float MeshWidth;
@@ -110,7 +268,6 @@ float WaveLengthRow;
 float WaveLengthColumn;
 float Period;
 float Amplitude;
-RWTexture2D<float4> DisplacementMap;
 
 [numthreads(8, 8, 1)]
 void SinWaveDisplacementMap(uint2 DispatchThreadId : SV_DispatchThreadID)
@@ -127,6 +284,6 @@ void SinWaveDisplacementMap(uint2 DispatchThreadId : SV_DispatchThreadID)
 	+ XY.y / max(WaveLengthColumn, SMALL_NUMBER)
 	+ Time / max(Period, SMALL_NUMBER))
 	);
-    DisplacementMap[PixelCoord] = float4(0.0, 0.0, Z, 1.0);
+    OutDisplacementMap[PixelCoord] = float4(0.0, 0.0, Z, 1.0);
 }
 
