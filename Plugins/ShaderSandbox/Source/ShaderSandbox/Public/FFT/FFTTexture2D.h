@@ -13,8 +13,8 @@ enum class EFFTMode : uint8
 	InverseAndForward,
 };
 
-namespace FFT2D
+namespace FFTTexture2D
 {
-	void DoFFT2D512x512(FRHICommandListImmediate& RHICmdList, EFFTMode Mode, const FTextureRHIRef& SrcTexture, FRHIUnorderedAccessView* DstUAV);
-}; // namespace FFT2D
+	void DoFFTTexture2D512x512(FRHICommandListImmediate& RHICmdList, EFFTMode Mode, const FTextureRHIRef& SrcTexture, FRHIUnorderedAccessView* DstUAV);
+}; // namespace FFTTexture2D
 

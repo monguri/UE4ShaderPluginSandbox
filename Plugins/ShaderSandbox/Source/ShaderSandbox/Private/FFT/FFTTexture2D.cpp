@@ -1,4 +1,4 @@
-#include "FFT2D.h"
+#include "FFTTexture2D.h"
 #include "GlobalShader.h"
 #include "ShaderParameterStruct.h"
 #include "RenderGraphBuilder.h"
@@ -8,7 +8,7 @@
 
 // PostProcessFFTBloom.cpp‚ğQl‚É‚µ‚Ä‚¢‚é
 
-namespace FFT2D
+namespace FFTTexture2D
 {
 class FTwoForOneRealFFTImage512x512 : public FGlobalShader
 {
@@ -58,7 +58,7 @@ public:
 
 IMPLEMENT_GLOBAL_SHADER(FComplexFFTImage512x512, "/Plugin/ShaderSandbox/Private/FFTTexture2D.usf", "ComplexFFTImage512x512", SF_Compute);
 
-void DoFFT2D512x512(FRHICommandListImmediate& RHICmdList, EFFTMode Mode, const FTextureRHIRef& SrcTexture, FRHIUnorderedAccessView* DstUAV)
+void DoFFTTexture2D512x512(FRHICommandListImmediate& RHICmdList, EFFTMode Mode, const FTextureRHIRef& SrcTexture, FRHIUnorderedAccessView* DstUAV)
 {
 	const FIntRect& SrcRect = FIntRect(FIntPoint(0, 0), FIntPoint(512, 512));
 	const uint32 FREQUENCY_PADDING = 2; //TODO:—‹ü‚ğ—‰ğ‚Å‚«‚Ä‚È‚¢
@@ -85,10 +85,10 @@ void DoFFT2D512x512(FRHICommandListImmediate& RHICmdList, EFFTMode Mode, const F
 
 		// TODO:‚±‚ê‚ÍˆÈ‘OÀŒ±‚µ‚½RDGTexture‚Ì‘‚«•û‚Å‘‚¯‚é‚©‚à
 		TRefCountPtr<IPooledRenderTarget> TmpRenderTarget;
-		GRenderTargetPool.FindFreeElement(RHICmdList, Desc, TmpRenderTarget, TEXT("FFT2D Tmp Buffer"));
+		GRenderTargetPool.FindFreeElement(RHICmdList, Desc, TmpRenderTarget, TEXT("FFTTexture2D Tmp Buffer"));
 
 		TRefCountPtr<IPooledRenderTarget> TmpRenderTarget2;
-		GRenderTargetPool.FindFreeElement(RHICmdList, Desc, TmpRenderTarget2, TEXT("FFT2D Tmp Buffer2"));
+		GRenderTargetPool.FindFreeElement(RHICmdList, Desc, TmpRenderTarget2, TEXT("FFTTexture2D Tmp Buffer2"));
 
 		TShaderMapRef<FTwoForOneRealFFTImage512x512> TwoForOneForwardFFTCS(ShaderMap);
 
@@ -171,5 +171,5 @@ void DoFFT2D512x512(FRHICommandListImmediate& RHICmdList, EFFTMode Mode, const F
 
 	GraphBuilder.Execute();
 }
-}; // namespace FFT2D
+}; // namespace FFTTexture2D
 

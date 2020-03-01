@@ -2,7 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
-#include "FFT2D.h"
+#include "FFTTexture2D.h"
 #include "FFT2DTestActor.generated.h"
 
 UCLASS()

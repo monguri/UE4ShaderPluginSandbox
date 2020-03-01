@@ -23,7 +23,7 @@ void AFFT2DTestActor::BeginPlay()
 		{
 			if (_DstUAV.IsValid())
 			{
-				FFT2D::DoFFT2D512x512(RHICmdList, FFTMode, SrcTexture->Resource->TextureRHI, _DstUAV);
+				FFTTexture2D::DoFFTTexture2D512x512(RHICmdList, FFTMode, SrcTexture->Resource->TextureRHI, _DstUAV);
 			}
 		}
 	);
