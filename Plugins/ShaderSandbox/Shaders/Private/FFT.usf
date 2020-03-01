@@ -751,7 +751,7 @@ void CopyDataLocalToDstWindow(in Complex LocalBuffer[2][RADIX], bool bIsHorizont
 #else
 [numthreads(NUMTHREADSX, 1, 1)]
 #endif
-void TwoForOneRealFFTImage1D512x512(uint GroupID : SV_GroupID, uint GroupThreadID : SV_GroupThreadID)
+void TwoForOneRealFFTImage512x512(uint GroupID : SV_GroupID, uint GroupThreadID : SV_GroupThreadID)
 {
 #if 0 // テクスチャコピー実験
 	uint2 Pixel = uint2(GroupThreadID, GroupID);
@@ -817,7 +817,7 @@ void TwoForOneRealFFTImage1D512x512(uint GroupID : SV_GroupID, uint GroupThreadI
 }
 
 [numthreads(NUMTHREADSX, 1, 1)]
-void ComplexFFTImage1D512x512(uint GroupID : SV_GroupID, uint GroupThreadID : SV_GroupThreadID)
+void ComplexFFTImage512x512(uint GroupID : SV_GroupID, uint GroupThreadID : SV_GroupThreadID)
 {
 	//const bool bIsHorizontal = (TransformType & 0x1);
 	//const bool bIsForward    = (TransformType & 0x2);
