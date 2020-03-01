@@ -265,7 +265,6 @@ void SimulateOcean(FRHICommandListImmediate& RHICmdList, const FOceanSpectrumPar
 		TShaderMapRef<FOceanIFFTCS> OceanIFFTCS(ShaderMap);
 
 		FOceanIFFTCS::FParameters* IFFTParams = GraphBuilder.AllocParameters<FOceanIFFTCS::FParameters>();
-		// サイズをパラメータで与えない。IFFTはデータは512x512、RADIX8を前提としている
 		IFFTParams->InDkxBuffer = Views.DkxSRV;
 		IFFTParams->InDkyBuffer = Views.DkySRV;
 		IFFTParams->InDkzBuffer = Views.HtSRV;
@@ -275,14 +274,12 @@ void SimulateOcean(FRHICommandListImmediate& RHICmdList, const FOceanSpectrumPar
 		IFFTParams->OutDzBuffer = Views.DzUAV;
 		IFFTParams->FFTWorkBufferUAV = Views.FFTWorkUAV;
 
-		const int32 RADIX = 8;
-
 		FComputeShaderUtils::AddPass(
 			GraphBuilder,
 			RDG_EVENT_NAME("OceanIFFTCS"),
 			*OceanIFFTCS,
 			IFFTParams,
-			FIntVector(RADIX, 1, 1)
+			FIntVector(Params.DispMapDimension, 1, 1)
 		);
 	}
 
