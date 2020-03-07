@@ -47,6 +47,8 @@ struct FOceanBufferViews
 	FRHIUnorderedAccessView* HtDebugViewUAV = nullptr;
 	FRHIUnorderedAccessView* DkxDebugViewUAV = nullptr;
 	FRHIUnorderedAccessView* DkyDebugViewUAV = nullptr;
+	FRHIUnorderedAccessView* DxyzDebugViewUAV = nullptr;
+	FRHIShaderResourceView* DisplacementMapSRV = nullptr;
 	FRHIUnorderedAccessView* DisplacementMapUAV = nullptr;
 };
 

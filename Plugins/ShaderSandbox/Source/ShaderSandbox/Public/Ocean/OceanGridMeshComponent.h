@@ -26,6 +26,9 @@ public:
 	UPROPERTY(EditAnywhere, Category="Components|OceanGridMesh", BlueprintReadOnly)
 	class UCanvasRenderTarget2D* DkyDebugView = nullptr;
 
+	UPROPERTY(EditAnywhere, Category="Components|OceanGridMesh", BlueprintReadOnly)
+	class UCanvasRenderTarget2D* DxyzDebugView = nullptr;
+
 	/** Set sin wave settings. */
 	UFUNCTION(BlueprintCallable, Category="Components|OceanGridMesh")
 	void SetSinWaveSettings(float WaveLengthRow, float WaveLengthColumn, float Period, float Amplitude);
@@ -48,11 +51,13 @@ public:
 	float GetChoppyScale() const { return _ChoppyScale; }
 
 	UCanvasRenderTarget2D* GetDisplacementMap() const { return DisplacementMap; }
+	FShaderResourceViewRHIRef GetDisplacementMapSRV() const { return _DisplacementMapSRV; }
 	FUnorderedAccessViewRHIRef GetDisplacementMapUAV() const { return _DisplacementMapUAV; }
 	FUnorderedAccessViewRHIRef GetH0DebugViewUAV() const { return _H0DebugViewUAV; }
 	FUnorderedAccessViewRHIRef GetHtDebugViewUAV() const { return _HtDebugViewUAV; }
 	FUnorderedAccessViewRHIRef GetDkxDebugViewUAV() const { return _DkxDebugViewUAV; }
 	FUnorderedAccessViewRHIRef GetDkyDebugViewUAV() const { return _DkyDebugViewUAV; }
+	FUnorderedAccessViewRHIRef GetDxyzDebugViewUAV() const { return _DxyzDebugViewUAV; }
 
 public:
 	UOceanGridMeshComponent();
@@ -82,10 +87,12 @@ private:
 	float _WindDependency = 0.07f;
 	float _ChoppyScale = 1.3f;
 
+	FShaderResourceViewRHIRef _DisplacementMapSRV;
 	FUnorderedAccessViewRHIRef _DisplacementMapUAV;
 	FUnorderedAccessViewRHIRef _H0DebugViewUAV;
 	FUnorderedAccessViewRHIRef _HtDebugViewUAV;
 	FUnorderedAccessViewRHIRef _DkxDebugViewUAV;
 	FUnorderedAccessViewRHIRef _DkyDebugViewUAV;
+	FUnorderedAccessViewRHIRef _DxyzDebugViewUAV;
 };
 

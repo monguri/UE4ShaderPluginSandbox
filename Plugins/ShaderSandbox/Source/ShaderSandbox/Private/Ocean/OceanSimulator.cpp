@@ -84,6 +84,26 @@ public:
 
 IMPLEMENT_GLOBAL_SHADER(FOceanDebugDkyCS, "/Plugin/ShaderSandbox/Private/OceanSimulation.usf", "DebugDkyCS", SF_Compute);
 
+class FOceanDebugDxyzCS : public FGlobalShader
+{
+	DECLARE_GLOBAL_SHADER(FOceanDebugDxyzCS);
+	SHADER_USE_PARAMETER_STRUCT(FOceanDebugDxyzCS, FGlobalShader);
+
+	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
+		SHADER_PARAMETER(uint32, MapSize)
+		SHADER_PARAMETER_SRV(Texture2D<float4>, InDisplacementMap)
+		SHADER_PARAMETER_UAV(RWTexture2D<float4>, DxyzDebugTexture)
+	END_SHADER_PARAMETER_STRUCT()
+
+public:
+	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters)
+	{
+		return IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
+	}
+};
+
+IMPLEMENT_GLOBAL_SHADER(FOceanDebugDxyzCS, "/Plugin/ShaderSandbox/Private/OceanSimulation.usf", "DebugDxyzCS", SF_Compute);
+
 class FOceanUpdateSpectrumCS : public FGlobalShader
 {
 	DECLARE_GLOBAL_SHADER(FOceanUpdateSpectrumCS);
@@ -426,6 +446,24 @@ void SimulateOcean(FRHICommandListImmediate& RHICmdList, const FOceanSpectrumPar
 			RDG_EVENT_NAME("OceanUpdateDisplacementMapCS"),
 			*OceanUpdateDisplacementMapCS,
 			UpdateDisplacementMapParams,
+			FIntVector(DispatchCountX, DispatchCountY, 1)
+		);
+	}
+
+	if (Views.DxyzDebugViewUAV != nullptr)
+	{
+		TShaderMapRef<FOceanDebugDxyzCS> OceanDebugHtCS(ShaderMap);
+
+		FOceanDebugDxyzCS::FParameters* OceanDebugDxyzParams = GraphBuilder.AllocParameters<FOceanDebugDxyzCS::FParameters>();
+		OceanDebugDxyzParams->MapSize = Params.DispMapDimension;
+		OceanDebugDxyzParams->InDisplacementMap = Views.DisplacementMapSRV;
+		OceanDebugDxyzParams->DxyzDebugTexture = Views.DxyzDebugViewUAV;
+
+		FComputeShaderUtils::AddPass(
+			GraphBuilder,
+			RDG_EVENT_NAME("OceanDebugDxyzCS"),
+			*OceanDebugHtCS,
+			OceanDebugDxyzParams,
 			FIntVector(DispatchCountX, DispatchCountY, 1)
 		);
 	}

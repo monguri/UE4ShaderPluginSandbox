@@ -341,6 +341,8 @@ public:
 		Views.HtDebugViewUAV = Component->GetHtDebugViewUAV();
 		Views.DkxDebugViewUAV = Component->GetDkxDebugViewUAV();
 		Views.DkyDebugViewUAV = Component->GetDkyDebugViewUAV();
+		Views.DxyzDebugViewUAV = Component->GetDxyzDebugViewUAV();
+		Views.DisplacementMapSRV = Component->GetDisplacementMapSRV();
 		Views.DisplacementMapUAV = Component->GetDisplacementMapUAV();
 
 		SimulateOcean(RHICmdList, Params, Views);
@@ -384,6 +386,11 @@ UOceanGridMeshComponent::UOceanGridMeshComponent()
 
 UOceanGridMeshComponent::~UOceanGridMeshComponent()
 {
+	if (_DisplacementMapSRV.IsValid())
+	{
+		_DisplacementMapSRV.SafeRelease();
+	}
+
 	if (_DisplacementMapUAV.IsValid())
 	{
 		_DisplacementMapUAV.SafeRelease();
@@ -407,6 +414,11 @@ UOceanGridMeshComponent::~UOceanGridMeshComponent()
 	if (_DkyDebugViewUAV.IsValid())
 	{
 		_DkyDebugViewUAV.SafeRelease();
+	}
+
+	if (_DxyzDebugViewUAV.IsValid())
+	{
+		_DxyzDebugViewUAV.SafeRelease();
 	}
 }
 
@@ -446,6 +458,16 @@ void UOceanGridMeshComponent::SetOceanSpectrumSettings(float TimeScale, float Am
 	_WindSpeed = WindSpeed;
 	_WindDependency = WindDependency;
 	_ChoppyScale = ChoppyScale;
+
+	if (_DisplacementMapSRV.IsValid())
+	{
+		_DisplacementMapSRV.SafeRelease();
+	}
+
+	if (DisplacementMap != nullptr)
+	{
+		_DisplacementMapSRV = RHICreateShaderResourceView(DisplacementMap->GameThread_GetRenderTargetResource()->TextureRHI, 0);
+	}
 
 	if (_DisplacementMapUAV.IsValid())
 	{
@@ -496,6 +518,11 @@ void UOceanGridMeshComponent::SetOceanSpectrumSettings(float TimeScale, float Am
 	{
 		_DkyDebugViewUAV = RHICreateUnorderedAccessView(DkyDebugView->GameThread_GetRenderTargetResource()->TextureRHI);
 	}
+
+	if (DxyzDebugView != nullptr)
+	{
+		_DxyzDebugViewUAV = RHICreateUnorderedAccessView(DxyzDebugView->GameThread_GetRenderTargetResource()->TextureRHI);
+	}
 }
 
 #define TEST_SIN_WAVE 0
@@ -521,11 +548,13 @@ void UOceanGridMeshComponent::SendRenderDynamicData_Concurrent()
 #else
 	if (SceneProxy != nullptr
 		&& DisplacementMap != nullptr
+		&& _DisplacementMapSRV.IsValid()
 		&& _DisplacementMapUAV.IsValid()
 		&& _H0DebugViewUAV.IsValid()
 		&& _HtDebugViewUAV.IsValid()
 		&& _DkxDebugViewUAV.IsValid()
 		&& _DkyDebugViewUAV.IsValid()
+		&& _DxyzDebugViewUAV.IsValid()
 	)
 	{
 		ENQUEUE_RENDER_COMMAND(OceanDeformGridMeshCommand)(
@@ -533,11 +562,13 @@ void UOceanGridMeshComponent::SendRenderDynamicData_Concurrent()
 			{
 				if (SceneProxy != nullptr
 					&& DisplacementMap != nullptr
+					&& _DisplacementMapSRV.IsValid()
 					&& _DisplacementMapUAV.IsValid()
 					&& _H0DebugViewUAV.IsValid()
 					&& _HtDebugViewUAV.IsValid()
 					&& _DkxDebugViewUAV.IsValid()
 					&& _DkyDebugViewUAV.IsValid()
+					&& _DxyzDebugViewUAV.IsValid()
 					)
 				{
 					((const FOceanGridMeshSceneProxy*)SceneProxy)->EnqueSimulateOceanCommand(RHICmdList, this);

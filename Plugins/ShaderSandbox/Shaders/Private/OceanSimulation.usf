@@ -296,6 +296,21 @@ void UpdateDisplacementMapCS(uint2 DispatchThreadId : SV_DispatchThreadID)
 	OutDisplacementMap[PixelCoord] = float4(InDxBuffer[Index], InDyBuffer[Index], InDzBuffer[Index], 1.0);
 }
 
+Texture2D<float4> InDisplacementMap;
+RWTexture2D<float4> DxyzDebugTexture;
+
+[numthreads(8, 8, 1)]
+void DebugDxyzCS(uint2 DispatchThreadId : SV_DispatchThreadID)
+{
+	uint2 PixelCoord = DispatchThreadId;
+
+	float3 Dxyz = InDisplacementMap[PixelCoord].xyz;
+	float3 DebugColor = (Dxyz + 10.0) / 20.0; // TODO:適当に最大値が1mと考えて、すべてプラスになるように下駄を履かせる
+
+	DxyzDebugTexture[PixelCoord] = float4(DebugColor.r, DebugColor.g, DebugColor.b, 1.0);
+}
+
+
 uint MapWidth;
 uint MapHeight;
 float MeshWidth;
