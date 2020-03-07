@@ -304,8 +304,10 @@ void DebugDxyzCS(uint2 DispatchThreadId : SV_DispatchThreadID)
 {
 	uint2 PixelCoord = DispatchThreadId;
 
+	const float MAX_WAVE_AMPLITUDE = 200;
+
 	float3 Dxyz = InDisplacementMap[PixelCoord].xyz;
-	float3 DebugColor = (Dxyz + 10.0) / 20.0; // TODO:適当に最大値が1mと考えて、すべてプラスになるように下駄を履かせる
+	float3 DebugColor = (Dxyz + MAX_WAVE_AMPLITUDE) / 2.0 / MAX_WAVE_AMPLITUDE; // TODO:波の高さを見て適宜0-1の範囲になるように調節する
 
 	DxyzDebugTexture[PixelCoord] = float4(DebugColor.r, DebugColor.g, DebugColor.b, 1.0);
 }
