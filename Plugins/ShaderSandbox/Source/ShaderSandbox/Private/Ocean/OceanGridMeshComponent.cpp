@@ -505,18 +505,46 @@ void UOceanGridMeshComponent::SendRenderDynamicData_Concurrent()
 	//SCOPE_CYCLE_COUNTER(STAT_OceanGridMeshCompUpdate);
 	Super::SendRenderDynamicData_Concurrent();
 
+#if TEST_SIN_WAVE > 0
 	if (SceneProxy != nullptr && DisplacementMap != nullptr && _DisplacementMapUAV.IsValid())
 	{
 		ENQUEUE_RENDER_COMMAND(OceanDeformGridMeshCommand)(
 			[this](FRHICommandListImmediate& RHICmdList)
 			{
-#if TEST_SIN_WAVE > 0
-				((const FOceanGridMeshSceneProxy*)SceneProxy)->EnqueTestSinWaveCommand(RHICmdList, this);
-#else
-				((const FOceanGridMeshSceneProxy*)SceneProxy)->EnqueSimulateOceanCommand(RHICmdList, this);
-#endif
+				if (SceneProxy != nullptr && DisplacementMap != nullptr && _DisplacementMapUAV.IsValid())
+				{
+					((const FOceanGridMeshSceneProxy*)SceneProxy)->EnqueTestSinWaveCommand(RHICmdList, this);
+				}
 			}
 		);
 	}
+#else
+	if (SceneProxy != nullptr
+		&& DisplacementMap != nullptr
+		&& _DisplacementMapUAV.IsValid()
+		&& _H0DebugViewUAV.IsValid()
+		&& _HtDebugViewUAV.IsValid()
+		&& _DkxDebugViewUAV.IsValid()
+		&& _DkyDebugViewUAV.IsValid()
+	)
+	{
+		ENQUEUE_RENDER_COMMAND(OceanDeformGridMeshCommand)(
+			[this](FRHICommandListImmediate& RHICmdList)
+			{
+				if (SceneProxy != nullptr
+					&& DisplacementMap != nullptr
+					&& _DisplacementMapUAV.IsValid()
+					&& _H0DebugViewUAV.IsValid()
+					&& _HtDebugViewUAV.IsValid()
+					&& _DkxDebugViewUAV.IsValid()
+					&& _DkyDebugViewUAV.IsValid()
+					)
+				{
+					((const FOceanGridMeshSceneProxy*)SceneProxy)->EnqueSimulateOceanCommand(RHICmdList, this);
+				}
+			}
+		);
+	}
+#endif
 }
 
