@@ -105,6 +105,7 @@ void UpdateSpectrumCS(uint2 DispatchThreadId : SV_DispatchThreadID)
 
 StructuredBuffer<float2> InDkBuffer;
 RWStructuredBuffer<float2> FFTWorkBufferUAV; // TODO:SharedMemoryに入れるようにしたい
+float ChoppyScale;
 RWStructuredBuffer<float> OutDxBuffer;
 RWStructuredBuffer<float> OutDyBuffer;
 RWStructuredBuffer<float> OutDzBuffer;
@@ -162,12 +163,14 @@ void CopyComplexDataLocalToWorkBuffer(in Complex LocalBuffer[RADIX], uint ScanId
 void CopyRealDataLocalToDxBuffer(in Complex LocalBuffer[RADIX], uint ScanIdx, uint Loc, uint Stride, uint Size)
 {
 	uint2 Pixel = uint2(ScanIdx, Loc);
+	// cos(pi * (m1 + m2))
+	int SignCorrection = ((Pixel.x + Pixel.y) & 1) ? -1 : 1;
 
 	UNROLL
 	for (uint r = 0; r < RADIX && Pixel.y < Size; ++r, Pixel.y += Stride)
 	{
 		uint Index = Pixel.y * Size + Pixel.x;
-		OutDxBuffer[Index] = LocalBuffer[r].x; // 実数部のみコピー
+		OutDxBuffer[Index] = LocalBuffer[r].x * SignCorrection * ChoppyScale; // 実数部のみコピー
 		//OutDxBuffer[Index] = 1.0;
 	}
 }
@@ -175,12 +178,14 @@ void CopyRealDataLocalToDxBuffer(in Complex LocalBuffer[RADIX], uint ScanIdx, ui
 void CopyRealDataLocalToDyBuffer(in Complex LocalBuffer[RADIX], uint ScanIdx, uint Loc, uint Stride, uint Size)
 {
 	uint2 Pixel = uint2(ScanIdx, Loc);
+	// cos(pi * (m1 + m2))
+	int SignCorrection = ((Pixel.x + Pixel.y) & 1) ? -1 : 1;
 
 	UNROLL
 	for (uint r = 0; r < RADIX && Pixel.y < Size; ++r, Pixel.y += Stride)
 	{
 		uint Index = Pixel.y * Size + Pixel.x;
-		OutDyBuffer[Index] = LocalBuffer[r].x; // 実数部のみコピー
+		OutDyBuffer[Index] = LocalBuffer[r].x * SignCorrection * ChoppyScale; // 実数部のみコピー
 		//OutDyBuffer[Index] = 1.0;
 	}
 }
@@ -189,12 +194,14 @@ void CopyRealDataLocalToDyBuffer(in Complex LocalBuffer[RADIX], uint ScanIdx, ui
 void CopyRealDataLocalToDzBuffer(in Complex LocalBuffer[RADIX], uint ScanIdx, uint Loc, uint Stride, uint Size)
 {
 	uint2 Pixel = uint2(ScanIdx, Loc);
+	// cos(pi * (m1 + m2))
+	int SignCorrection = ((Pixel.x + Pixel.y) & 1) ? -1 : 1;
 
 	UNROLL
 	for (uint r = 0; r < RADIX && Pixel.y < Size; ++r, Pixel.y += Stride)
 	{
 		uint Index = Pixel.y * Size + Pixel.x;
-		OutDzBuffer[Index] = LocalBuffer[r].x; // 実数部のみコピー
+		OutDzBuffer[Index] = LocalBuffer[r].x * SignCorrection; // 実数部のみコピー
 		//OutDzBuffer[Index] = 1.0;
 	}
 }

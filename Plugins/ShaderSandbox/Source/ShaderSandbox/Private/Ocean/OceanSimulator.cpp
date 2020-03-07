@@ -135,6 +135,7 @@ class FOceanDkxVerticalIFFTCS : public FGlobalShader
 	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
 		SHADER_PARAMETER_UAV(RWStructuredBuffer<float>, OutDxBuffer)
 		SHADER_PARAMETER_UAV(RWStructuredBuffer<FVector2D>, FFTWorkBufferUAV)
+		SHADER_PARAMETER(float, ChoppyScale)
 	END_SHADER_PARAMETER_STRUCT()
 
 public:
@@ -154,6 +155,7 @@ class FOceanDkyVerticalIFFTCS : public FGlobalShader
 	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
 		SHADER_PARAMETER_UAV(RWStructuredBuffer<float>, OutDyBuffer)
 		SHADER_PARAMETER_UAV(RWStructuredBuffer<FVector2D>, FFTWorkBufferUAV)
+		SHADER_PARAMETER(float, ChoppyScale)
 	END_SHADER_PARAMETER_STRUCT()
 
 public:
@@ -333,6 +335,7 @@ void SimulateOcean(FRHICommandListImmediate& RHICmdList, const FOceanSpectrumPar
 		FOceanDkxVerticalIFFTCS::FParameters* VertIFFTParams = GraphBuilder.AllocParameters<FOceanDkxVerticalIFFTCS::FParameters>();
 		VertIFFTParams->OutDxBuffer = Views.DxUAV;
 		VertIFFTParams->FFTWorkBufferUAV = Views.FFTWorkUAV;
+		VertIFFTParams->ChoppyScale = Params.ChoppyScale;
 
 		FComputeShaderUtils::AddPass(
 			GraphBuilder,
@@ -365,6 +368,7 @@ void SimulateOcean(FRHICommandListImmediate& RHICmdList, const FOceanSpectrumPar
 		FOceanDkyVerticalIFFTCS::FParameters* VertIFFTParams = GraphBuilder.AllocParameters<FOceanDkyVerticalIFFTCS::FParameters>();
 		VertIFFTParams->OutDyBuffer = Views.DyUAV;
 		VertIFFTParams->FFTWorkBufferUAV = Views.FFTWorkUAV;
+		VertIFFTParams->ChoppyScale = Params.ChoppyScale;
 
 		FComputeShaderUtils::AddPass(
 			GraphBuilder,
