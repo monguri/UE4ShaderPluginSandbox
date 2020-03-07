@@ -103,9 +103,7 @@ void UpdateSpectrumCS(uint2 DispatchThreadId : SV_DispatchThreadID)
 	OutDkyBuffer[Index] = Dkyt;
 }
 
-StructuredBuffer<float2> InDkxBuffer;
-StructuredBuffer<float2> InDkyBuffer;
-StructuredBuffer<float2> InDkzBuffer; // Ht Buffer
+StructuredBuffer<float2> InDkBuffer;
 RWStructuredBuffer<float2> FFTWorkBufferUAV; // TODO:SharedMemoryに入れるようにしたい
 RWStructuredBuffer<float> OutDxBuffer;
 RWStructuredBuffer<float> OutDyBuffer;
@@ -169,7 +167,7 @@ void CopyRealDataLocalToDxBuffer(in Complex LocalBuffer[RADIX], uint ScanIdx, ui
 	for (uint r = 0; r < RADIX && Pixel.y < Size; ++r, Pixel.y += Stride)
 	{
 		uint Index = Pixel.y * Size + Pixel.x;
-		OutDxBuffer[Index] = LocalBuffer[r].x;
+		OutDxBuffer[Index] = LocalBuffer[r].x; // 実数部のみコピー
 		//OutDxBuffer[Index] = 1.0;
 	}
 }
@@ -182,7 +180,7 @@ void CopyRealDataLocalToDyBuffer(in Complex LocalBuffer[RADIX], uint ScanIdx, ui
 	for (uint r = 0; r < RADIX && Pixel.y < Size; ++r, Pixel.y += Stride)
 	{
 		uint Index = Pixel.y * Size + Pixel.x;
-		OutDyBuffer[Index] = LocalBuffer[r].x;
+		OutDyBuffer[Index] = LocalBuffer[r].x; // 実数部のみコピー
 		//OutDyBuffer[Index] = 1.0;
 	}
 }
@@ -196,13 +194,13 @@ void CopyRealDataLocalToDzBuffer(in Complex LocalBuffer[RADIX], uint ScanIdx, ui
 	for (uint r = 0; r < RADIX && Pixel.y < Size; ++r, Pixel.y += Stride)
 	{
 		uint Index = Pixel.y * Size + Pixel.x;
-		OutDzBuffer[Index] = LocalBuffer[r].x;
+		OutDzBuffer[Index] = LocalBuffer[r].x; // 実数部のみコピー
 		//OutDzBuffer[Index] = 1.0;
 	}
 }
 
 [numthreads(NUMTHREADSX, 1, 1)]
-void OceanIFFT512x512CS(uint GroupID : SV_GroupID, uint GroupThreadID : SV_GroupThreadID)
+void HorizontalIFFT512x512CS(uint GroupID : SV_GroupID, uint GroupThreadID : SV_GroupThreadID)
 {
 	// ComplexFFTImage512x512を、float4チャンネルでなくfloat2チャンネルに直したもの
 
@@ -215,35 +213,62 @@ void OceanIFFT512x512CS(uint GroupID : SV_GroupID, uint GroupThreadID : SV_Group
 
 	Complex LocalBuffer[RADIX];
 
-	CopyComplexDataSrcToLocal(LocalBuffer, ScanIdx, Head, Stride, SignalLength, InDkxBuffer);
+	CopyComplexDataSrcToLocal(LocalBuffer, ScanIdx, Head, Stride, SignalLength, InDkBuffer);
 	GroupSharedFFT(false, LocalBuffer, SignalLength, ThreadIdx);
 	CopyComplexDataLocalToWorkBuffer(LocalBuffer, ScanIdx, Head, Stride, SignalLength);
-	//TODO:いるか？
-	FFTMemoryBarrier();
+}
+
+[numthreads(NUMTHREADSX, 1, 1)]
+void DkxVerticalIFFT512x512CS(uint GroupID : SV_GroupID, uint GroupThreadID : SV_GroupThreadID)
+{
+	// ComplexFFTImage512x512を、float4チャンネルでなくfloat2チャンネルに直したもの
+
+	const uint ThreadIdx = GroupThreadID;
+	const uint ScanIdx  = GroupID;
+	const uint SignalLength = SCAN_LINE_LENGTH;
+
+	uint Head = ThreadIdx;
+	const uint Stride = STRIDE;   
+
+	Complex LocalBuffer[RADIX];
 
 	CopyWorkBufferToLocal(LocalBuffer, ScanIdx, Head, Stride, SignalLength);
 	GroupSharedFFT(false, LocalBuffer, SignalLength, ThreadIdx);
 	CopyRealDataLocalToDxBuffer(LocalBuffer, ScanIdx, Head, Stride, SignalLength);
-	//TODO:いるか？
-	FFTMemoryBarrier();
+}
 
-	CopyComplexDataSrcToLocal(LocalBuffer, ScanIdx, Head, Stride, SignalLength, InDkyBuffer);
-	GroupSharedFFT(false, LocalBuffer, SignalLength, ThreadIdx);
-	CopyComplexDataLocalToWorkBuffer(LocalBuffer, ScanIdx, Head, Stride, SignalLength);
-	//TODO:いるか？
-	FFTMemoryBarrier();
+[numthreads(NUMTHREADSX, 1, 1)]
+void DkyVerticalIFFT512x512CS(uint GroupID : SV_GroupID, uint GroupThreadID : SV_GroupThreadID)
+{
+	// ComplexFFTImage512x512を、float4チャンネルでなくfloat2チャンネルに直したもの
+
+	const uint ThreadIdx = GroupThreadID;
+	const uint ScanIdx  = GroupID;
+	const uint SignalLength = SCAN_LINE_LENGTH;
+
+	uint Head = ThreadIdx;
+	const uint Stride = STRIDE;   
+
+	Complex LocalBuffer[RADIX];
 
 	CopyWorkBufferToLocal(LocalBuffer, ScanIdx, Head, Stride, SignalLength);
 	GroupSharedFFT(false, LocalBuffer, SignalLength, ThreadIdx);
 	CopyRealDataLocalToDyBuffer(LocalBuffer, ScanIdx, Head, Stride, SignalLength);
-	//TODO:いるか？
-	FFTMemoryBarrier();
+}
 
-	CopyComplexDataSrcToLocal(LocalBuffer, ScanIdx, Head, Stride, SignalLength, InDkzBuffer);
-	GroupSharedFFT(false, LocalBuffer, SignalLength, ThreadIdx);
-	CopyComplexDataLocalToWorkBuffer(LocalBuffer, ScanIdx, Head, Stride, SignalLength);
-	//TODO:いるか？
-	FFTMemoryBarrier();
+[numthreads(NUMTHREADSX, 1, 1)]
+void DkzVerticalIFFT512x512CS(uint GroupID : SV_GroupID, uint GroupThreadID : SV_GroupThreadID)
+{
+	// ComplexFFTImage512x512を、float4チャンネルでなくfloat2チャンネルに直したもの
+
+	const uint ThreadIdx = GroupThreadID;
+	const uint ScanIdx  = GroupID;
+	const uint SignalLength = SCAN_LINE_LENGTH;
+
+	uint Head = ThreadIdx;
+	const uint Stride = STRIDE;   
+
+	Complex LocalBuffer[RADIX];
 
 	CopyWorkBufferToLocal(LocalBuffer, ScanIdx, Head, Stride, SignalLength);
 	GroupSharedFFT(false, LocalBuffer, SignalLength, ThreadIdx);

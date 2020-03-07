@@ -108,18 +108,69 @@ public:
 
 IMPLEMENT_GLOBAL_SHADER(FOceanUpdateSpectrumCS, "/Plugin/ShaderSandbox/Private/OceanSimulation.usf", "UpdateSpectrumCS", SF_Compute);
 
-class FOceanIFFTCS : public FGlobalShader
+class FOceanHorizontalIFFTCS : public FGlobalShader
 {
-	DECLARE_GLOBAL_SHADER(FOceanIFFTCS);
-	SHADER_USE_PARAMETER_STRUCT(FOceanIFFTCS, FGlobalShader);
+	DECLARE_GLOBAL_SHADER(FOceanHorizontalIFFTCS);
+	SHADER_USE_PARAMETER_STRUCT(FOceanHorizontalIFFTCS, FGlobalShader);
 
 	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
-		//SHADER_PARAMETER(uint32, MapSize)
-		SHADER_PARAMETER_SRV(StructuredBuffer<FVector2D>, InDkxBuffer)
-		SHADER_PARAMETER_SRV(StructuredBuffer<FVector2D>, InDkyBuffer)
-		SHADER_PARAMETER_SRV(StructuredBuffer<FVector2D>, InDkzBuffer)
+		SHADER_PARAMETER_SRV(StructuredBuffer<FVector2D>, InDkBuffer)
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<FVector2D>, FFTWorkBufferUAV)
+	END_SHADER_PARAMETER_STRUCT()
+
+public:
+	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters)
+	{
+		return IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
+	}
+};
+
+IMPLEMENT_GLOBAL_SHADER(FOceanHorizontalIFFTCS, "/Plugin/ShaderSandbox/Private/OceanSimulation.usf", "HorizontalIFFT512x512CS", SF_Compute);
+
+class FOceanDkxVerticalIFFTCS : public FGlobalShader
+{
+	DECLARE_GLOBAL_SHADER(FOceanDkxVerticalIFFTCS);
+	SHADER_USE_PARAMETER_STRUCT(FOceanDkxVerticalIFFTCS, FGlobalShader);
+
+	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
 		SHADER_PARAMETER_UAV(RWStructuredBuffer<float>, OutDxBuffer)
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<FVector2D>, FFTWorkBufferUAV)
+	END_SHADER_PARAMETER_STRUCT()
+
+public:
+	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters)
+	{
+		return IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
+	}
+};
+
+IMPLEMENT_GLOBAL_SHADER(FOceanDkxVerticalIFFTCS, "/Plugin/ShaderSandbox/Private/OceanSimulation.usf", "DkxVerticalIFFT512x512CS", SF_Compute);
+
+class FOceanDkyVerticalIFFTCS : public FGlobalShader
+{
+	DECLARE_GLOBAL_SHADER(FOceanDkyVerticalIFFTCS);
+	SHADER_USE_PARAMETER_STRUCT(FOceanDkyVerticalIFFTCS, FGlobalShader);
+
+	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
 		SHADER_PARAMETER_UAV(RWStructuredBuffer<float>, OutDyBuffer)
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<FVector2D>, FFTWorkBufferUAV)
+	END_SHADER_PARAMETER_STRUCT()
+
+public:
+	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters)
+	{
+		return IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
+	}
+};
+
+IMPLEMENT_GLOBAL_SHADER(FOceanDkyVerticalIFFTCS, "/Plugin/ShaderSandbox/Private/OceanSimulation.usf", "DkyVerticalIFFT512x512CS", SF_Compute);
+
+class FOceanDkzVerticalIFFTCS : public FGlobalShader
+{
+	DECLARE_GLOBAL_SHADER(FOceanDkzVerticalIFFTCS);
+	SHADER_USE_PARAMETER_STRUCT(FOceanDkzVerticalIFFTCS, FGlobalShader);
+
+	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
 		SHADER_PARAMETER_UAV(RWStructuredBuffer<float>, OutDzBuffer)
 		SHADER_PARAMETER_UAV(RWStructuredBuffer<FVector2D>, FFTWorkBufferUAV)
 	END_SHADER_PARAMETER_STRUCT()
@@ -131,7 +182,7 @@ public:
 	}
 };
 
-IMPLEMENT_GLOBAL_SHADER(FOceanIFFTCS, "/Plugin/ShaderSandbox/Private/OceanSimulation.usf", "OceanIFFT512x512CS", SF_Compute);
+IMPLEMENT_GLOBAL_SHADER(FOceanDkzVerticalIFFTCS, "/Plugin/ShaderSandbox/Private/OceanSimulation.usf", "DkzVerticalIFFT512x512CS", SF_Compute);
 
 class FOceanUpdateDisplacementMapCS : public FGlobalShader
 {
@@ -261,22 +312,97 @@ void SimulateOcean(FRHICommandListImmediate& RHICmdList, const FOceanSpectrumPar
 	}
 
 	{
-		TShaderMapRef<FOceanIFFTCS> OceanIFFTCS(ShaderMap);
+		TShaderMapRef<FOceanHorizontalIFFTCS> OceanHorizIFFTCS(ShaderMap);
 
-		FOceanIFFTCS::FParameters* IFFTParams = GraphBuilder.AllocParameters<FOceanIFFTCS::FParameters>();
-		IFFTParams->InDkxBuffer = Views.DkxSRV;
-		IFFTParams->InDkyBuffer = Views.DkySRV;
-		IFFTParams->InDkzBuffer = Views.HtSRV;
-		IFFTParams->OutDxBuffer = Views.DxUAV;
-		IFFTParams->OutDyBuffer = Views.DyUAV;
-		IFFTParams->OutDzBuffer = Views.DzUAV;
-		IFFTParams->FFTWorkBufferUAV = Views.FFTWorkUAV;
+		FOceanHorizontalIFFTCS::FParameters* HorizIFFTParams = GraphBuilder.AllocParameters<FOceanHorizontalIFFTCS::FParameters>();
+		HorizIFFTParams->InDkBuffer = Views.DkxSRV;
+		HorizIFFTParams->FFTWorkBufferUAV = Views.FFTWorkUAV;
 
 		FComputeShaderUtils::AddPass(
 			GraphBuilder,
-			RDG_EVENT_NAME("OceanIFFTCS"),
-			*OceanIFFTCS,
-			IFFTParams,
+			RDG_EVENT_NAME("OceanDkxHorizontalIFFTCS"),
+			*OceanHorizIFFTCS,
+			HorizIFFTParams,
+			FIntVector(Params.DispMapDimension, 1, 1)
+		);
+	}
+
+	{
+		TShaderMapRef<FOceanDkxVerticalIFFTCS> OceanVertIFFTCS(ShaderMap);
+
+		FOceanDkxVerticalIFFTCS::FParameters* VertIFFTParams = GraphBuilder.AllocParameters<FOceanDkxVerticalIFFTCS::FParameters>();
+		VertIFFTParams->OutDxBuffer = Views.DxUAV;
+		VertIFFTParams->FFTWorkBufferUAV = Views.FFTWorkUAV;
+
+		FComputeShaderUtils::AddPass(
+			GraphBuilder,
+			RDG_EVENT_NAME("OceanDkxVerticalIFFTCS"),
+			*OceanVertIFFTCS,
+			VertIFFTParams,
+			FIntVector(Params.DispMapDimension, 1, 1)
+		);
+	}
+
+	{
+		TShaderMapRef<FOceanHorizontalIFFTCS> OceanHorizIFFTCS(ShaderMap);
+
+		FOceanHorizontalIFFTCS::FParameters* HorizIFFTParams = GraphBuilder.AllocParameters<FOceanHorizontalIFFTCS::FParameters>();
+		HorizIFFTParams->InDkBuffer = Views.DkySRV;
+		HorizIFFTParams->FFTWorkBufferUAV = Views.FFTWorkUAV;
+
+		FComputeShaderUtils::AddPass(
+			GraphBuilder,
+			RDG_EVENT_NAME("OceanDkyHorizontalIFFTCS"),
+			*OceanHorizIFFTCS,
+			HorizIFFTParams,
+			FIntVector(Params.DispMapDimension, 1, 1)
+		);
+	}
+
+	{
+		TShaderMapRef<FOceanDkyVerticalIFFTCS> OceanVertIFFTCS(ShaderMap);
+
+		FOceanDkyVerticalIFFTCS::FParameters* VertIFFTParams = GraphBuilder.AllocParameters<FOceanDkyVerticalIFFTCS::FParameters>();
+		VertIFFTParams->OutDyBuffer = Views.DyUAV;
+		VertIFFTParams->FFTWorkBufferUAV = Views.FFTWorkUAV;
+
+		FComputeShaderUtils::AddPass(
+			GraphBuilder,
+			RDG_EVENT_NAME("OceanDkyVerticalIFFTCS"),
+			*OceanVertIFFTCS,
+			VertIFFTParams,
+			FIntVector(Params.DispMapDimension, 1, 1)
+		);
+	}
+
+	{
+		TShaderMapRef<FOceanHorizontalIFFTCS> OceanHorizIFFTCS(ShaderMap);
+
+		FOceanHorizontalIFFTCS::FParameters* HorizIFFTParams = GraphBuilder.AllocParameters<FOceanHorizontalIFFTCS::FParameters>();
+		HorizIFFTParams->InDkBuffer = Views.HtSRV;
+		HorizIFFTParams->FFTWorkBufferUAV = Views.FFTWorkUAV;
+
+		FComputeShaderUtils::AddPass(
+			GraphBuilder,
+			RDG_EVENT_NAME("OceanDkzHorizontalIFFTCS"),
+			*OceanHorizIFFTCS,
+			HorizIFFTParams,
+			FIntVector(Params.DispMapDimension, 1, 1)
+		);
+	}
+
+	{
+		TShaderMapRef<FOceanDkzVerticalIFFTCS> OceanVertIFFTCS(ShaderMap);
+
+		FOceanDkzVerticalIFFTCS::FParameters* VertIFFTParams = GraphBuilder.AllocParameters<FOceanDkzVerticalIFFTCS::FParameters>();
+		VertIFFTParams->OutDzBuffer = Views.DzUAV;
+		VertIFFTParams->FFTWorkBufferUAV = Views.FFTWorkUAV;
+
+		FComputeShaderUtils::AddPass(
+			GraphBuilder,
+			RDG_EVENT_NAME("OceanDkzVerticalIFFTCS"),
+			*OceanVertIFFTCS,
+			VertIFFTParams,
 			FIntVector(Params.DispMapDimension, 1, 1)
 		);
 	}
