@@ -11,7 +11,7 @@ struct FOceanSpectrumParameters
 	/** The size of displacement map. Must be power of 2. */
 	uint32 DispMapDimension = 512;
 	/** The side length (world space) of square patch. Typical value is 1000 ~ 2000. */
-	float PatchLength = 1000.0f;
+	float PatchLength = 2000.0f;
 	/** Amplitude for transverse wave. Around 1.0 (not the world space height). */
 	float AmplitudeScale = 0.35f;
 	/** Wind direction. Normalization not required */
