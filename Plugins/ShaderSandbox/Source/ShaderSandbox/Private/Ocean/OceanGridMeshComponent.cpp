@@ -145,7 +145,7 @@ public:
 
 		FOceanSpectrumParameters Params;
 		Params.DispMapDimension = DispMapDimension;
-		Params.PatchLength = Component->GetPatchLength();
+		Params.PatchLength = Component->GetGridWidth() * Component->GetNumColumn(); // GetPatchLength()は現状未使用。数式から考えてメッシュサイズを使うのが正しいから
 		Params.AmplitudeScale = Component->GetAmplitudeScale();
 		Params.WindDirection = Component->GetWindDirection();
 		Params.WindSpeed = Component->GetWindSpeed();
@@ -313,7 +313,7 @@ public:
 
 		FOceanSpectrumParameters Params;
 		Params.DispMapDimension = TextureRenderTargetResource->GetSizeX(); // TODO:正方形前提でSizeYは見てない
-		Params.PatchLength = Component->GetPatchLength();
+		Params.PatchLength = Component->GetGridWidth() * Component->GetNumColumn(); // GetPatchLength()は現状未使用。数式から考えてメッシュサイズを使うのが正しいから
 		Params.AmplitudeScale = Component->GetAmplitudeScale();
 		Params.WindDirection = Component->GetWindDirection();
 		Params.WindSpeed = Component->GetWindSpeed();
