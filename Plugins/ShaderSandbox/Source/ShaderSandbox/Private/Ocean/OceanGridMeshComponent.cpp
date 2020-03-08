@@ -145,7 +145,7 @@ public:
 
 		FOceanSpectrumParameters Params;
 		Params.DispMapDimension = DispMapDimension;
-		Params.PatchLength = Component->GetGridWidth() * Component->GetNumColumn();
+		Params.PatchLength = Component->GetPatchLength();
 		Params.AmplitudeScale = Component->GetAmplitudeScale();
 		Params.WindDirection = Component->GetWindDirection();
 		Params.WindSpeed = Component->GetWindSpeed();
@@ -313,7 +313,7 @@ public:
 
 		FOceanSpectrumParameters Params;
 		Params.DispMapDimension = TextureRenderTargetResource->GetSizeX(); // TODO:正方形前提でSizeYは見てない
-		Params.PatchLength = Component->GetGridWidth() * Component->GetNumColumn(); // TODO:こちらも同様。幅しか見てない
+		Params.PatchLength = Component->GetPatchLength();
 		Params.AmplitudeScale = Component->GetAmplitudeScale();
 		Params.WindDirection = Component->GetWindDirection();
 		Params.WindSpeed = Component->GetWindSpeed();
@@ -450,8 +450,9 @@ void UOceanGridMeshComponent::SetSinWaveSettings(float WaveLengthRow, float Wave
 	}
 }
 
-void UOceanGridMeshComponent::SetOceanSpectrumSettings(float TimeScale, float AmplitudeScale, FVector2D WindDirection, float WindSpeed, float WindDependency, float ChoppyScale)
+void UOceanGridMeshComponent::SetOceanSpectrumSettings(float PatchLength, float TimeScale, float AmplitudeScale, FVector2D WindDirection, float WindSpeed, float WindDependency, float ChoppyScale)
 {
+	_PatchLength = PatchLength;
 	_TimeScale = TimeScale;
 	_AmplitudeScale = AmplitudeScale;
 	_WindDirection = WindDirection.GetSafeNormal(); // 正規化しておく

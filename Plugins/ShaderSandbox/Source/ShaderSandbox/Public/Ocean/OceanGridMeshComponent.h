@@ -41,8 +41,9 @@ public:
 
 	/** Set sin wave settings. */
 	UFUNCTION(BlueprintCallable, Category="Components|OceanGridMesh")
-	void SetOceanSpectrumSettings(float TimeScale, float AmplitudeScale, FVector2D WindDirection, float WindSpeed, float WindDependency, float ChoppyScale);
+	void SetOceanSpectrumSettings(float PatchLength, float TimeScale, float AmplitudeScale, FVector2D WindDirection, float WindSpeed, float WindDependency, float ChoppyScale);
 
+	float GetPatchLength() const { return _PatchLength; }
 	float GetTimeScale() const { return _TimeScale; }
 	float GetAmplitudeScale() const { return _AmplitudeScale; }
 	FVector2D GetWindDirection() const { return _WindDirection; }
@@ -80,6 +81,7 @@ private:
 
 	// explanation of parametes are in OceanSimulator.h
 
+	float _PatchLength = 2000.0f;
 	float _TimeScale = 0.8f;
 	float _AmplitudeScale = 0.35f;
 	FVector2D _WindDirection = FVector2D(0.8f, 0.6f);
