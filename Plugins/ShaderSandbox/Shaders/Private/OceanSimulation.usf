@@ -311,15 +311,23 @@ void DebugDxyzCS(uint2 DispatchThreadId : SV_DispatchThreadID)
 	DxyzDebugTexture[PixelCoord] = float4(DebugColor.r, DebugColor.g, DebugColor.b, 1.0);
 }
 
+float PatchLength;
 RWTexture2D<float4> OutGradientFoldingMap;
 
 [numthreads(8, 8, 1)]
 void GenerateGradientFoldingMapCS(uint2 DispatchThreadId : SV_DispatchThreadID)
 {
 	uint2 PixelCoord = DispatchThreadId;
-	uint Index = PixelCoord.y * MapSize + PixelCoord.x;
+	uint2 LeftPixelCoord = uint2(max(PixelCoord.x - 1, 0), PixelCoord.y);
+	uint2 RightPixelCoord = uint2(min(PixelCoord.x + 1, MapSize - 1), PixelCoord.y);
+	uint2 UpPixelCoord = uint2(PixelCoord.x, max(PixelCoord.y - 1, 0));
+	uint2 DownPixelCoord = uint2(PixelCoord.x, min(PixelCoord.y + 1, MapSize - 1));
 
-	OutGradientFoldingMap[PixelCoord] = float4(1.0, 0.0, 0.0, 1.0);
+	//TODO: ZÇÃïœà ÇµÇ©çló∂ÇµÇƒÇ¢Ç»Ç¢NormalÇÃåvéZï˚ñ@Ç≈Ç†ÇÈ
+	float3 Normal = float3(-(InDisplacementMap[RightPixelCoord].z - InDisplacementMap[LeftPixelCoord].z), -(InDisplacementMap[DownPixelCoord].z - InDisplacementMap[UpPixelCoord].z), PatchLength / (float) MapSize * 2.0);
+	Normal = normalize(Normal);
+
+	OutGradientFoldingMap[PixelCoord] = float4(Normal.x, Normal.y, Normal.z, 1.0);
 }
 
 
