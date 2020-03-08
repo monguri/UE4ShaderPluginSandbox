@@ -346,6 +346,7 @@ public:
 		Views.DxyzDebugViewUAV = Component->GetDxyzDebugViewUAV();
 		Views.DisplacementMapSRV = Component->GetDisplacementMapSRV();
 		Views.DisplacementMapUAV = Component->GetDisplacementMapUAV();
+		Views.GradientFoldingMapUAV = Component->GetGradientFoldingMapUAV();
 
 		SimulateOcean(RHICmdList, Params, Views);
 	}
@@ -398,6 +399,11 @@ UOceanGridMeshComponent::~UOceanGridMeshComponent()
 		_DisplacementMapUAV.SafeRelease();
 	}
 
+	if (_GradientFoldingMapUAV.IsValid())
+	{
+		_GradientFoldingMapUAV.SafeRelease();
+	}
+
 	if (_H0DebugViewUAV.IsValid())
 	{
 		_H0DebugViewUAV.SafeRelease();
@@ -427,7 +433,7 @@ UOceanGridMeshComponent::~UOceanGridMeshComponent()
 FPrimitiveSceneProxy* UOceanGridMeshComponent::CreateSceneProxy()
 {
 	FPrimitiveSceneProxy* Proxy = NULL;
-	if(_Vertices.Num() > 0 && _Indices.Num() > 0 && DisplacementMap != nullptr)
+	if(_Vertices.Num() > 0 && _Indices.Num() > 0 && DisplacementMap != nullptr && GradientFoldingMap != nullptr)
 	{
 		Proxy = new FOceanGridMeshSceneProxy(this);
 	}
@@ -480,6 +486,16 @@ void UOceanGridMeshComponent::SetOceanSpectrumSettings(float PatchLength, float 
 	if (DisplacementMap != nullptr)
 	{
 		_DisplacementMapUAV = RHICreateUnorderedAccessView(DisplacementMap->GameThread_GetRenderTargetResource()->TextureRHI);
+	}
+
+	if (_GradientFoldingMapUAV.IsValid())
+	{
+		_GradientFoldingMapUAV.SafeRelease();
+	}
+
+	if (GradientFoldingMap != nullptr)
+	{
+		_GradientFoldingMapUAV = RHICreateUnorderedAccessView(GradientFoldingMap->GameThread_GetRenderTargetResource()->TextureRHI);
 	}
 
 	if (_H0DebugViewUAV.IsValid())
@@ -553,6 +569,8 @@ void UOceanGridMeshComponent::SendRenderDynamicData_Concurrent()
 		&& DisplacementMap != nullptr
 		&& _DisplacementMapSRV.IsValid()
 		&& _DisplacementMapUAV.IsValid()
+		&& GradientFoldingMap != nullptr
+		&& _GradientFoldingMapUAV.IsValid()
 		&& _H0DebugViewUAV.IsValid()
 		&& _HtDebugViewUAV.IsValid()
 		&& _DkxDebugViewUAV.IsValid()
@@ -567,6 +585,8 @@ void UOceanGridMeshComponent::SendRenderDynamicData_Concurrent()
 					&& DisplacementMap != nullptr
 					&& _DisplacementMapSRV.IsValid()
 					&& _DisplacementMapUAV.IsValid()
+					&& GradientFoldingMap != nullptr
+					&& _GradientFoldingMapUAV.IsValid()
 					&& _H0DebugViewUAV.IsValid()
 					&& _HtDebugViewUAV.IsValid()
 					&& _DkxDebugViewUAV.IsValid()

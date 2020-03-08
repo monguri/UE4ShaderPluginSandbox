@@ -291,7 +291,7 @@ RWTexture2D<float4> OutDisplacementMap;
 void UpdateDisplacementMapCS(uint2 DispatchThreadId : SV_DispatchThreadID)
 {
 	uint2 PixelCoord = DispatchThreadId;
-	uint Index = PixelCoord.y * MapSize + PixelCoord.x; // Structured Buffer index corresponding wave number k
+	uint Index = PixelCoord.y * MapSize + PixelCoord.x;
 
 	OutDisplacementMap[PixelCoord] = float4(InDxBuffer[Index], InDyBuffer[Index], InDzBuffer[Index], 1.0);
 }
@@ -309,6 +309,17 @@ void DebugDxyzCS(uint2 DispatchThreadId : SV_DispatchThreadID)
 	float3 DebugColor = (Dxyz + DxyzDebugAmplitude) / 2.0 / DxyzDebugAmplitude;
 
 	DxyzDebugTexture[PixelCoord] = float4(DebugColor.r, DebugColor.g, DebugColor.b, 1.0);
+}
+
+RWTexture2D<float4> OutGradientFoldingMap;
+
+[numthreads(8, 8, 1)]
+void GenerateGradientFoldingMapCS(uint2 DispatchThreadId : SV_DispatchThreadID)
+{
+	uint2 PixelCoord = DispatchThreadId;
+	uint Index = PixelCoord.y * MapSize + PixelCoord.x;
+
+	OutGradientFoldingMap[PixelCoord] = float4(1.0, 0.0, 0.0, 1.0);
 }
 
 

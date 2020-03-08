@@ -53,6 +53,7 @@ struct FOceanBufferViews
 	FRHIUnorderedAccessView* DxyzDebugViewUAV = nullptr;
 	FRHIShaderResourceView* DisplacementMapSRV = nullptr;
 	FRHIUnorderedAccessView* DisplacementMapUAV = nullptr;
+	FRHIUnorderedAccessView* GradientFoldingMapUAV = nullptr;
 };
 
 void SimulateOcean(FRHICommandListImmediate& RHICmdList, const FOceanSpectrumParameters& Params, const FOceanBufferViews& Views);

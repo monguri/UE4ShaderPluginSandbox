@@ -229,6 +229,26 @@ public:
 
 IMPLEMENT_GLOBAL_SHADER(FOceanUpdateDisplacementMapCS, "/Plugin/ShaderSandbox/Private/OceanSimulation.usf", "UpdateDisplacementMapCS", SF_Compute);
 
+class FOceanGenerateGradientFoldingMapCS : public FGlobalShader
+{
+	DECLARE_GLOBAL_SHADER(FOceanGenerateGradientFoldingMapCS);
+	SHADER_USE_PARAMETER_STRUCT(FOceanGenerateGradientFoldingMapCS, FGlobalShader);
+
+	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
+		SHADER_PARAMETER(uint32, MapSize)
+		SHADER_PARAMETER_SRV(Texture2D<float4>, InDisplacementMap)
+		SHADER_PARAMETER_UAV(RWTexture2D<float4>, OutGradientFoldingMap)
+	END_SHADER_PARAMETER_STRUCT()
+
+public:
+	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters)
+	{
+		return IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
+	}
+};
+
+IMPLEMENT_GLOBAL_SHADER(FOceanGenerateGradientFoldingMapCS, "/Plugin/ShaderSandbox/Private/OceanSimulation.usf", "GenerateGradientFoldingMapCS", SF_Compute);
+
 void SimulateOcean(FRHICommandListImmediate& RHICmdList, const FOceanSpectrumParameters& Params, const FOceanBufferViews& Views)
 {
 	uint32 DispatchCountX = FMath::DivideAndRoundUp((Params.DispMapDimension), (uint32)8);
@@ -466,6 +486,23 @@ void SimulateOcean(FRHICommandListImmediate& RHICmdList, const FOceanSpectrumPar
 			RDG_EVENT_NAME("OceanDebugDxyzCS"),
 			*OceanDebugHtCS,
 			OceanDebugDxyzParams,
+			FIntVector(DispatchCountX, DispatchCountY, 1)
+		);
+	}
+
+	{
+		TShaderMapRef<FOceanGenerateGradientFoldingMapCS> OceanGenerateGradientFoldingMapCS(ShaderMap);
+
+		FOceanGenerateGradientFoldingMapCS::FParameters* GenerateGradientFoldingMapParams = GraphBuilder.AllocParameters<FOceanGenerateGradientFoldingMapCS::FParameters>();
+		GenerateGradientFoldingMapParams->MapSize = Params.DispMapDimension;
+		GenerateGradientFoldingMapParams->InDisplacementMap = Views.DisplacementMapSRV;
+		GenerateGradientFoldingMapParams->OutGradientFoldingMap = Views.GradientFoldingMapUAV;
+
+		FComputeShaderUtils::AddPass(
+			GraphBuilder,
+			RDG_EVENT_NAME("OceanGenerateGradientFoldingMapCS"),
+			*OceanGenerateGradientFoldingMapCS,
+			GenerateGradientFoldingMapParams,
 			FIntVector(DispatchCountX, DispatchCountY, 1)
 		);
 	}
