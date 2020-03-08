@@ -91,6 +91,7 @@ class FOceanDebugDxyzCS : public FGlobalShader
 
 	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
 		SHADER_PARAMETER(uint32, MapSize)
+		SHADER_PARAMETER(float, DxyzDebugAmplitude)
 		SHADER_PARAMETER_SRV(Texture2D<float4>, InDisplacementMap)
 		SHADER_PARAMETER_UAV(RWTexture2D<float4>, DxyzDebugTexture)
 	END_SHADER_PARAMETER_STRUCT()
@@ -456,6 +457,7 @@ void SimulateOcean(FRHICommandListImmediate& RHICmdList, const FOceanSpectrumPar
 
 		FOceanDebugDxyzCS::FParameters* OceanDebugDxyzParams = GraphBuilder.AllocParameters<FOceanDebugDxyzCS::FParameters>();
 		OceanDebugDxyzParams->MapSize = Params.DispMapDimension;
+		OceanDebugDxyzParams->DxyzDebugAmplitude = Params.DxyzDebugAmplitude;
 		OceanDebugDxyzParams->InDisplacementMap = Views.DisplacementMapSRV;
 		OceanDebugDxyzParams->DxyzDebugTexture = Views.DxyzDebugViewUAV;
 

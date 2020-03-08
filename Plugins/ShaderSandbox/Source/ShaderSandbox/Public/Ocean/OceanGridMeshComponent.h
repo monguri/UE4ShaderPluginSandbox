@@ -29,6 +29,9 @@ public:
 	UPROPERTY(EditAnywhere, Category="Components|OceanGridMesh", BlueprintReadOnly)
 	class UCanvasRenderTarget2D* DxyzDebugView = nullptr;
 
+	UPROPERTY(EditAnywhere, Category="Components|OceanGridMesh", BlueprintReadOnly)
+	float DxyzDebugAmplitude = 100.0f;
+
 	/** Set sin wave settings. */
 	UFUNCTION(BlueprintCallable, Category="Components|OceanGridMesh")
 	void SetSinWaveSettings(float WaveLengthRow, float WaveLengthColumn, float Period, float Amplitude);

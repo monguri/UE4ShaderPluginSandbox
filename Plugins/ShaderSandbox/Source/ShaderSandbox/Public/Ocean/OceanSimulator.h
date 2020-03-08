@@ -24,6 +24,9 @@ struct FOceanSpectrumParameters
 	float ChoppyScale = 1.3f;
 
 	float AccumulatedTime = 0.0f;
+
+	/** Map Dxyz value to [0, 1] by (Dxyz + ThisAmplitude) / (2 * Amplitude). */
+	float DxyzDebugAmplitude = 100.0f;
 };
 
 struct FOceanBufferViews

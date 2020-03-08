@@ -152,6 +152,7 @@ public:
 		Params.WindDependency = Component->GetWindDependency();
 		Params.ChoppyScale = Component->GetChoppyScale();
 		Params.AccumulatedTime = Component->GetAccumulatedTime() * Component->GetTimeScale();
+		Params.DxyzDebugAmplitude = Component->DxyzDebugAmplitude;
 
 		InitHeightMap(Params, Component->GetWorld()->GetGravityZ(), H0Data, Omega0Data);
 
@@ -320,6 +321,7 @@ public:
 		Params.WindDependency = Component->GetWindDependency();
 		Params.ChoppyScale = Component->GetChoppyScale();
 		Params.AccumulatedTime = Component->GetAccumulatedTime() * Component->GetTimeScale();
+		Params.DxyzDebugAmplitude = Component->DxyzDebugAmplitude;
 
 		FOceanBufferViews Views;
 		Views.H0SRV = H0Buffer.GetSRV();

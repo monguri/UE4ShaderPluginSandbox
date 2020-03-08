@@ -296,6 +296,7 @@ void UpdateDisplacementMapCS(uint2 DispatchThreadId : SV_DispatchThreadID)
 	OutDisplacementMap[PixelCoord] = float4(InDxBuffer[Index], InDyBuffer[Index], InDzBuffer[Index], 1.0);
 }
 
+float DxyzDebugAmplitude;
 Texture2D<float4> InDisplacementMap;
 RWTexture2D<float4> DxyzDebugTexture;
 
@@ -304,10 +305,8 @@ void DebugDxyzCS(uint2 DispatchThreadId : SV_DispatchThreadID)
 {
 	uint2 PixelCoord = DispatchThreadId;
 
-	const float MAX_WAVE_AMPLITUDE = 200;
-
 	float3 Dxyz = InDisplacementMap[PixelCoord].xyz;
-	float3 DebugColor = (Dxyz + MAX_WAVE_AMPLITUDE) / 2.0 / MAX_WAVE_AMPLITUDE; // TODO:îgÇÃçÇÇ≥Çå©ÇƒìKãX0-1ÇÃîÕàÕÇ…Ç»ÇÈÇÊÇ§Ç…í≤êﬂÇ∑ÇÈ
+	float3 DebugColor = (Dxyz + DxyzDebugAmplitude) / 2.0 / DxyzDebugAmplitude;
 
 	DxyzDebugTexture[PixelCoord] = float4(DebugColor.r, DebugColor.g, DebugColor.b, 1.0);
 }
