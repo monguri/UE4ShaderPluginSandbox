@@ -3,7 +3,7 @@
 
 uint MapSize;
 float Time;
-StructuredBuffer<float2> H0Buffer;
+StructuredBuffer<Complex> H0Buffer;
 RWTexture2D<float4> H0DebugTexture;
 
 [numthreads(8, 8, 1)]
@@ -16,7 +16,7 @@ void DebugH0CS(uint2 DispatchThreadId : SV_DispatchThreadID)
     H0DebugTexture[PixelCoord] = float4(H0Buffer[Index].x * SCALE, H0Buffer[Index].y * SCALE, 0.0, 1.0);
 }
 
-StructuredBuffer<float2> HtBuffer;
+StructuredBuffer<Complex> HtBuffer;
 RWTexture2D<float4> HtDebugTexture;
 
 [numthreads(8, 8, 1)]
@@ -30,7 +30,7 @@ void DebugHtCS(uint2 DispatchThreadId : SV_DispatchThreadID)
     //HtDebugTexture[PixelCoord] = float4(1.0f, 0.0f, 0.0, 1.0);
 }
 
-StructuredBuffer<float2> DkxBuffer;
+StructuredBuffer<Complex> DkxBuffer;
 RWTexture2D<float4> DkxDebugTexture;
 
 [numthreads(8, 8, 1)]
@@ -44,7 +44,7 @@ void DebugDkxCS(uint2 DispatchThreadId : SV_DispatchThreadID)
     //DkxDebugTexture[PixelCoord] = float4(0.0f, 1.0f, 0.0, 1.0);
 }
 
-StructuredBuffer<float2> DkyBuffer;
+StructuredBuffer<Complex> DkyBuffer;
 RWTexture2D<float4> DkyDebugTexture;
 
 [numthreads(8, 8, 1)]
@@ -59,9 +59,9 @@ void DebugDkyCS(uint2 DispatchThreadId : SV_DispatchThreadID)
 }
 
 StructuredBuffer<float> OmegaBuffer;
-RWStructuredBuffer<float2> OutHtBuffer;
-RWStructuredBuffer<float2> OutDkxBuffer;
-RWStructuredBuffer<float2> OutDkyBuffer;
+RWStructuredBuffer<Complex> OutHtBuffer;
+RWStructuredBuffer<Complex> OutDkxBuffer;
+RWStructuredBuffer<Complex> OutDkyBuffer;
 
 [numthreads(8, 8, 1)]
 void UpdateSpectrumCS(uint2 DispatchThreadId : SV_DispatchThreadID)
@@ -71,12 +71,12 @@ void UpdateSpectrumCS(uint2 DispatchThreadId : SV_DispatchThreadID)
 	uint MinusIndex = (MapSize - PixelCoord.y - 1) * MapSize + (MapSize - PixelCoord.x - 1); // Structured Buffer index corresponding wave number -k
 
 	// H(k, 0)からのH(k, t)への時間発展。H(k, t) = H(k, 0) * e^(i * omega * t) + Conj(H(-k, 0)) * e^(-i * omega * t)
-	float2 Hk0 = H0Buffer[Index];
-	float2 Hminusk0 = H0Buffer[MinusIndex];
+	Complex Hk0 = H0Buffer[Index];
+	Complex Hminusk0 = H0Buffer[MinusIndex];
 	float SinOmega, CosOmega;
 	sincos(OmegaBuffer[Index] * Time, SinOmega, CosOmega);
 
-	float2 Hkt;
+	Complex Hkt;
 	Hkt.x = (Hk0.x + Hminusk0.x) * CosOmega - (Hk0.y + Hminusk0.y) * SinOmega;
 	Hkt.y = (Hk0.x - Hminusk0.x) * SinOmega + (Hk0.y - Hminusk0.y) * CosOmega;
 
@@ -93,27 +93,27 @@ void UpdateSpectrumCS(uint2 DispatchThreadId : SV_DispatchThreadID)
 	}
 
 	// D(k, t)は波数空間のベクトルなので、kのx方向とy方向に分けて扱う
-	float2 Dkxt = K.x * float2(Hkt.y, -Hkt.x);
-	float2 Dkyt = K.y * float2(Hkt.y, -Hkt.x);
+	Complex Dkxt = K.x * Complex(Hkt.y, -Hkt.x);
+	Complex Dkyt = K.y * Complex(Hkt.y, -Hkt.x);
 
 	OutHtBuffer[Index] = Hkt;
 	OutDkxBuffer[Index] = Dkxt;
 	OutDkyBuffer[Index] = Dkyt;
 }
 
-StructuredBuffer<float2> InDkBuffer;
-RWStructuredBuffer<float2> FFTWorkBufferUAV; // TODO:SharedMemoryに入れるようにしたい
+StructuredBuffer<Complex> InDkBuffer;
+RWStructuredBuffer<Complex> FFTWorkBufferUAV; // TODO:SharedMemoryに入れるようにしたい
 float ChoppyScale;
 RWStructuredBuffer<float> OutDxBuffer;
 RWStructuredBuffer<float> OutDyBuffer;
 RWStructuredBuffer<float> OutDzBuffer;
 
 // bIsHorizontal = true
-void CopyComplexDataSrcToLocal(inout Complex LocalBuffer[RADIX], in uint ScanIdx, uint Loc, uint Stride, uint Size, StructuredBuffer<float2> SrcBuffer)
+void CopyComplexDataSrcToLocal(inout Complex LocalBuffer[RADIX], in uint ScanIdx, uint Loc, uint Stride, uint Size, StructuredBuffer<Complex> SrcBuffer)
 {
 	for (uint i = 0; i < RADIX; ++i)
 	{
-		LocalBuffer[i] = float2(0.f, 0.f);
+		LocalBuffer[i] = Complex(0.f, 0.f);
 	}
 	
 	uint2 Pixel = uint2(Loc, ScanIdx);
@@ -131,7 +131,7 @@ void CopyWorkBufferToLocal(inout Complex LocalBuffer[RADIX], in uint ScanIdx, ui
 {
 	for (uint i = 0; i < RADIX; ++i)
 	{
-		LocalBuffer[i] = float2(0.f, 0.f);
+		LocalBuffer[i] = Complex(0.f, 0.f);
 	}
 	
 	uint2 Pixel = uint2(ScanIdx, Loc);
