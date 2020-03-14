@@ -92,8 +92,6 @@ void UpdateSpectrumCS(uint2 DispatchThreadId : SV_DispatchThreadID)
 		K /= KLen;
 	}
 
-	float2 iHkt = float2(Hkt.y, -Hkt.x);
-
 	// D(k, t)は波数空間のベクトルなので、kのx方向とy方向に分けて扱う
 	float2 Dkxt = K.x * float2(Hkt.y, -Hkt.x);
 	float2 Dkyt = K.y * float2(Hkt.y, -Hkt.x);
