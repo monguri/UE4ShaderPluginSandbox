@@ -62,7 +62,7 @@ float CalculatePhillipsCoefficient(const FVector2D& K, float Gravity, const FOce
 	return Phillips * FMath::Exp(-KSqr * CutLength * CutLength);
 }
 
-void InitHeightMap(const FOceanSpectrumParameters& Params, float GravityZ, TResourceArray<FVector2D>& OutH0, TResourceArray<float>& OutOmega0)
+void InitHeightMap(const FOceanSpectrumParameters& Params, float GravityZ, TResourceArray<Complex>& OutH0, TResourceArray<float>& OutOmega0)
 {
 	FVector2D K;
 	float GravityConstant = FMath::Abs(GravityZ);
@@ -139,7 +139,8 @@ public:
 		
 		// Phyllips Spectrumを使った初期化
 		// Height map H(0)
-		H0Data.Init(FVector2D::ZeroVector, DispMapDimension * DispMapDimension);
+		H0Data.Init(Complex::ZeroVector, DispMapDimension * DispMapDimension);
+		// Complex::ZeroVectorという名前が少し格好悪いが、Zeroみたいな新しい定数を作ろうと思うとtypedef FVector2D Complexではできないので今は妥協する
 
 		Omega0Data.Init(0.0f, DispMapDimension * DispMapDimension);
 
@@ -156,7 +157,7 @@ public:
 
 		InitHeightMap(Params, Component->GetWorld()->GetGravityZ(), H0Data, Omega0Data);
 
-		H0Buffer.Initialize(H0Data, sizeof(FVector2D));
+		H0Buffer.Initialize(H0Data, sizeof(Complex));
 		Omega0Buffer.Initialize(Omega0Data, sizeof(float));
 
 		HtZeroInitData.Init(0.0f, DispMapDimension * DispMapDimension * 2);
@@ -358,7 +359,7 @@ private:
 	FDynamicMeshIndexBuffer32 IndexBuffer;
 	FLocalVertexFactory VertexFactory;
 
-	TResourceArray<FVector2D> H0Data;
+	TResourceArray<Complex> H0Data;
 	TResourceArray<float> Omega0Data;
 	TResourceArray<float> HtZeroInitData;
 	TResourceArray<float> DkxZeroInitData;

@@ -11,7 +11,7 @@ class FOceanDebugH0CS : public FGlobalShader
 
 	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
 		SHADER_PARAMETER(uint32, MapSize)
-		SHADER_PARAMETER_SRV(StructuredBuffer<FVector2D>, H0Buffer)
+		SHADER_PARAMETER_SRV(StructuredBuffer<Complex>, H0Buffer)
 		SHADER_PARAMETER_UAV(RWTexture2D<float4>, H0DebugTexture)
 	END_SHADER_PARAMETER_STRUCT()
 
@@ -31,7 +31,7 @@ class FOceanDebugHtCS : public FGlobalShader
 
 	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
 		SHADER_PARAMETER(uint32, MapSize)
-		SHADER_PARAMETER_SRV(StructuredBuffer<FVector2D>, HtBuffer)
+		SHADER_PARAMETER_SRV(StructuredBuffer<Complex>, HtBuffer)
 		SHADER_PARAMETER_UAV(RWTexture2D<float4>, HtDebugTexture)
 	END_SHADER_PARAMETER_STRUCT()
 
@@ -51,7 +51,7 @@ class FOceanDebugDkxCS : public FGlobalShader
 
 	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
 		SHADER_PARAMETER(uint32, MapSize)
-		SHADER_PARAMETER_SRV(StructuredBuffer<FVector2D>, DkxBuffer)
+		SHADER_PARAMETER_SRV(StructuredBuffer<Complex>, DkxBuffer)
 		SHADER_PARAMETER_UAV(RWTexture2D<float4>, DkxDebugTexture)
 	END_SHADER_PARAMETER_STRUCT()
 
@@ -71,7 +71,7 @@ class FOceanDebugDkyCS : public FGlobalShader
 
 	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
 		SHADER_PARAMETER(uint32, MapSize)
-		SHADER_PARAMETER_SRV(StructuredBuffer<FVector2D>, DkyBuffer)
+		SHADER_PARAMETER_SRV(StructuredBuffer<Complex>, DkyBuffer)
 		SHADER_PARAMETER_UAV(RWTexture2D<float4>, DkyDebugTexture)
 	END_SHADER_PARAMETER_STRUCT()
 
@@ -113,11 +113,11 @@ class FOceanUpdateSpectrumCS : public FGlobalShader
 	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
 		SHADER_PARAMETER(uint32, MapSize)
 		SHADER_PARAMETER(float, Time)
-		SHADER_PARAMETER_SRV(StructuredBuffer<FVector2D>, H0Buffer)
+		SHADER_PARAMETER_SRV(StructuredBuffer<Complex>, H0Buffer)
 		SHADER_PARAMETER_SRV(StructuredBuffer<float>, OmegaBuffer)
-		SHADER_PARAMETER_UAV(RWStructuredBuffer<FVector2D>, OutHtBuffer)
-		SHADER_PARAMETER_UAV(RWStructuredBuffer<FVector2D>, OutDkxBuffer)
-		SHADER_PARAMETER_UAV(RWStructuredBuffer<FVector2D>, OutDkyBuffer)
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<Complex>, OutHtBuffer)
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<Complex>, OutDkxBuffer)
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<Complex>, OutDkyBuffer)
 	END_SHADER_PARAMETER_STRUCT()
 
 public:
@@ -135,8 +135,8 @@ class FOceanHorizontalIFFTCS : public FGlobalShader
 	SHADER_USE_PARAMETER_STRUCT(FOceanHorizontalIFFTCS, FGlobalShader);
 
 	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
-		SHADER_PARAMETER_SRV(StructuredBuffer<FVector2D>, InDkBuffer)
-		SHADER_PARAMETER_UAV(RWStructuredBuffer<FVector2D>, FFTWorkBufferUAV)
+		SHADER_PARAMETER_SRV(StructuredBuffer<Complex>, InDkBuffer)
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<Complex>, FFTWorkBufferUAV)
 	END_SHADER_PARAMETER_STRUCT()
 
 public:
@@ -155,7 +155,7 @@ class FOceanDkxVerticalIFFTCS : public FGlobalShader
 
 	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
 		SHADER_PARAMETER_UAV(RWStructuredBuffer<float>, OutDxBuffer)
-		SHADER_PARAMETER_UAV(RWStructuredBuffer<FVector2D>, FFTWorkBufferUAV)
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<Complex>, FFTWorkBufferUAV)
 		SHADER_PARAMETER(float, ChoppyScale)
 	END_SHADER_PARAMETER_STRUCT()
 
@@ -175,7 +175,7 @@ class FOceanDkyVerticalIFFTCS : public FGlobalShader
 
 	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
 		SHADER_PARAMETER_UAV(RWStructuredBuffer<float>, OutDyBuffer)
-		SHADER_PARAMETER_UAV(RWStructuredBuffer<FVector2D>, FFTWorkBufferUAV)
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<Complex>, FFTWorkBufferUAV)
 		SHADER_PARAMETER(float, ChoppyScale)
 	END_SHADER_PARAMETER_STRUCT()
 
@@ -195,7 +195,7 @@ class FOceanDkzVerticalIFFTCS : public FGlobalShader
 
 	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
 		SHADER_PARAMETER_UAV(RWStructuredBuffer<float>, OutDzBuffer)
-		SHADER_PARAMETER_UAV(RWStructuredBuffer<FVector2D>, FFTWorkBufferUAV)
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<Complex>, FFTWorkBufferUAV)
 	END_SHADER_PARAMETER_STRUCT()
 
 public:
