@@ -160,17 +160,17 @@ public:
 		H0Buffer.Initialize(H0Data, sizeof(Complex));
 		Omega0Buffer.Initialize(Omega0Data, sizeof(float));
 
-		HtZeroInitData.Init(0.0f, DispMapDimension * DispMapDimension * 2);
-		HtBuffer.Initialize(HtZeroInitData, 2 * sizeof(float));
+		HtZeroInitData.Init(Complex::ZeroVector, DispMapDimension * DispMapDimension);
+		HtBuffer.Initialize(HtZeroInitData, sizeof(Complex));
 
-		DkxZeroInitData.Init(0.0f, DispMapDimension * DispMapDimension * 2);
-		DkxBuffer.Initialize(DkxZeroInitData, 2 * sizeof(float));
+		DkxZeroInitData.Init(Complex::ZeroVector, DispMapDimension * DispMapDimension);
+		DkxBuffer.Initialize(DkxZeroInitData, sizeof(Complex));
 
-		DkyZeroInitData.Init(0.0f, DispMapDimension * DispMapDimension * 2);
-		DkyBuffer.Initialize(DkyZeroInitData, 2 * sizeof(float));
+		DkyZeroInitData.Init(Complex::ZeroVector, DispMapDimension * DispMapDimension);
+		DkyBuffer.Initialize(DkyZeroInitData, sizeof(Complex));
 
-		FFTWorkZeroInitData.Init(0.0f, DispMapDimension * DispMapDimension * 2);
-		FFTWorkBuffer.Initialize(FFTWorkZeroInitData, sizeof(float) * 2);
+		FFTWorkZeroInitData.Init(Complex::ZeroVector, DispMapDimension * DispMapDimension);
+		FFTWorkBuffer.Initialize(FFTWorkZeroInitData, sizeof(Complex));
 
 		DxZeroInitData.Init(0.0f, DispMapDimension * DispMapDimension);
 		DxBuffer.Initialize(DxZeroInitData, sizeof(float));
@@ -361,10 +361,10 @@ private:
 
 	TResourceArray<Complex> H0Data;
 	TResourceArray<float> Omega0Data;
-	TResourceArray<float> HtZeroInitData;
-	TResourceArray<float> DkxZeroInitData;
-	TResourceArray<float> DkyZeroInitData;
-	TResourceArray<float> FFTWorkZeroInitData;
+	TResourceArray<Complex> HtZeroInitData;
+	TResourceArray<Complex> DkxZeroInitData;
+	TResourceArray<Complex> DkyZeroInitData;
+	TResourceArray<Complex> FFTWorkZeroInitData;
 	TResourceArray<float> DxZeroInitData;
 	TResourceArray<float> DyZeroInitData;
 	TResourceArray<float> DzZeroInitData;
