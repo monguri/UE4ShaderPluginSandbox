@@ -1,4 +1,4 @@
-#include "Ocean/QuadtreeMeshComponent.h"
+#include "Quadtree/QuadtreeMeshComponent.h"
 #include "RenderingThread.h"
 #include "RenderResource.h"
 #include "PrimitiveViewRelevance.h"
@@ -12,6 +12,7 @@
 #include "DynamicMeshBuilder.h"
 #include "EngineGlobals.h"
 #include "Engine/Engine.h"
+#include "Materials/MaterialInstanceDynamic.h"
 #include "DeformMesh/DeformableVertexBuffers.h"
 
 /** almost all is copy of FCustomMeshSceneProxy. */
@@ -53,6 +54,11 @@ public:
 		{
 			Material = UMaterial::GetDefaultMaterial(MD_Surface);
 		}
+
+		MIDPool = Component->GetMIDPool();
+		// GetDynamicMeshElements()のあと、VerifyUsedMaterial()によってマテリアルがコンポーネントにあったものかチェックされるので
+		// SetUsedMaterialForVerification()で登録する手もあるが、レンダースレッド出ないとcheckにひっかかるので
+		bVerifyUsedMaterials = false;
 	}
 
 	virtual ~FQuadtreeMeshSceneProxy()
@@ -82,43 +88,97 @@ public:
 		{
 			MaterialProxy = WireframeMaterialInstance;
 		}
-		else
-		{
-			MaterialProxy = Material->GetRenderProxy();
-		}
+		//else
+		//{
+		//	MaterialProxy = Material->GetRenderProxy();
+		//}
 
 		for (int32 ViewIndex = 0; ViewIndex < Views.Num(); ViewIndex++)
 		{
 			if (VisibilityMap & (1 << ViewIndex))
 			{
 				const FSceneView* View = Views[ViewIndex];
-				// Draw the mesh.
-				FMeshBatch& Mesh = Collector.AllocateMesh();
-				FMeshBatchElement& BatchElement = Mesh.Elements[0];
-				BatchElement.IndexBuffer = &IndexBuffer;
-				Mesh.bWireframe = bWireframe;
-				Mesh.VertexFactory = &VertexFactory;
-				Mesh.MaterialRenderProxy = MaterialProxy;
 
-				bool bHasPrecomputedVolumetricLightmap;
-				FMatrix PreviousLocalToWorld;
-				int32 SingleCaptureIndex;
-				bool bOutputVelocity;
-				GetScene().GetPrimitiveUniformShaderParameters_RenderThread(GetPrimitiveSceneInfo(), bHasPrecomputedVolumetricLightmap, PreviousLocalToWorld, SingleCaptureIndex, bOutputVelocity);
+				{
+					if(!bWireframe)
+					{
+						MIDPool[0]->SetVectorParameterValue(FName("Color"), FLinearColor::Blue);
+						MaterialProxy = MIDPool[0]->GetRenderProxy();
+					}
 
-				FDynamicPrimitiveUniformBuffer& DynamicPrimitiveUniformBuffer = Collector.AllocateOneFrameResource<FDynamicPrimitiveUniformBuffer>();
-				DynamicPrimitiveUniformBuffer.Set(GetLocalToWorld(), PreviousLocalToWorld, GetBounds(), GetLocalBounds(), true, bHasPrecomputedVolumetricLightmap, DrawsVelocity(), false);
-				BatchElement.PrimitiveUniformBufferResource = &DynamicPrimitiveUniformBuffer.UniformBuffer;
+					// Draw the mesh.
+					FMeshBatch& Mesh = Collector.AllocateMesh();
+					FMeshBatchElement& BatchElement = Mesh.Elements[0];
+					BatchElement.IndexBuffer = &IndexBuffer;
+					Mesh.bWireframe = bWireframe;
+					Mesh.VertexFactory = &VertexFactory;
+					Mesh.MaterialRenderProxy = MaterialProxy;
 
-				BatchElement.FirstIndex = 0;
-				BatchElement.NumPrimitives = IndexBuffer.Indices.Num() / 3;
-				BatchElement.MinVertexIndex = 0;
-				BatchElement.MaxVertexIndex = VertexBuffers.PositionVertexBuffer.GetNumVertices() - 1;
-				Mesh.ReverseCulling = IsLocalToWorldDeterminantNegative();
-				Mesh.Type = PT_TriangleList;
-				Mesh.DepthPriorityGroup = SDPG_World;
-				Mesh.bCanApplyViewModeOverrides = false;
-				Collector.AddMesh(ViewIndex, Mesh);
+					bool bHasPrecomputedVolumetricLightmap;
+					FMatrix PreviousLocalToWorld;
+					int32 SingleCaptureIndex;
+					bool bOutputVelocity;
+					GetScene().GetPrimitiveUniformShaderParameters_RenderThread(GetPrimitiveSceneInfo(), bHasPrecomputedVolumetricLightmap, PreviousLocalToWorld, SingleCaptureIndex, bOutputVelocity);
+
+					FDynamicPrimitiveUniformBuffer& DynamicPrimitiveUniformBuffer = Collector.AllocateOneFrameResource<FDynamicPrimitiveUniformBuffer>();
+					DynamicPrimitiveUniformBuffer.Set(GetLocalToWorld(), PreviousLocalToWorld, GetBounds(), GetLocalBounds(), true, bHasPrecomputedVolumetricLightmap, DrawsVelocity(), false);
+					BatchElement.PrimitiveUniformBufferResource = &DynamicPrimitiveUniformBuffer.UniformBuffer;
+
+					BatchElement.FirstIndex = 0;
+					BatchElement.NumPrimitives = IndexBuffer.Indices.Num() / 3;
+					BatchElement.MinVertexIndex = 0;
+					BatchElement.MaxVertexIndex = VertexBuffers.PositionVertexBuffer.GetNumVertices() - 1;
+					Mesh.ReverseCulling = IsLocalToWorldDeterminantNegative();
+					Mesh.Type = PT_TriangleList;
+					Mesh.DepthPriorityGroup = SDPG_World;
+					Mesh.bCanApplyViewModeOverrides = false;
+					Collector.AddMesh(ViewIndex, Mesh);
+				}
+
+				{
+					if(!bWireframe)
+					{
+						MIDPool[1]->SetVectorParameterValue(FName("Color"), FLinearColor::Yellow);
+						MaterialProxy = MIDPool[1]->GetRenderProxy();
+					}
+
+					// Draw the mesh.
+					FMeshBatch& Mesh = Collector.AllocateMesh();
+					FMeshBatchElement& BatchElement = Mesh.Elements[0];
+					BatchElement.IndexBuffer = &IndexBuffer;
+					Mesh.bWireframe = bWireframe;
+					Mesh.VertexFactory = &VertexFactory;
+					Mesh.MaterialRenderProxy = MaterialProxy;
+
+					bool bHasPrecomputedVolumetricLightmap;
+					FMatrix PreviousLocalToWorld;
+					int32 SingleCaptureIndex;
+					bool bOutputVelocity;
+					GetScene().GetPrimitiveUniformShaderParameters_RenderThread(GetPrimitiveSceneInfo(), bHasPrecomputedVolumetricLightmap, PreviousLocalToWorld, SingleCaptureIndex, bOutputVelocity);
+
+					FDynamicPrimitiveUniformBuffer& DynamicPrimitiveUniformBuffer = Collector.AllocateOneFrameResource<FDynamicPrimitiveUniformBuffer>();
+					const FMatrix& NewLocalToWorld = GetLocalToWorld().ConcatTranslation(FVector(150, 0, 0));
+					PreviousLocalToWorld = PreviousLocalToWorld.ConcatTranslation(FVector(150, 0, 0));
+
+					FBoxSphereBounds NewBounds = GetBounds();
+					NewBounds = FBoxSphereBounds(NewBounds.Origin + FVector(150, 0, 0), NewBounds.BoxExtent, NewBounds.SphereRadius);
+					// LocalBoundsは変更不要
+
+					//DynamicPrimitiveUniformBuffer.Set(GetLocalToWorld(), PreviousLocalToWorld, GetBounds(), GetLocalBounds(), true, bHasPrecomputedVolumetricLightmap, DrawsVelocity(), false);
+					DynamicPrimitiveUniformBuffer.Set(NewLocalToWorld, PreviousLocalToWorld, NewBounds, GetLocalBounds(), true, bHasPrecomputedVolumetricLightmap, DrawsVelocity(), false);
+					BatchElement.PrimitiveUniformBufferResource = &DynamicPrimitiveUniformBuffer.UniformBuffer;
+
+					BatchElement.FirstIndex = 0;
+					BatchElement.NumPrimitives = IndexBuffer.Indices.Num() / 3;
+					BatchElement.MinVertexIndex = 0;
+					BatchElement.MaxVertexIndex = VertexBuffers.PositionVertexBuffer.GetNumVertices() - 1;
+					//Mesh.ReverseCulling = IsLocalToWorldDeterminantNegative();
+					Mesh.ReverseCulling = (NewLocalToWorld.Determinant() < 0.0f);
+					Mesh.Type = PT_TriangleList;
+					Mesh.DepthPriorityGroup = SDPG_World;
+					Mesh.bCanApplyViewModeOverrides = false;
+					Collector.AddMesh(ViewIndex, Mesh);
+				}
 			}
 		}
 	}
@@ -150,6 +210,7 @@ public:
 
 private:
 	UMaterialInterface* Material;
+	TArray<UMaterialInstanceDynamic*> MIDPool; // Component側でUMaterialInstanceDynamicは保持されてるのでGCで解放はされない
 	FDeformableVertexBuffers VertexBuffers;
 	FDynamicMeshIndexBuffer32 IndexBuffer;
 	FLocalVertexFactory VertexFactory;
@@ -172,5 +233,29 @@ FPrimitiveSceneProxy* UQuadtreeMeshComponent::CreateSceneProxy()
 		Proxy = new FQuadtreeMeshSceneProxy(this);
 	}
 	return Proxy;
+}
+
+void UQuadtreeMeshComponent::OnRegister()
+{
+	Super::OnRegister();
+
+	InitGridMeshSetting(128, 128, 1.0f, 1.0f); // VertexBufferは128x128のグリッド、グリッドの縦横は1cmにする。描画時はスケールして使う。
+
+	UMaterialInterface* Material = GetMaterial(0);
+	if(Material == NULL)
+	{
+		Material = UMaterial::GetDefaultMaterial(MD_Surface);
+	}
+
+	MIDPool.SetNumZeroed(16); // TODO:とりあえず16個
+	for (int32 i = 0; i < 16; i++)
+	{
+		MIDPool[i] = UMaterialInstanceDynamic::Create(Material, this);
+	}
+}
+
+const TArray<class UMaterialInstanceDynamic*>& UQuadtreeMeshComponent::GetMIDPool() const
+{
+	return MIDPool;
 }
 

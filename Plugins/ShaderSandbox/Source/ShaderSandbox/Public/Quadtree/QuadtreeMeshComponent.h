@@ -16,5 +16,14 @@ public:
 	//~ Begin UPrimitiveComponent Interface.
 	virtual FPrimitiveSceneProxy* CreateSceneProxy() override;
 	//~ End UPrimitiveComponent Interface.
+
+	const TArray<class UMaterialInstanceDynamic*>& GetMIDPool() const;
+
+protected:
+	virtual void OnRegister() override;
+
+private:
+	UPROPERTY(Transient)
+	TArray<class UMaterialInstanceDynamic*> MIDPool;
 };
 
