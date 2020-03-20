@@ -14,6 +14,7 @@
 #include "Engine/Engine.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "DeformMesh/DeformableVertexBuffers.h"
+#include "Quadtree/Quadtree.h"
 
 /** almost all is copy of FCustomMeshSceneProxy. */
 class FQuadtreeMeshSceneProxy final : public FPrimitiveSceneProxy
