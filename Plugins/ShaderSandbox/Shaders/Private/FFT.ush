@@ -44,14 +44,12 @@ float InverseScale(uint ArrayLength)
 	return (float(1) / float(ArrayLength));
 }
 
-//const bool bIsForward = true;
 void Radix2FFT(in bool bIsForward, inout Complex V0, inout Complex V1)
 {
 	V0 = V0 + V1;
 	V1 = V0 - V1 - V1; // V0 - V1
 }
 
-//const bool bIsForward = true;
 void Radix4FFT(in bool bIsForward, inout Complex V0, inout Complex V1, inout Complex V2, inout Complex V3)
 {
 	// The even and odd transforms
@@ -80,7 +78,6 @@ void Radix4FFT(in bool bIsForward, inout Complex V0, inout Complex V1, inout Com
 	V2 = V0 - TmpV1 - TmpV1; // V0 - TmpV1
 }
 
-//const bool bIsForward = true;
 void Radix8FFT(in bool bIsForward, inout Complex V0, inout Complex V1, inout Complex V2, inout Complex V3, inout Complex V4, inout Complex V5, inout Complex V6, inout Complex V7)
 {
 	// The even and odd transforms
@@ -139,7 +136,6 @@ void Radix8FFT(in bool bIsForward, inout Complex V0, inout Complex V1, inout Com
 	V7 = Rslt[7];
 }
 
-//const bool bIsForward = true;
 void RadixFFT(in bool bIsForward, inout Complex v[RADIX])
 {
 	Radix8FFT(bIsForward, v[0], v[1], v[2], v[3], v[4], v[5], v[6], v[7]);
@@ -213,7 +209,6 @@ void TransposeData(inout Complex Local[RADIX], uint AHead, uint AStride, uint BH
 }
 
 // This accounts for about 9% of total time
-//const bool bIsForward = true;
 void Butterfly(in const bool bIsForward, inout Complex Local[RADIX], uint ThreadIdx, uint Length)
 {
 	float angle = TWO_PI * (ThreadIdx % Length) / float(Length * RADIX);
@@ -240,7 +235,6 @@ uint Expand(in uint j, in uint Ns, in uint R) {
 	return (j / Ns) * Ns * R + (j % Ns);
 }
 
-//const bool bIsForward = true;
 // Performs a single pass Stockham FFT using group shared memory.
 void GroupSharedFFT(in const bool bIsForward, inout Complex Local[RADIX], in const uint ArrayLength, in const uint ThreadIdx)
 {
