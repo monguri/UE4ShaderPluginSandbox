@@ -16,6 +16,8 @@
 #include "DeformMesh/DeformableVertexBuffers.h"
 #include "Quadtree/Quadtree.h"
 
+using namespace Quadtree;
+
 /** almost all is copy of FCustomMeshSceneProxy. */
 class FQuadtreeMeshSceneProxy final : public FPrimitiveSceneProxy
 {
@@ -134,6 +136,16 @@ public:
 					Mesh.DepthPriorityGroup = SDPG_World;
 					Mesh.bCanApplyViewModeOverrides = false;
 					Collector.AddMesh(ViewIndex, Mesh);
+
+					//InitGridMeshSetting(128, 128, 1.0f, 1.0f);
+					FQuadNode Node;
+					Node.BottomLeft = FVector2D::ZeroVector;
+					Node.Length = 128.0f;
+					bool bCulled = IsQuadNodeFrustumCulled(Node, *View);
+					if (bCulled)
+					{
+						UE_LOG(LogTemp, Log, TEXT("Blue frustom culled."));
+					}
 				}
 
 				{
@@ -158,6 +170,7 @@ public:
 					GetScene().GetPrimitiveUniformShaderParameters_RenderThread(GetPrimitiveSceneInfo(), bHasPrecomputedVolumetricLightmap, PreviousLocalToWorld, SingleCaptureIndex, bOutputVelocity);
 
 					FDynamicPrimitiveUniformBuffer& DynamicPrimitiveUniformBuffer = Collector.AllocateOneFrameResource<FDynamicPrimitiveUniformBuffer>();
+					// FPrimitiveSceneProxy::ApplyWorldOffset()ÇéQçlÇ…ÇµÇΩ
 					const FMatrix& NewLocalToWorld = GetLocalToWorld().ConcatTranslation(FVector(150, 0, 0));
 					PreviousLocalToWorld = PreviousLocalToWorld.ConcatTranslation(FVector(150, 0, 0));
 
@@ -179,6 +192,16 @@ public:
 					Mesh.DepthPriorityGroup = SDPG_World;
 					Mesh.bCanApplyViewModeOverrides = false;
 					Collector.AddMesh(ViewIndex, Mesh);
+
+					//InitGridMeshSetting(128, 128, 1.0f, 1.0f);
+					FQuadNode Node;
+					Node.BottomLeft = FVector2D(150, 0);
+					Node.Length = 128.0f;
+					bool bCulled = IsQuadNodeFrustumCulled(Node, *View);
+					if (bCulled)
+					{
+						UE_LOG(LogTemp, Log, TEXT("Yellow frustom culled."));
+					}
 				}
 			}
 		}

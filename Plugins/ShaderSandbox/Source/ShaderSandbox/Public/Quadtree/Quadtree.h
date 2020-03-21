@@ -17,6 +17,9 @@ struct FQuadNode
 	int32 ChildNodeIndices[4] = {INDEX_NONE, INDEX_NONE, INDEX_NONE, INDEX_NONE};
 };
 
+// TODO:
+bool IsQuadNodeFrustumCulled(const Quadtree::FQuadNode& Node, const ::FSceneView& View);
+
 /** 
  * Check this node is leaf or not.
  */
@@ -26,6 +29,6 @@ bool IsLeaf(const FQuadNode& Node);
  * Build render list recursively.
  * @return assigned index for Node. If not assigned, INDEX_NONE.
  */
-int32 BuildQuadNodeRenderListRecursively(FQuadNode& Node, const class FSceneView& View, TArray<FQuadNode>& OutRenderList);
+int32 BuildQuadNodeRenderListRecursively(float MaxScreenCoverage, float PatchLength, FQuadNode& Node, const class FSceneView& View, TArray<FQuadNode>& OutRenderList);
 } // namespace Quadtree
 
