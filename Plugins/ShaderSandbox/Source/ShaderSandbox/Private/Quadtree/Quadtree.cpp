@@ -19,33 +19,8 @@ bool IsInNDCCube(const FVector4& PositionProjectionSpace)
 	return false;
 }
 
-// QuadNodeのメッシュのグリッドの中でもっともカメラに近いもののスクリーン表示面積率を取得する
-float EstimateGridScreenCoverage(const Quadtree::FQuadNode& Node, const FSceneView& View)
-{
-	return 0.0f;
-}
-
-} // namespace
-
-namespace Quadtree
-{
-bool IsLeaf(const FQuadNode& Node)
-{
-	// ChildNodeIndices[]でひとつでも有効なインデックスのものがあるかどうかでLeafかどうか判定している
-	for (int32 i = 0; i < 4; i++)
-	{
-		if (Node.ChildNodeIndices[i] != INDEX_NONE)
-		{
-			return false;
-		}
-	}
-
-	return true;
-}
-
 // フラスタムカリング。ビューフラスタムの中にQuadNodeが一部でも入っていたらtrue。そうでなければfalse。
-//bool IsQuadNodeFrustumCulled(const Quadtree::FQuadNode& Node, const FSceneView& View)
-bool IsQuadNodeFrustumCulled(const Quadtree::FQuadNode& Node, const ::FSceneView& View)
+bool IsQuadNodeFrustumCulled(const Quadtree::FQuadNode& Node, const FSceneView& View)
 {
 	//FSceneView::ProjectWorldToScreen()を参考にしている
 	const FMatrix& ViewProjMat = View.ViewMatrices.GetViewProjectionMatrix();
@@ -74,6 +49,30 @@ bool IsQuadNodeFrustumCulled(const Quadtree::FQuadNode& Node, const ::FSceneView
 	if (IsInNDCCube(TopRightProjSpace))
 	{
 		return false;
+	}
+
+	return true;
+}
+
+// QuadNodeのメッシュのグリッドの中でもっともカメラに近いもののスクリーン表示面積率を取得する
+float EstimateGridScreenCoverage(const Quadtree::FQuadNode& Node, const FSceneView& View)
+{
+	return 0.0f;
+}
+
+} // namespace
+
+namespace Quadtree
+{
+bool IsLeaf(const FQuadNode& Node)
+{
+	// ChildNodeIndices[]でひとつでも有効なインデックスのものがあるかどうかでLeafかどうか判定している
+	for (int32 i = 0; i < 4; i++)
+	{
+		if (Node.ChildNodeIndices[i] != INDEX_NONE)
+		{
+			return false;
+		}
 	}
 
 	return true;

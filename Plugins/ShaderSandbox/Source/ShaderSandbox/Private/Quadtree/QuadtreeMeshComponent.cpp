@@ -136,16 +136,6 @@ public:
 					Mesh.DepthPriorityGroup = SDPG_World;
 					Mesh.bCanApplyViewModeOverrides = false;
 					Collector.AddMesh(ViewIndex, Mesh);
-
-					//InitGridMeshSetting(128, 128, 1.0f, 1.0f);
-					FQuadNode Node;
-					Node.BottomLeft = FVector2D::ZeroVector;
-					Node.Length = 128.0f;
-					bool bCulled = IsQuadNodeFrustumCulled(Node, *View);
-					if (bCulled)
-					{
-						UE_LOG(LogTemp, Log, TEXT("Blue frustom culled."));
-					}
 				}
 
 				{
@@ -192,16 +182,6 @@ public:
 					Mesh.DepthPriorityGroup = SDPG_World;
 					Mesh.bCanApplyViewModeOverrides = false;
 					Collector.AddMesh(ViewIndex, Mesh);
-
-					//InitGridMeshSetting(128, 128, 1.0f, 1.0f);
-					FQuadNode Node;
-					Node.BottomLeft = FVector2D(150, 0);
-					Node.Length = 128.0f;
-					bool bCulled = IsQuadNodeFrustumCulled(Node, *View);
-					if (bCulled)
-					{
-						UE_LOG(LogTemp, Log, TEXT("Yellow frustom culled."));
-					}
 				}
 			}
 		}

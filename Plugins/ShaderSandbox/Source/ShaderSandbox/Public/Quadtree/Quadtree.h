@@ -17,9 +17,6 @@ struct FQuadNode
 	int32 ChildNodeIndices[4] = {INDEX_NONE, INDEX_NONE, INDEX_NONE, INDEX_NONE};
 };
 
-// TODO:
-bool IsQuadNodeFrustumCulled(const Quadtree::FQuadNode& Node, const ::FSceneView& View);
-
 /** 
  * Check this node is leaf or not.
  */
