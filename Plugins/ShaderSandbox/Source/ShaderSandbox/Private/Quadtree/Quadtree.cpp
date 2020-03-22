@@ -71,9 +71,10 @@ float EstimateGridScreenCoverage(int32 NumRowColumn, const FVector& CameraPositi
 	const FVector4& NearestGridTopRightProjSpace = ViewProjectionMatrix.TransformFVector4(FVector4(NearestGridBottomRight.X, NearestGridBottomRight.Y + GridLength, 0.0f, 1.0f));
 	const FVector4& NearestGridTopLeftProjSpace = ViewProjectionMatrix.TransformFVector4(FVector4(NearestGridBottomRight.X + GridLength, NearestGridBottomRight.Y + GridLength, 0.0f, 1.0f));
 
-	const FVector2D& NearestGridBottomRightNDC = FVector2D(NearestGridBottomRightProjSpace) / NearestGridBottomRightProjSpace.W;
-	const FVector2D& NearestGridBottomLeftNDC = FVector2D(NearestGridBottomLeftProjSpace) / NearestGridBottomLeftProjSpace.W;
-	const FVector2D& NearestGridTopRightNDC = FVector2D(NearestGridTopRightProjSpace) / NearestGridTopRightProjSpace.W;
+	// NDCへの変換でWで除算したいのでWが0に近い場合はKINDA_SMALL_NUMBERで割る。その場合は本来より結果が小さい値になるので、より、葉になりやすくなり表示されやすくなる。
+	const FVector2D& NearestGridBottomRightNDC = FVector2D(NearestGridBottomRightProjSpace) / FMath::Max(FMath::Abs(NearestGridBottomRightProjSpace.W), KINDA_SMALL_NUMBER);
+	const FVector2D& NearestGridBottomLeftNDC = FVector2D(NearestGridBottomLeftProjSpace) / FMath::Max(FMath::Abs(NearestGridBottomLeftProjSpace.W), KINDA_SMALL_NUMBER);
+	const FVector2D& NearestGridTopRightNDC = FVector2D(NearestGridTopRightProjSpace) / FMath::Max(FMath::Abs(NearestGridTopRightProjSpace.W), KINDA_SMALL_NUMBER);
 
 	// 面積を求めるにはヘロンの公式を使うのが厳密だが、Sqrtの処理が多く入るので処理負荷のため、おおよそ平行四辺形ととらえて面積を計算する。
 	// あとで2乗するので平均をとるときに正負の符号は無視。
@@ -82,7 +83,9 @@ float EstimateGridScreenCoverage(int32 NumRowColumn, const FVector& CameraPositi
 
 	// グリッドのインデックスが増える方向はX軸Y軸方向でUE4は左手系なので、カメラがZ軸正にあるという前提なら外積の符号は反転させたものが平行四辺形の面積になる
 	// NDCは[-1,1]なのでXY面も面積は4なので、表示面積率としては1/4を乗算したものになる
-	float Ret = -(HorizEdge ^ VertEdge) * 0.25f;
+	// ただし、カメラと近く、メッシュの目が粗いものほど、平行四辺形近似は粗くなる
+	// コーナーがカメラの後ろにまわる場合などは符号が一定には扱えなくなるので、それでも同じ式で扱うために絶対値で扱う
+	float Ret = FMath::Abs(HorizEdge ^ VertEdge) * 0.25f;
 	return Ret;
 }
 } // namespace
