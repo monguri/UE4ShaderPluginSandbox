@@ -120,10 +120,9 @@ public:
 
 				Quadtree::BuildQuadNodeRenderListRecursively(MaxLOD, NumGridRowColumn, MaxScreenCoverage, PatchLength, View->ViewLocation, View->ViewMatrices.GetViewProjectionMatrix(), RootNode, RenderQuadNodeList);
 
-				for (int32 i = 0; i < RenderQuadNodeList.Num(); i++)
+				int32 MIDIndex = 0;
+				for (const FQuadNode& Node : RenderQuadNodeList)
 				{
-					const FQuadNode& Node = RenderQuadNodeList[i];
-
 					if (!IsLeaf(Node))
 					{
 						continue;
@@ -131,8 +130,9 @@ public:
 
 					if(!bWireframe)
 					{
-						MIDPool[i]->SetVectorParameterValue(FName("Color"), FLinearColor(1.0f * (MaxLOD - Node.LOD) / MaxLOD, 1.0f * Node.LOD / MaxLOD, 0.0f));
-						MaterialProxy = MIDPool[i]->GetRenderProxy();
+						MIDPool[MIDIndex]->SetVectorParameterValue(FName("Color"), FLinearColor(1.0f * (MaxLOD - Node.LOD) / MaxLOD, 1.0f * Node.LOD / MaxLOD, 0.0f));
+						MaterialProxy = MIDPool[MIDIndex]->GetRenderProxy();
+						MIDIndex++;
 					}
 
 					// Draw the mesh.
