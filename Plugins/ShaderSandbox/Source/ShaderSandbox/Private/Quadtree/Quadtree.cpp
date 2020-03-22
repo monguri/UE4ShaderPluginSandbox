@@ -8,57 +8,57 @@ bool IsQuadNodeFrustumCulled(const FMatrix& ViewProjectionMatrix, const Quadtree
 	//FSceneView::ProjectWorldToScreen()を参考にしている
 
 	// NDCへの変換でWで除算したいのでWが0に近い場合はカリング対象として扱う
-	const FVector4& BottomLeftProjSpace = ViewProjectionMatrix.TransformFVector4(FVector4(Node.BottomLeft.X, Node.BottomLeft.Y, 0.0f, 1.0f));
-	if (BottomLeftProjSpace.W < KINDA_SMALL_NUMBER)
-	{
-		return true;
-	}
-	
-	const FVector4& BottomRightProjSpace = ViewProjectionMatrix.TransformFVector4(FVector4(Node.BottomLeft.X + Node.Length, Node.BottomLeft.Y, 0.0f, 1.0f));
+	const FVector4& BottomRightProjSpace = ViewProjectionMatrix.TransformFVector4(FVector4(Node.BottomRight.X, Node.BottomRight.Y, 0.0f, 1.0f));
 	if (BottomRightProjSpace.W < KINDA_SMALL_NUMBER)
 	{
 		return true;
 	}
-
-	const FVector4& TopLeftProjSpace = ViewProjectionMatrix.TransformFVector4(FVector4(Node.BottomLeft.X, Node.BottomLeft.Y + Node.Length, 0.0f, 1.0f));
-	if (TopLeftProjSpace.W < KINDA_SMALL_NUMBER)
+	
+	const FVector4& BottomLeftProjSpace = ViewProjectionMatrix.TransformFVector4(FVector4(Node.BottomRight.X + Node.Length, Node.BottomRight.Y, 0.0f, 1.0f));
+	if (BottomLeftProjSpace.W < KINDA_SMALL_NUMBER)
 	{
 		return true;
 	}
 
-	const FVector4& TopRightProjSpace = ViewProjectionMatrix.TransformFVector4(FVector4(Node.BottomLeft.X + Node.Length, Node.BottomLeft.Y + Node.Length, 0.0f, 1.0f));
+	const FVector4& TopRightProjSpace = ViewProjectionMatrix.TransformFVector4(FVector4(Node.BottomRight.X, Node.BottomRight.Y + Node.Length, 0.0f, 1.0f));
 	if (TopRightProjSpace.W < KINDA_SMALL_NUMBER)
 	{
 		return true;
 	}
 
-	const FVector4& BottomLeftNDC = BottomLeftProjSpace / BottomLeftProjSpace.W;
+	const FVector4& TopLeftProjSpace = ViewProjectionMatrix.TransformFVector4(FVector4(Node.BottomRight.X + Node.Length, Node.BottomRight.Y + Node.Length, 0.0f, 1.0f));
+	if (TopLeftProjSpace.W < KINDA_SMALL_NUMBER)
+	{
+		return true;
+	}
+
 	const FVector4& BottomRightNDC = BottomRightProjSpace / BottomRightProjSpace.W;
-	const FVector4& TopLeftNDC = TopLeftProjSpace / TopLeftProjSpace.W;
+	const FVector4& BottomLeftNDC = BottomLeftProjSpace / BottomLeftProjSpace.W;
 	const FVector4& TopRightNDC = TopRightProjSpace / TopRightProjSpace.W;
+	const FVector4& TopLeftNDC = TopLeftProjSpace / TopLeftProjSpace.W;
 
 	// フラスタム外にあるときは、4コーナーがすべて、NDCキューブの6面のうちいずれかの面の外にあるときになっている
-	if (BottomLeftNDC.X < -1.0f && BottomRightNDC.X < -1.0f && TopLeftNDC.X < -1.0f && TopRightNDC.X < -1.0f)
+	if (BottomRightNDC.X < -1.0f && BottomLeftNDC.X < -1.0f && TopRightNDC.X < -1.0f && TopLeftNDC.X < -1.0f)
 	{
 		return true;
 	}
-	if (BottomLeftNDC.X > 1.0f && BottomRightNDC.X > 1.0f && TopLeftNDC.X > 1.0f && TopRightNDC.X > 1.0f)
+	if (BottomRightNDC.X > 1.0f && BottomLeftNDC.X > 1.0f && TopRightNDC.X > 1.0f && TopLeftNDC.X > 1.0f)
 	{
 		return true;
 	}
-	if (BottomLeftNDC.Y < -1.0f && BottomRightNDC.Y < -1.0f && TopLeftNDC.Y < -1.0f && TopRightNDC.Y < -1.0f)
+	if (BottomRightNDC.Y < -1.0f && BottomLeftNDC.Y < -1.0f && TopRightNDC.Y < -1.0f && TopLeftNDC.Y < -1.0f)
 	{
 		return true;
 	}
-	if (BottomLeftNDC.Y > 1.0f && BottomRightNDC.Y > 1.0f && TopLeftNDC.Y > 1.0f && TopRightNDC.Y > 1.0f)
+	if (BottomRightNDC.Y > 1.0f && BottomLeftNDC.Y > 1.0f && TopRightNDC.Y > 1.0f && TopLeftNDC.Y > 1.0f)
 	{
 		return true;
 	}
-	if (BottomLeftNDC.Z < -1.0f && BottomRightNDC.Z < -1.0f && TopLeftNDC.Z < -1.0f && TopRightNDC.Z < -1.0f)
+	if (BottomRightNDC.Z < -1.0f && BottomLeftNDC.Z < -1.0f && TopRightNDC.Z < -1.0f && TopLeftNDC.Z < -1.0f)
 	{
 		return true;
 	}
-	if (BottomLeftNDC.Z > 1.0f && BottomRightNDC.Z > 1.0f && TopLeftNDC.Z > 1.0f && TopRightNDC.Z > 1.0f)
+	if (BottomRightNDC.Z > 1.0f && BottomLeftNDC.Z > 1.0f && TopRightNDC.Z > 1.0f && TopLeftNDC.Z > 1.0f)
 	{
 		return true;
 	}
@@ -75,29 +75,29 @@ float EstimateGridScreenCoverage(int32 NumRowColumn, const FVector& CameraPositi
 
 	// QuadNodeメッシュのグリッドへの縦横分割数は同じであり、メッシュは正方形であるという前提がある
 	float GridLength = Node.Length / NumRowColumn;
-	FVector2D NearestGridBottomLeft;
+	FVector2D NearestGridBottomRight;
 
 	// カメラの真下にグリッドがあればそれ。なければClampする
-	int32 Row = FMath::Clamp<int32>((CameraPosition.X - Node.BottomLeft.X) / GridLength, 0, NumRowColumn - 1); // floatはint32キャストで切り捨て
-	int32 Column = FMath::Clamp<int32>((CameraPosition.Y - Node.BottomLeft.Y) / GridLength, 0, NumRowColumn - 1); // floatはint32キャストで切り捨て
+	int32 Row = FMath::Clamp<int32>((CameraPosition.X - Node.BottomRight.X) / GridLength, 0, NumRowColumn - 1); // floatはint32キャストで切り捨て
+	int32 Column = FMath::Clamp<int32>((CameraPosition.Y - Node.BottomRight.Y) / GridLength, 0, NumRowColumn - 1); // floatはint32キャストで切り捨て
 	OutNearestGrid = FIntPoint(Row, Column);
-	NearestGridBottomLeft.X = Node.BottomLeft.X + Row * GridLength;
-	NearestGridBottomLeft.Y = Node.BottomLeft.Y + Column * GridLength;
+	NearestGridBottomRight.X = Node.BottomRight.X + Row * GridLength;
+	NearestGridBottomRight.Y = Node.BottomRight.Y + Column * GridLength;
 
 	// 最近接グリッドのスクリーンでの表示面積率計算
-	const FVector4& NearestGridBottomLeftProjSpace = ViewProjectionMatrix.TransformFVector4(FVector4(NearestGridBottomLeft.X, NearestGridBottomLeft.Y, 0.0f, 1.0f));
-	const FVector4& NearestGridBottomRightProjSpace = ViewProjectionMatrix.TransformFVector4(FVector4(NearestGridBottomLeft.X + GridLength, NearestGridBottomLeft.Y, 0.0f, 1.0f));
-	const FVector4& NearestGridTopLeftProjSpace = ViewProjectionMatrix.TransformFVector4(FVector4(NearestGridBottomLeft.X, NearestGridBottomLeft.Y + GridLength, 0.0f, 1.0f));
-	const FVector4& NearestGridTopRightProjSpace = ViewProjectionMatrix.TransformFVector4(FVector4(NearestGridBottomLeft.X + GridLength, NearestGridBottomLeft.Y + GridLength, 0.0f, 1.0f));
+	const FVector4& NearestGridBottomRightProjSpace = ViewProjectionMatrix.TransformFVector4(FVector4(NearestGridBottomRight.X, NearestGridBottomRight.Y, 0.0f, 1.0f));
+	const FVector4& NearestGridBottomLeftProjSpace = ViewProjectionMatrix.TransformFVector4(FVector4(NearestGridBottomRight.X + GridLength, NearestGridBottomRight.Y, 0.0f, 1.0f));
+	const FVector4& NearestGridTopRightProjSpace = ViewProjectionMatrix.TransformFVector4(FVector4(NearestGridBottomRight.X, NearestGridBottomRight.Y + GridLength, 0.0f, 1.0f));
+	const FVector4& NearestGridTopLeftProjSpace = ViewProjectionMatrix.TransformFVector4(FVector4(NearestGridBottomRight.X + GridLength, NearestGridBottomRight.Y + GridLength, 0.0f, 1.0f));
 
-	const FVector2D& NearestGridBottomLeftNDC = FVector2D(NearestGridBottomLeftProjSpace) / NearestGridBottomLeftProjSpace.W;
 	const FVector2D& NearestGridBottomRightNDC = FVector2D(NearestGridBottomRightProjSpace) / NearestGridBottomRightProjSpace.W;
-	const FVector2D& NearestGridTopLeftNDC = FVector2D(NearestGridTopLeftProjSpace) / NearestGridTopLeftProjSpace.W;
+	const FVector2D& NearestGridBottomLeftNDC = FVector2D(NearestGridBottomLeftProjSpace) / NearestGridBottomLeftProjSpace.W;
+	const FVector2D& NearestGridTopRightNDC = FVector2D(NearestGridTopRightProjSpace) / NearestGridTopRightProjSpace.W;
 
 	// 面積を求めるにはヘロンの公式を使うのが厳密だが、Sqrtの処理が多く入るので処理負荷のため、おおよそ平行四辺形ととらえて面積を計算する。
 	// あとで2乗するので平均をとるときに正負の符号は無視。
-	const FVector2D& HorizEdge = NearestGridBottomRightNDC - NearestGridBottomLeftNDC;
-	const FVector2D& VertEdge = NearestGridTopLeftNDC - NearestGridBottomLeftNDC;
+	const FVector2D& HorizEdge = NearestGridBottomLeftNDC - NearestGridBottomRightNDC;
+	const FVector2D& VertEdge = NearestGridTopRightNDC - NearestGridBottomRightNDC;
 
 	// グリッドのインデックスが増える方向はX軸Y軸方向でUE4は左手系なので、カメラがZ軸正にあるという前提なら外積の符号は反転させたものが平行四辺形の面積になる
 	// NDCは[-1,1]なのでXY面も面積は4なので、表示面積率としては1/4を乗算したものになる
@@ -142,25 +142,25 @@ int32 BuildQuadNodeRenderListRecursively(int32 NumRowColumn, float MaxScreenCove
 		&& Node.Length > PatchLength) // パッチサイズ以下の縦横長さであればそれ以上分割しない。上の条件だけだとカメラが近いといくらでも小さく分割してしまうので
 	{
 		// LODとchildListIndicesは初期値通り
-		FQuadNode ChildNodeBottomLeft;
-		ChildNodeBottomLeft.BottomLeft = Node.BottomLeft;
-		ChildNodeBottomLeft.Length = Node.Length / 2.0f;
-		Node.ChildNodeIndices[0] = BuildQuadNodeRenderListRecursively(NumRowColumn, MaxScreenCoverage, PatchLength, CameraPosition, ViewProjectionMatrix, ChildNodeBottomLeft, OutRenderList);
-
 		FQuadNode ChildNodeBottomRight;
-		ChildNodeBottomRight.BottomLeft = Node.BottomLeft + FVector2D(Node.Length / 2.0f, 0.0f);
+		ChildNodeBottomRight.BottomRight = Node.BottomRight;
 		ChildNodeBottomRight.Length = Node.Length / 2.0f;
-		Node.ChildNodeIndices[1] = BuildQuadNodeRenderListRecursively(NumRowColumn, MaxScreenCoverage, PatchLength, CameraPosition, ViewProjectionMatrix, ChildNodeBottomRight, OutRenderList);
+		Node.ChildNodeIndices[0] = BuildQuadNodeRenderListRecursively(NumRowColumn, MaxScreenCoverage, PatchLength, CameraPosition, ViewProjectionMatrix, ChildNodeBottomRight, OutRenderList);
 
-		FQuadNode ChildNodeTopLeft;
-		ChildNodeTopLeft.BottomLeft = Node.BottomLeft + FVector2D(0.0f, Node.Length / 2.0f);
-		ChildNodeTopLeft.Length = Node.Length / 2.0f;
-		Node.ChildNodeIndices[2] = BuildQuadNodeRenderListRecursively(NumRowColumn, MaxScreenCoverage, PatchLength, CameraPosition, ViewProjectionMatrix, ChildNodeTopLeft, OutRenderList);
+		FQuadNode ChildNodeBottomLeft;
+		ChildNodeBottomLeft.BottomRight = Node.BottomRight + FVector2D(Node.Length / 2.0f, 0.0f);
+		ChildNodeBottomLeft.Length = Node.Length / 2.0f;
+		Node.ChildNodeIndices[1] = BuildQuadNodeRenderListRecursively(NumRowColumn, MaxScreenCoverage, PatchLength, CameraPosition, ViewProjectionMatrix, ChildNodeBottomLeft, OutRenderList);
 
 		FQuadNode ChildNodeTopRight;
-		ChildNodeTopRight.BottomLeft = Node.BottomLeft + FVector2D(Node.Length / 2.0f, Node.Length / 2.0f);
+		ChildNodeTopRight.BottomRight = Node.BottomRight + FVector2D(0.0f, Node.Length / 2.0f);
 		ChildNodeTopRight.Length = Node.Length / 2.0f;
-		Node.ChildNodeIndices[3] = BuildQuadNodeRenderListRecursively(NumRowColumn, MaxScreenCoverage, PatchLength, CameraPosition, ViewProjectionMatrix, ChildNodeTopRight, OutRenderList);
+		Node.ChildNodeIndices[2] = BuildQuadNodeRenderListRecursively(NumRowColumn, MaxScreenCoverage, PatchLength, CameraPosition, ViewProjectionMatrix, ChildNodeTopRight, OutRenderList);
+
+		FQuadNode ChildNodeTopLeft;
+		ChildNodeTopLeft.BottomRight = Node.BottomRight + FVector2D(Node.Length / 2.0f, Node.Length / 2.0f);
+		ChildNodeTopLeft.Length = Node.Length / 2.0f;
+		Node.ChildNodeIndices[3] = BuildQuadNodeRenderListRecursively(NumRowColumn, MaxScreenCoverage, PatchLength, CameraPosition, ViewProjectionMatrix, ChildNodeTopLeft, OutRenderList);
 
 		// すべての子ノードがフラスタムカリング対象だったら、自分も不可視なはずで、カリング計算で漏れたとみるべきなのでカリングする
 		bVisible = !IsLeaf(Node);

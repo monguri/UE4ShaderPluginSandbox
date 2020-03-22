@@ -4,11 +4,22 @@
 
 namespace Quadtree
 {
+//
+// QuadNode is on XY plane.
+// Using UE4 left hand coordinate.
+// 
+//      Z   
+//      |  Y 
+//      | /
+//      |/
+//   X---
+//
+
 /** Node of Quadtree. Square. */
 struct FQuadNode
 {
-	/** Position of bottom left corner. */
-	FVector2D BottomLeft = FVector2D::ZeroVector;
+	/** Position of bottom right corner. */
+	FVector2D BottomRight = FVector2D::ZeroVector;
 	/** Length of edge. */
 	float Length = 0.0f;
 	/** LOD level. */
