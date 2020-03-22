@@ -32,6 +32,8 @@ public:
 		: FPrimitiveSceneProxy(Component)
 		, VertexFactory(GetScene().GetFeatureLevel(), "FQuadtreeMeshSceneProxy")
 		, MaterialRelevance(Component->GetMaterialRelevance(GetScene().GetFeatureLevel()))
+		, NumGridRowColumn(Component->NumGridRowColumn)
+		, GridLength(Component->GridLength)
 	{
 		TArray<FDynamicMeshVertex> Vertices;
 		Vertices.Reset(Component->GetVertices().Num());
@@ -136,6 +138,19 @@ public:
 					Mesh.DepthPriorityGroup = SDPG_World;
 					Mesh.bCanApplyViewModeOverrides = false;
 					Collector.AddMesh(ViewIndex, Mesh);
+
+					FQuadNode Node;
+					Node.BottomLeft = FVector2D::ZeroVector;
+					Node.Length = NumGridRowColumn * GridLength;
+
+					bool bCulled = IsQuadNodeFrustumCulled(View->ViewMatrices.GetViewProjectionMatrix(), Node);
+					if (!bCulled)
+					{
+						FIntPoint NearestGrid;
+						float GridScreenCoverage = EstimateGridScreenCoverage(NumGridRowColumn, View->ViewLocation, View->ViewMatrices.GetViewProjectionMatrix(), Node, NearestGrid);
+						UE_LOG(LogTemp, Log, TEXT("Blue coverage=%.8f. Grid=(%d, %d)."), GridScreenCoverage, NearestGrid.X, NearestGrid.Y);
+					}
+
 				}
 
 				{
@@ -182,6 +197,19 @@ public:
 					Mesh.DepthPriorityGroup = SDPG_World;
 					Mesh.bCanApplyViewModeOverrides = false;
 					Collector.AddMesh(ViewIndex, Mesh);
+
+
+					FQuadNode Node;
+					Node.BottomLeft = FVector2D(150, 0);
+					Node.Length = NumGridRowColumn * GridLength;
+
+					bool bCulled = IsQuadNodeFrustumCulled(View->ViewMatrices.GetViewProjectionMatrix(), Node);
+					if (!bCulled)
+					{
+						FIntPoint NearestGrid;
+						float GridScreenCoverage = EstimateGridScreenCoverage(NumGridRowColumn, View->ViewLocation, View->ViewMatrices.GetViewProjectionMatrix(), Node, NearestGrid);
+						UE_LOG(LogTemp, Log, TEXT("Yellow coverage=%.8f. Grid=(%d, %d)."), GridScreenCoverage, NearestGrid.X, NearestGrid.Y);
+					}
 				}
 			}
 		}
@@ -220,6 +248,8 @@ private:
 	FLocalVertexFactory VertexFactory;
 
 	FMaterialRelevance MaterialRelevance;
+	int32 NumGridRowColumn;
+	float GridLength;
 };
 
 //////////////////////////////////////////////////////////////////////////
@@ -243,7 +273,8 @@ void UQuadtreeMeshComponent::OnRegister()
 {
 	Super::OnRegister();
 
-	InitGridMeshSetting(128, 128, 1.0f, 1.0f); // VertexBufferは128x128のグリッド、グリッドの縦横は1cmにする。描画時はスケールして使う。
+	// デフォルト値では、VertexBufferは128x128のグリッド、グリッドの縦横は1cmにする。描画時はスケールして使う。
+	InitGridMeshSetting(NumGridRowColumn, NumGridRowColumn, GridLength, GridLength);
 
 	UMaterialInterface* Material = GetMaterial(0);
 	if(Material == NULL)

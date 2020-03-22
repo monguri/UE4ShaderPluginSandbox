@@ -11,6 +11,13 @@ class SHADERSANDBOX_API UQuadtreeMeshComponent : public UDeformableGridMeshCompo
 	GENERATED_BODY()
 
 public:
+	UPROPERTY(EditAnywhere, Category="Components|Quadtree", BlueprintReadOnly)
+	int32 NumGridRowColumn = 128;
+
+	UPROPERTY(EditAnywhere, Category="Components|Quadtree", BlueprintReadOnly)
+	float GridLength = 1.0f;
+
+public:
 	UQuadtreeMeshComponent();
 
 	//~ Begin UPrimitiveComponent Interface.
