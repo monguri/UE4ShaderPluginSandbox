@@ -7,35 +7,16 @@ bool IsQuadNodeFrustumCulled(const FMatrix& ViewProjectionMatrix, const Quadtree
 {
 	//FSceneView::ProjectWorldToScreen()を参考にしている
 
-	// NDCへの変換でWで除算したいのでWが0に近い場合はカリング対象として扱う
 	const FVector4& BottomRightProjSpace = ViewProjectionMatrix.TransformFVector4(FVector4(Node.BottomRight.X, Node.BottomRight.Y, 0.0f, 1.0f));
-	if (BottomRightProjSpace.W < KINDA_SMALL_NUMBER)
-	{
-		return true;
-	}
-	
 	const FVector4& BottomLeftProjSpace = ViewProjectionMatrix.TransformFVector4(FVector4(Node.BottomRight.X + Node.Length, Node.BottomRight.Y, 0.0f, 1.0f));
-	if (BottomLeftProjSpace.W < KINDA_SMALL_NUMBER)
-	{
-		return true;
-	}
-
 	const FVector4& TopRightProjSpace = ViewProjectionMatrix.TransformFVector4(FVector4(Node.BottomRight.X, Node.BottomRight.Y + Node.Length, 0.0f, 1.0f));
-	if (TopRightProjSpace.W < KINDA_SMALL_NUMBER)
-	{
-		return true;
-	}
-
 	const FVector4& TopLeftProjSpace = ViewProjectionMatrix.TransformFVector4(FVector4(Node.BottomRight.X + Node.Length, Node.BottomRight.Y + Node.Length, 0.0f, 1.0f));
-	if (TopLeftProjSpace.W < KINDA_SMALL_NUMBER)
-	{
-		return true;
-	}
 
-	const FVector4& BottomRightNDC = BottomRightProjSpace / BottomRightProjSpace.W;
-	const FVector4& BottomLeftNDC = BottomLeftProjSpace / BottomLeftProjSpace.W;
-	const FVector4& TopRightNDC = TopRightProjSpace / TopRightProjSpace.W;
-	const FVector4& TopLeftNDC = TopLeftProjSpace / TopLeftProjSpace.W;
+	// NDCへの変換でWで除算したいのでWが0に近い場合はKINDA_SMALL_NUMBERで割る。その場合は本来より結果が小さい値になるので大抵カリングされない
+	const FVector4& BottomRightNDC = BottomRightProjSpace / FMath::Max(FMath::Abs(BottomRightProjSpace.W), KINDA_SMALL_NUMBER);
+	const FVector4& BottomLeftNDC = BottomLeftProjSpace / FMath::Max(FMath::Abs(BottomLeftProjSpace.W), KINDA_SMALL_NUMBER);
+	const FVector4& TopRightNDC = TopRightProjSpace / FMath::Max(FMath::Abs(TopRightProjSpace.W), KINDA_SMALL_NUMBER);
+	const FVector4& TopLeftNDC = TopLeftProjSpace / FMath::Max(FMath::Abs(TopLeftProjSpace.W), KINDA_SMALL_NUMBER);
 
 	// フラスタム外にあるときは、4コーナーがすべて、NDCキューブの6面のうちいずれかの面の外にあるときになっている
 	if (BottomRightNDC.X < -1.0f && BottomLeftNDC.X < -1.0f && TopRightNDC.X < -1.0f && TopLeftNDC.X < -1.0f)
