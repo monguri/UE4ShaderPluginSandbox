@@ -34,6 +34,7 @@ public:
 		, MaterialRelevance(Component->GetMaterialRelevance(GetScene().GetFeatureLevel()))
 		, NumGridRowColumn(Component->NumGridRowColumn)
 		, GridLength(Component->GridLength)
+		, MaxLOD(Component->MaxLOD)
 	{
 		TArray<FDynamicMeshVertex> Vertices;
 		Vertices.Reset(Component->GetVertices().Num());
@@ -224,6 +225,7 @@ private:
 	FMaterialRelevance MaterialRelevance;
 	int32 NumGridRowColumn;
 	float GridLength;
+	int32 MaxLOD;
 };
 
 //////////////////////////////////////////////////////////////////////////

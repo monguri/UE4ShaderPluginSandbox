@@ -122,7 +122,7 @@ bool IsLeaf(const FQuadNode& Node)
 	return true;
 }
 
-int32 BuildQuadNodeRenderListRecursively(int32 NumRowColumn, float MaxScreenCoverage, float PatchLength, const FVector& CameraPosition, const FMatrix& ViewProjectionMatrix, FQuadNode& Node, TArray<FQuadNode>& OutRenderList)
+int32 BuildQuadNodeRenderListRecursively(int32 MaxLOD, int32 NumRowColumn, float MaxScreenCoverage, float PatchLength, const FVector& CameraPosition, const FMatrix& ViewProjectionMatrix, FQuadNode& Node, TArray<FQuadNode>& OutRenderList)
 {
 	bool bCulled = IsQuadNodeFrustumCulled(ViewProjectionMatrix, Node);
 	if (bCulled)
@@ -145,22 +145,22 @@ int32 BuildQuadNodeRenderListRecursively(int32 NumRowColumn, float MaxScreenCove
 		FQuadNode ChildNodeBottomRight;
 		ChildNodeBottomRight.BottomRight = Node.BottomRight;
 		ChildNodeBottomRight.Length = Node.Length / 2.0f;
-		Node.ChildNodeIndices[0] = BuildQuadNodeRenderListRecursively(NumRowColumn, MaxScreenCoverage, PatchLength, CameraPosition, ViewProjectionMatrix, ChildNodeBottomRight, OutRenderList);
+		Node.ChildNodeIndices[0] = BuildQuadNodeRenderListRecursively(MaxLOD, NumRowColumn, MaxScreenCoverage, PatchLength, CameraPosition, ViewProjectionMatrix, ChildNodeBottomRight, OutRenderList);
 
 		FQuadNode ChildNodeBottomLeft;
 		ChildNodeBottomLeft.BottomRight = Node.BottomRight + FVector2D(Node.Length / 2.0f, 0.0f);
 		ChildNodeBottomLeft.Length = Node.Length / 2.0f;
-		Node.ChildNodeIndices[1] = BuildQuadNodeRenderListRecursively(NumRowColumn, MaxScreenCoverage, PatchLength, CameraPosition, ViewProjectionMatrix, ChildNodeBottomLeft, OutRenderList);
+		Node.ChildNodeIndices[1] = BuildQuadNodeRenderListRecursively(MaxLOD, NumRowColumn, MaxScreenCoverage, PatchLength, CameraPosition, ViewProjectionMatrix, ChildNodeBottomLeft, OutRenderList);
 
 		FQuadNode ChildNodeTopRight;
 		ChildNodeTopRight.BottomRight = Node.BottomRight + FVector2D(0.0f, Node.Length / 2.0f);
 		ChildNodeTopRight.Length = Node.Length / 2.0f;
-		Node.ChildNodeIndices[2] = BuildQuadNodeRenderListRecursively(NumRowColumn, MaxScreenCoverage, PatchLength, CameraPosition, ViewProjectionMatrix, ChildNodeTopRight, OutRenderList);
+		Node.ChildNodeIndices[2] = BuildQuadNodeRenderListRecursively(MaxLOD, NumRowColumn, MaxScreenCoverage, PatchLength, CameraPosition, ViewProjectionMatrix, ChildNodeTopRight, OutRenderList);
 
 		FQuadNode ChildNodeTopLeft;
 		ChildNodeTopLeft.BottomRight = Node.BottomRight + FVector2D(Node.Length / 2.0f, Node.Length / 2.0f);
 		ChildNodeTopLeft.Length = Node.Length / 2.0f;
-		Node.ChildNodeIndices[3] = BuildQuadNodeRenderListRecursively(NumRowColumn, MaxScreenCoverage, PatchLength, CameraPosition, ViewProjectionMatrix, ChildNodeTopLeft, OutRenderList);
+		Node.ChildNodeIndices[3] = BuildQuadNodeRenderListRecursively(MaxLOD, NumRowColumn, MaxScreenCoverage, PatchLength, CameraPosition, ViewProjectionMatrix, ChildNodeTopLeft, OutRenderList);
 
 		// すべての子ノードがフラスタムカリング対象だったら、自分も不可視なはずで、カリング計算で漏れたとみるべきなのでカリングする
 		bVisible = !IsLeaf(Node);
@@ -172,7 +172,7 @@ int32 BuildQuadNodeRenderListRecursively(int32 NumRowColumn, float MaxScreenCove
 		// メッシュのLODをスクリーン表示面積率から決める
 		// LODレベルが上がるごとに縦横2倍するので、グリッドのスクリーン表示面積率が上限値の1/4^xになっていればxがLODレベルである
 		int32 LOD = 0;
-		for (; LOD < 8 - 1; LOD++)  //TODO:最大LODレベル8がマジックナンバー
+		for (; LOD < MaxLOD - 1; LOD++)  //TODO:最大LODレベル8がマジックナンバー
 		{
 			if (GridCoverage > MaxScreenCoverage)
 			{
@@ -183,7 +183,7 @@ int32 BuildQuadNodeRenderListRecursively(int32 NumRowColumn, float MaxScreenCove
 		}
 
 		// TODO:LODの最大レベルと、それよりひとつ下のレベルは使わない。あとで考え直す
-		Node.LOD = FMath::Min(LOD, 8 - 2);
+		Node.LOD = FMath::Max(FMath::Min(LOD, MaxLOD - 2), 0);
 	}
 	else
 	{
