@@ -138,19 +138,6 @@ public:
 					Mesh.DepthPriorityGroup = SDPG_World;
 					Mesh.bCanApplyViewModeOverrides = false;
 					Collector.AddMesh(ViewIndex, Mesh);
-
-					FQuadNode Node;
-					Node.BottomLeft = FVector2D::ZeroVector;
-					Node.Length = NumGridRowColumn * GridLength;
-
-					bool bCulled = IsQuadNodeFrustumCulled(View->ViewMatrices.GetViewProjectionMatrix(), Node);
-					if (!bCulled)
-					{
-						FIntPoint NearestGrid;
-						float GridScreenCoverage = EstimateGridScreenCoverage(NumGridRowColumn, View->ViewLocation, View->ViewMatrices.GetViewProjectionMatrix(), Node, NearestGrid);
-						UE_LOG(LogTemp, Log, TEXT("Blue coverage=%.8f. Grid=(%d, %d)."), GridScreenCoverage, NearestGrid.X, NearestGrid.Y);
-					}
-
 				}
 
 				{
@@ -197,19 +184,6 @@ public:
 					Mesh.DepthPriorityGroup = SDPG_World;
 					Mesh.bCanApplyViewModeOverrides = false;
 					Collector.AddMesh(ViewIndex, Mesh);
-
-
-					FQuadNode Node;
-					Node.BottomLeft = FVector2D(150, 0);
-					Node.Length = NumGridRowColumn * GridLength;
-
-					bool bCulled = IsQuadNodeFrustumCulled(View->ViewMatrices.GetViewProjectionMatrix(), Node);
-					if (!bCulled)
-					{
-						FIntPoint NearestGrid;
-						float GridScreenCoverage = EstimateGridScreenCoverage(NumGridRowColumn, View->ViewLocation, View->ViewMatrices.GetViewProjectionMatrix(), Node, NearestGrid);
-						UE_LOG(LogTemp, Log, TEXT("Yellow coverage=%.8f. Grid=(%d, %d)."), GridScreenCoverage, NearestGrid.X, NearestGrid.Y);
-					}
 				}
 			}
 		}

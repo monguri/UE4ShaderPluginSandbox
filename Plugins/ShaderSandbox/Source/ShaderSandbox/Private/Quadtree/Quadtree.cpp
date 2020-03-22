@@ -2,25 +2,6 @@
 
 namespace
 {
-bool IsInNDCCube(const FVector4& PositionProjectionSpace)
-{
-	if (PositionProjectionSpace.W > KINDA_SMALL_NUMBER)
-	{
-		const FVector4& PositionNDC = PositionProjectionSpace / PositionProjectionSpace.W;
-		if (PositionNDC.X > -1.0f && PositionNDC.X < 1.0f
-			&& PositionNDC.Y > -1.0f && PositionNDC.Y < 1.0f
-			&& PositionNDC.Z > -1.0f && PositionNDC.Z < 1.0f)
-		{
-			return true;
-		}
-	}
-
-	return false;
-}
-} // namespace
-
-namespace Quadtree
-{
 // フラスタムカリング。ビューフラスタムの中にQuadNodeが一部でも入っていたらtrue。そうでなければfalse。
 bool IsQuadNodeFrustumCulled(const FMatrix& ViewProjectionMatrix, const Quadtree::FQuadNode& Node)
 {
@@ -123,7 +104,10 @@ float EstimateGridScreenCoverage(int32 NumRowColumn, const FVector& CameraPositi
 	float Ret = -(HorizEdge ^ VertEdge) * 0.25f;
 	return Ret;
 }
+} // namespace
 
+namespace Quadtree
+{
 bool IsLeaf(const FQuadNode& Node)
 {
 	// ChildNodeIndices[]でひとつでも有効なインデックスのものがあるかどうかでLeafかどうか判定している
