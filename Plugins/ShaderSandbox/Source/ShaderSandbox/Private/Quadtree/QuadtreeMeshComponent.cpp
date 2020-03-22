@@ -32,9 +32,12 @@ public:
 		: FPrimitiveSceneProxy(Component)
 		, VertexFactory(GetScene().GetFeatureLevel(), "FQuadtreeMeshSceneProxy")
 		, MaterialRelevance(Component->GetMaterialRelevance(GetScene().GetFeatureLevel()))
+		, MIDPool(Component->GetMIDPool())
 		, NumGridRowColumn(Component->NumGridRowColumn)
 		, GridLength(Component->GridLength)
 		, MaxLOD(Component->MaxLOD)
+		, GridMaxPixelCoverage(Component->GridMaxPixelCoverage)
+		, PatchLength(Component->PatchLength)
 	{
 		TArray<FDynamicMeshVertex> Vertices;
 		Vertices.Reset(Component->GetVertices().Num());
@@ -61,7 +64,6 @@ public:
 			Material = UMaterial::GetDefaultMaterial(MD_Surface);
 		}
 
-		MIDPool = Component->GetMIDPool();
 		// GetDynamicMeshElements()のあと、VerifyUsedMaterial()によってマテリアルがコンポーネントにあったものかチェックされるので
 		// SetUsedMaterialForVerification()で登録する手もあるが、レンダースレッド出ないとcheckにひっかかるので
 		bVerifyUsedMaterials = false;
@@ -105,11 +107,32 @@ public:
 			{
 				const FSceneView* View = Views[ViewIndex];
 
+				// RootNodeの辺の長さはPatchLengthを2のMaxLOD乗したサイズ。中央が原点。
+				FQuadNode RootNode;
+				RootNode.Length = PatchLength * (1 << MaxLOD);
+				RootNode.BottomRight = FVector2D(-RootNode.Length * 0.5f);
+
+				// Area()という関数もあるが、大きな数で割って精度を落とさないように2段階で割る
+				float MaxScreenCoverage = (float)GridMaxPixelCoverage * GridMaxPixelCoverage / View->UnscaledViewRect.Width() / View->UnscaledViewRect.Height();
+
+				TArray<FQuadNode> RenderQuadNodeList;
+				RenderQuadNodeList.Reserve(512); //TODO:とりあえず512。ここで毎回確保は処理不可が無駄だが、この関数がconstなのでとりあえず
+
+				Quadtree::BuildQuadNodeRenderListRecursively(MaxLOD, NumGridRowColumn, MaxScreenCoverage, PatchLength, View->ViewLocation, View->ViewMatrices.GetViewProjectionMatrix(), RootNode, RenderQuadNodeList);
+
+				for (int32 i = 0; i < RenderQuadNodeList.Num(); i++)
 				{
+					const FQuadNode& Node = RenderQuadNodeList[i];
+
+					if (!IsLeaf(Node))
+					{
+						continue;
+					}
+
 					if(!bWireframe)
 					{
-						MIDPool[0]->SetVectorParameterValue(FName("Color"), FLinearColor::Blue);
-						MaterialProxy = MIDPool[0]->GetRenderProxy();
+						MIDPool[i]->SetVectorParameterValue(FName("Color"), FLinearColor(1.0f * (MaxLOD - Node.LOD) / MaxLOD, 1.0f * Node.LOD / MaxLOD, 0.0f));
+						MaterialProxy = MIDPool[i]->GetRenderProxy();
 					}
 
 					// Draw the mesh.
@@ -126,53 +149,22 @@ public:
 					bool bOutputVelocity;
 					GetScene().GetPrimitiveUniformShaderParameters_RenderThread(GetPrimitiveSceneInfo(), bHasPrecomputedVolumetricLightmap, PreviousLocalToWorld, SingleCaptureIndex, bOutputVelocity);
 
-					FDynamicPrimitiveUniformBuffer& DynamicPrimitiveUniformBuffer = Collector.AllocateOneFrameResource<FDynamicPrimitiveUniformBuffer>();
-					DynamicPrimitiveUniformBuffer.Set(GetLocalToWorld(), PreviousLocalToWorld, GetBounds(), GetLocalBounds(), true, bHasPrecomputedVolumetricLightmap, DrawsVelocity(), false);
-					BatchElement.PrimitiveUniformBufferResource = &DynamicPrimitiveUniformBuffer.UniformBuffer;
-
-					BatchElement.FirstIndex = 0;
-					BatchElement.NumPrimitives = IndexBuffer.Indices.Num() / 3;
-					BatchElement.MinVertexIndex = 0;
-					BatchElement.MaxVertexIndex = VertexBuffers.PositionVertexBuffer.GetNumVertices() - 1;
-					Mesh.ReverseCulling = IsLocalToWorldDeterminantNegative();
-					Mesh.Type = PT_TriangleList;
-					Mesh.DepthPriorityGroup = SDPG_World;
-					Mesh.bCanApplyViewModeOverrides = false;
-					Collector.AddMesh(ViewIndex, Mesh);
-				}
-
-				{
-					if(!bWireframe)
-					{
-						MIDPool[1]->SetVectorParameterValue(FName("Color"), FLinearColor::Yellow);
-						MaterialProxy = MIDPool[1]->GetRenderProxy();
-					}
-
-					// Draw the mesh.
-					FMeshBatch& Mesh = Collector.AllocateMesh();
-					FMeshBatchElement& BatchElement = Mesh.Elements[0];
-					BatchElement.IndexBuffer = &IndexBuffer;
-					Mesh.bWireframe = bWireframe;
-					Mesh.VertexFactory = &VertexFactory;
-					Mesh.MaterialRenderProxy = MaterialProxy;
-
-					bool bHasPrecomputedVolumetricLightmap;
-					FMatrix PreviousLocalToWorld;
-					int32 SingleCaptureIndex;
-					bool bOutputVelocity;
-					GetScene().GetPrimitiveUniformShaderParameters_RenderThread(GetPrimitiveSceneInfo(), bHasPrecomputedVolumetricLightmap, PreviousLocalToWorld, SingleCaptureIndex, bOutputVelocity);
+					// QuadNodeのLODによるスケールは、メッシュのエッジの長さを変えるのでなく、モデル行列にスケールをかける形とする
+					float Scale = Node.Length / (NumGridRowColumn * GridLength);
 
 					FDynamicPrimitiveUniformBuffer& DynamicPrimitiveUniformBuffer = Collector.AllocateOneFrameResource<FDynamicPrimitiveUniformBuffer>();
-					// FPrimitiveSceneProxy::ApplyWorldOffset()を参考にした
-					const FMatrix& NewLocalToWorld = GetLocalToWorld().ConcatTranslation(FVector(150, 0, 0));
-					PreviousLocalToWorld = PreviousLocalToWorld.ConcatTranslation(FVector(150, 0, 0));
+					// FPrimitiveSceneProxy::ApplyLateUpdateTransform()を参考にした
+					const FMatrix& NewLocalToWorld = GetLocalToWorld().ApplyScale(Scale).ConcatTranslation(FVector(Node.BottomRight.X, Node.BottomRight.Y, 0.0f));
+					PreviousLocalToWorld = PreviousLocalToWorld.ApplyScale(Scale).ConcatTranslation(FVector(Node.BottomRight.X, Node.BottomRight.Y, 0.0f));
 
 					FBoxSphereBounds NewBounds = GetBounds();
-					NewBounds = FBoxSphereBounds(NewBounds.Origin + FVector(150, 0, 0), NewBounds.BoxExtent, NewBounds.SphereRadius);
-					// LocalBoundsは変更不要
+					NewBounds = FBoxSphereBounds(NewBounds.Origin + FVector(Node.BottomRight.X * Scale, Node.BottomRight.Y * Scale, 0.0f), NewBounds.BoxExtent * Scale, NewBounds.SphereRadius * Scale);
+
+					FBoxSphereBounds NewLocalBounds = GetLocalBounds();
+					NewLocalBounds = FBoxSphereBounds(NewLocalBounds.Origin, NewLocalBounds.BoxExtent * Scale, NewLocalBounds.SphereRadius * Scale);
 
 					//DynamicPrimitiveUniformBuffer.Set(GetLocalToWorld(), PreviousLocalToWorld, GetBounds(), GetLocalBounds(), true, bHasPrecomputedVolumetricLightmap, DrawsVelocity(), false);
-					DynamicPrimitiveUniformBuffer.Set(NewLocalToWorld, PreviousLocalToWorld, NewBounds, GetLocalBounds(), true, bHasPrecomputedVolumetricLightmap, DrawsVelocity(), false);
+					DynamicPrimitiveUniformBuffer.Set(NewLocalToWorld, PreviousLocalToWorld, NewBounds, NewLocalBounds, true, bHasPrecomputedVolumetricLightmap, DrawsVelocity(), false);
 					BatchElement.PrimitiveUniformBufferResource = &DynamicPrimitiveUniformBuffer.UniformBuffer;
 
 					BatchElement.FirstIndex = 0;
@@ -217,15 +209,17 @@ public:
 
 private:
 	UMaterialInterface* Material;
-	TArray<UMaterialInstanceDynamic*> MIDPool; // Component側でUMaterialInstanceDynamicは保持されてるのでGCで解放はされない
 	FDeformableVertexBuffers VertexBuffers;
 	FDynamicMeshIndexBuffer32 IndexBuffer;
 	FLocalVertexFactory VertexFactory;
 
 	FMaterialRelevance MaterialRelevance;
+	TArray<UMaterialInstanceDynamic*> MIDPool; // Component側でUMaterialInstanceDynamicは保持されてるのでGCで解放はされない
 	int32 NumGridRowColumn;
 	float GridLength;
 	int32 MaxLOD;
+	int32 GridMaxPixelCoverage;
+	int32 PatchLength;
 };
 
 //////////////////////////////////////////////////////////////////////////
@@ -258,8 +252,16 @@ void UQuadtreeMeshComponent::OnRegister()
 		Material = UMaterial::GetDefaultMaterial(MD_Surface);
 	}
 
-	MIDPool.SetNumZeroed(16); // TODO:とりあえず16個
-	for (int32 i = 0; i < 16; i++)
+	// QuadNodeの数は、MaxLOD-2が最小レベルなのですべて最小のQuadNodeで敷き詰めると
+	// 2^(MaxLOD-2)*2^(MaxLOD-2)
+	// 通常はそこまでいかない。カメラから遠くなるにつれて2倍になっていけば
+	// 2*6=12になるだろう。それは原点にカメラがあるときで、かつカメラの高さが0に近いときなので、
+	// せいぜその4倍程度の数と見積もってでいいはず
+
+	//MIDPool.SetNumZeroed(48);
+	//for (int32 i = 0; i < 48; i++)
+	MIDPool.SetNumZeroed(512);
+	for (int32 i = 0; i < 512; i++)
 	{
 		MIDPool[i] = UMaterialInstanceDynamic::Create(Material, this);
 	}
