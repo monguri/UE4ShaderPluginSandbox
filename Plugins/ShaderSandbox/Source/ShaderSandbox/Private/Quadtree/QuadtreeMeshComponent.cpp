@@ -116,13 +116,13 @@ public:
 				// Area()という関数もあるが、大きな数で割って精度を落とさないように2段階で割る
 				float MaxScreenCoverage = (float)GridMaxPixelCoverage * GridMaxPixelCoverage / View->UnscaledViewRect.Width() / View->UnscaledViewRect.Height();
 
-				TArray<FQuadNode> RenderQuadNodeList;
-				RenderQuadNodeList.Reserve(512); //TODO:とりあえず512。ここで毎回確保は処理不可が無駄だが、この関数がconstなのでとりあえず
+				TArray<FQuadNode> QuadNodeList;
+				QuadNodeList.Reserve(512); //TODO:とりあえず512。ここで毎回確保は処理不可が無駄だが、この関数がconstなのでとりあえず
 
-				Quadtree::BuildQuadNodeRenderListRecursively(MaxLOD, NumGridRowColumn, MaxScreenCoverage, PatchLength, View->ViewLocation, View->ViewMatrices.GetViewProjectionMatrix(), RootNode, RenderQuadNodeList);
+				Quadtree::BuildQuadTreeRecursively(MaxLOD, NumGridRowColumn, MaxScreenCoverage, PatchLength, View->ViewLocation, View->ViewMatrices.GetViewProjectionMatrix(), RootNode, QuadNodeList);
 
 				int32 MIDIndex = 0;
-				for (const FQuadNode& Node : RenderQuadNodeList)
+				for (const FQuadNode& Node : QuadNodeList)
 				{
 					if (!IsLeaf(Node))
 					{
