@@ -149,19 +149,24 @@ public:
 					bool bOutputVelocity;
 					GetScene().GetPrimitiveUniformShaderParameters_RenderThread(GetPrimitiveSceneInfo(), bHasPrecomputedVolumetricLightmap, PreviousLocalToWorld, SingleCaptureIndex, bOutputVelocity);
 
-					// QuadNodeのLODによるスケールは、メッシュのエッジの長さを変えるのでなく、モデル行列にスケールをかける形とする
-					float Scale = Node.Length / (NumGridRowColumn * GridLength);
+					// メッシュサイズをQuadNodeのサイズに応じてスケールさせる
+					float MeshScale = Node.Length / (NumGridRowColumn * GridLength);
 
 					FDynamicPrimitiveUniformBuffer& DynamicPrimitiveUniformBuffer = Collector.AllocateOneFrameResource<FDynamicPrimitiveUniformBuffer>();
 					// FPrimitiveSceneProxy::ApplyLateUpdateTransform()を参考にした
-					const FMatrix& NewLocalToWorld = GetLocalToWorld().ApplyScale(Scale).ConcatTranslation(FVector(Node.BottomRight.X, Node.BottomRight.Y, 0.0f));
-					PreviousLocalToWorld = PreviousLocalToWorld.ApplyScale(Scale).ConcatTranslation(FVector(Node.BottomRight.X, Node.BottomRight.Y, 0.0f));
+					const FMatrix& NewLocalToWorld = GetLocalToWorld().ApplyScale(MeshScale).ConcatTranslation(FVector(Node.BottomRight.X, Node.BottomRight.Y, 0.0f));
+					PreviousLocalToWorld = PreviousLocalToWorld.ApplyScale(MeshScale).ConcatTranslation(FVector(Node.BottomRight.X, Node.BottomRight.Y, 0.0f));
+
+					// コンポーネントのCalcBounds()はRootNodeのサイズに合わせて実装されているのでスケールさせる。
+					// 実際は描画するメッシュはQuadtreeを作る際の独自フラスタムカリングで選抜しているのでBoundsはすべてRootNodeサイズでも
+					// 構わないが、一応正確なサイズにしておく
+					float BoundScale = Node.Length / RootNode.Length;
 
 					FBoxSphereBounds NewBounds = GetBounds();
-					NewBounds = FBoxSphereBounds(NewBounds.Origin + FVector(Node.BottomRight.X * Scale, Node.BottomRight.Y * Scale, 0.0f), NewBounds.BoxExtent * Scale, NewBounds.SphereRadius * Scale);
+					NewBounds = FBoxSphereBounds(NewBounds.Origin + NewLocalToWorld.TransformPosition(FVector(Node.BottomRight.X, Node.BottomRight.Y, 0.0f)), NewBounds.BoxExtent * BoundScale, NewBounds.SphereRadius * BoundScale);
 
 					FBoxSphereBounds NewLocalBounds = GetLocalBounds();
-					NewLocalBounds = FBoxSphereBounds(NewLocalBounds.Origin, NewLocalBounds.BoxExtent * Scale, NewLocalBounds.SphereRadius * Scale);
+					NewLocalBounds = FBoxSphereBounds(NewLocalBounds.Origin, NewLocalBounds.BoxExtent * BoundScale, NewLocalBounds.SphereRadius * BoundScale);
 
 					//DynamicPrimitiveUniformBuffer.Set(GetLocalToWorld(), PreviousLocalToWorld, GetBounds(), GetLocalBounds(), true, bHasPrecomputedVolumetricLightmap, DrawsVelocity(), false);
 					DynamicPrimitiveUniformBuffer.Set(NewLocalToWorld, PreviousLocalToWorld, NewBounds, NewLocalBounds, true, bHasPrecomputedVolumetricLightmap, DrawsVelocity(), false);
@@ -265,6 +270,23 @@ void UQuadtreeMeshComponent::OnRegister()
 	{
 		MIDPool[i] = UMaterialInstanceDynamic::Create(Material, this);
 	}
+}
+
+int32 UQuadtreeMeshComponent::GetNumMaterials() const
+{
+	return 512;
+}
+
+FBoxSphereBounds UQuadtreeMeshComponent::CalcBounds(const FTransform& LocalToWorld) const
+{
+	// QuadtreeのRootNodeのサイズにしておく。アクタのBPエディタのビューポート表示やフォーカス操作などでこのBoundが使われるのでなるべく正確にする
+	// また、QuadNodeの各メッシュのBoundを計算する基準サイズとしても使う。
+	float RootNodeLength = PatchLength * (1 << MaxLOD);
+	const FVector& Min = LocalToWorld.TransformPosition(FVector::ZeroVector);
+	const FVector& Max = LocalToWorld.TransformPosition(FVector(RootNodeLength, RootNodeLength, 0.0f));
+	FBox Box(Min, Max);
+
+	return FBoxSphereBounds(Box);
 }
 
 const TArray<class UMaterialInstanceDynamic*>& UQuadtreeMeshComponent::GetMIDPool() const
