@@ -32,7 +32,7 @@ public:
 		: FPrimitiveSceneProxy(Component)
 		, VertexFactory(GetScene().GetFeatureLevel(), "FQuadtreeMeshSceneProxy")
 		, MaterialRelevance(Component->GetMaterialRelevance(GetScene().GetFeatureLevel()))
-		, MIDPool(Component->GetMIDPool())
+		, LODMIDList(Component->GetLODMIDList())
 		, NumGridRowColumn(Component->NumGridRowColumn)
 		, GridLength(Component->GridLength)
 		, MaxLOD(Component->MaxLOD)
@@ -128,9 +128,7 @@ public:
 				{
 					if(!bWireframe)
 					{
-						float InvMaxLOD = 1.0f / MaxLOD;
-						MIDPool[MIDIndex]->SetVectorParameterValue(FName("Color"), FLinearColor((MaxLOD - Node.LOD) * InvMaxLOD, 0.0f, Node.LOD * InvMaxLOD));
-						MaterialProxy = MIDPool[MIDIndex]->GetRenderProxy();
+						MaterialProxy = LODMIDList[Node.LOD]->GetRenderProxy();
 						MIDIndex++;
 					}
 
@@ -218,7 +216,7 @@ private:
 	FLocalVertexFactory VertexFactory;
 
 	FMaterialRelevance MaterialRelevance;
-	TArray<UMaterialInstanceDynamic*> MIDPool; // Component側でUMaterialInstanceDynamicは保持されてるのでGCで解放はされない
+	TArray<UMaterialInstanceDynamic*> LODMIDList; // Component側でUMaterialInstanceDynamicは保持されてるのでGCで解放はされない
 	int32 NumGridRowColumn;
 	float GridLength;
 	int32 MaxLOD;
@@ -262,12 +260,14 @@ void UQuadtreeMeshComponent::OnRegister()
 	// 2*6=12になるだろう。それは原点にカメラがあるときで、かつカメラの高さが0に近いときなので、
 	// せいぜその4倍程度の数と見積もってでいいはず
 
-	//MIDPool.SetNumZeroed(48);
+	float InvMaxLOD = 1.0f / MaxLOD;
+	//LODMIDList.SetNumZeroed(48);
 	//for (int32 i = 0; i < 48; i++)
-	MIDPool.SetNumZeroed(512);
-	for (int32 i = 0; i < 512; i++)
+	LODMIDList.SetNumZeroed(MaxLOD + 1);
+	for (int32 LOD = 0; LOD < MaxLOD + 1; LOD++)
 	{
-		MIDPool[i] = UMaterialInstanceDynamic::Create(Material, this);
+		LODMIDList[LOD] = UMaterialInstanceDynamic::Create(Material, this);
+		LODMIDList[LOD]->SetVectorParameterValue(FName("Color"), FLinearColor((MaxLOD - LOD) * InvMaxLOD, 0.0f, LOD * InvMaxLOD));
 	}
 }
 
@@ -283,8 +283,8 @@ FBoxSphereBounds UQuadtreeMeshComponent::CalcBounds(const FTransform& LocalToWor
 	return FBoxSphereBounds(Box);
 }
 
-const TArray<class UMaterialInstanceDynamic*>& UQuadtreeMeshComponent::GetMIDPool() const
+const TArray<class UMaterialInstanceDynamic*>& UQuadtreeMeshComponent::GetLODMIDList() const
 {
-	return MIDPool;
+	return LODMIDList;
 }
 

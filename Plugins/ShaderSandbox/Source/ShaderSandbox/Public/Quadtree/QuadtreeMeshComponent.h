@@ -3,7 +3,6 @@
 #include "DeformMesh/DeformableGridMeshComponent.h"
 #include "QuadtreeMeshComponent.generated.h"
 
-
 // almost all is copy of UCustomMeshComponent
 UCLASS(hidecategories=(Object,LOD, Physics, Collision), editinlinenew, meta=(BlueprintSpawnableComponent), ClassGroup=Rendering)
 class SHADERSANDBOX_API UQuadtreeMeshComponent : public UDeformableGridMeshComponent
@@ -37,13 +36,13 @@ public:
 	virtual FBoxSphereBounds CalcBounds(const FTransform& LocalToWorld) const override;
 	//~ Begin USceneComponent Interface.
 
-	const TArray<class UMaterialInstanceDynamic*>& GetMIDPool() const;
+	const TArray<class UMaterialInstanceDynamic*>& GetLODMIDList() const;
 
 protected:
 	virtual void OnRegister() override;
 
 private:
 	UPROPERTY(Transient)
-	TArray<class UMaterialInstanceDynamic*> MIDPool;
+	TArray<class UMaterialInstanceDynamic*> LODMIDList;
 };
 
