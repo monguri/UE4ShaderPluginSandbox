@@ -132,7 +132,7 @@ public:
 					if(!bWireframe)
 					{
 						float InvMaxLOD = 1.0f / MaxLOD;
-						MIDPool[MIDIndex]->SetVectorParameterValue(FName("Color"), FLinearColor((MaxLOD - Node.LOD) * InvMaxLOD, Node.LOD * InvMaxLOD, 0.0f));
+						MIDPool[MIDIndex]->SetVectorParameterValue(FName("Color"), FLinearColor((MaxLOD - Node.LOD) * InvMaxLOD, 0.0f, Node.LOD * InvMaxLOD));
 						MaterialProxy = MIDPool[MIDIndex]->GetRenderProxy();
 						MIDIndex++;
 					}
