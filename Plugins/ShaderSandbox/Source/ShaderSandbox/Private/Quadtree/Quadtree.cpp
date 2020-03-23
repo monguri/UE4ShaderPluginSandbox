@@ -95,16 +95,8 @@ namespace Quadtree
 {
 bool IsLeaf(const FQuadNode& Node)
 {
-	// ChildNodeIndices[]でひとつでも有効なインデックスのものがあるかどうかでLeafかどうか判定している
-	for (int32 i = 0; i < 4; i++)
-	{
-		if (Node.ChildNodeIndices[i] != INDEX_NONE)
-		{
-			return false;
-		}
-	}
-
-	return true;
+	// 子がまったくなければ葉
+	return (Node.ChildNodeIndices[0] == INDEX_NONE) && (Node.ChildNodeIndices[1] == INDEX_NONE) && (Node.ChildNodeIndices[2] == INDEX_NONE) && (Node.ChildNodeIndices[3] == INDEX_NONE);
 }
 
 int32 BuildQuadNodeRenderListRecursively(int32 MaxLOD, int32 NumRowColumn, float MaxScreenCoverage, float PatchLength, const FVector& CameraPosition, const FMatrix& ViewProjectionMatrix, FQuadNode& Node, TArray<FQuadNode>& OutRenderList)
