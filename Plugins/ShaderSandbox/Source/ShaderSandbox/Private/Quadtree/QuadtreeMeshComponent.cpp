@@ -118,17 +118,14 @@ public:
 
 				TArray<FQuadNode> QuadNodeList;
 				QuadNodeList.Reserve(512); //TODO:とりあえず512。ここで毎回確保は処理不可が無駄だが、この関数がconstなのでとりあえず
+				TArray<FQuadNode> RenderList;
+				RenderList.Reserve(512); //TODO:とりあえず512。ここで毎回確保は処理不可が無駄だが、この関数がconstなのでとりあえず
 
-				Quadtree::BuildQuadtreeRecursively(MaxLOD, NumGridRowColumn, MaxScreenCoverage, PatchLength, View->ViewLocation, View->ViewMatrices.GetViewProjectionMatrix(), RootNode, QuadNodeList);
+				Quadtree::BuildQuadtree(MaxLOD, NumGridRowColumn, MaxScreenCoverage, PatchLength, View->ViewLocation, View->ViewMatrices.GetViewProjectionMatrix(), RootNode, QuadNodeList, RenderList);
 
 				int32 MIDIndex = 0;
-				for (const FQuadNode& Node : QuadNodeList)
+				for (const FQuadNode& Node : RenderList)
 				{
-					if (!IsLeaf(Node))
-					{
-						continue;
-					}
-
 					if(!bWireframe)
 					{
 						float InvMaxLOD = 1.0f / MaxLOD;

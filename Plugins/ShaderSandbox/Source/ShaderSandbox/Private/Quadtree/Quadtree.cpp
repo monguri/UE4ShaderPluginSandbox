@@ -2,8 +2,10 @@
 
 namespace
 {
+using namespace Quadtree;
+
 // フラスタムカリング。ビューフラスタムの中にQuadNodeが一部でも入っていたらtrue。そうでなければfalse。
-bool IsQuadNodeFrustumCulled(const FMatrix& ViewProjectionMatrix, const Quadtree::FQuadNode& Node)
+bool IsQuadNodeFrustumCulled(const FMatrix& ViewProjectionMatrix, const FQuadNode& Node)
 {
 	//FSceneView::ProjectWorldToScreen()を参考にしている
 
@@ -49,7 +51,7 @@ bool IsQuadNodeFrustumCulled(const FMatrix& ViewProjectionMatrix, const Quadtree
 }
 
 // QuadNodeのメッシュのグリッドの中でもっともカメラに近いもののスクリーン表示面積率を取得する
-float EstimateGridScreenCoverage(int32 NumRowColumn, const FVector& CameraPosition, const FMatrix& ViewProjectionMatrix, const Quadtree::FQuadNode& Node, FIntPoint& OutNearestGrid)
+float EstimateGridScreenCoverage(int32 NumRowColumn, const FVector& CameraPosition, const FMatrix& ViewProjectionMatrix, const FQuadNode& Node, FIntPoint& OutNearestGrid)
 {
 	// 表示面積が最大のグリッドを調べたいので、カメラに最も近いグリッドを調べる。
 	// グリッドの中には表示されていないものもありうるが、ここに渡されるQuadNodeはフラスタムカリングはされてない前提なので
@@ -88,15 +90,6 @@ float EstimateGridScreenCoverage(int32 NumRowColumn, const FVector& CameraPositi
 	// コーナーがカメラの後ろにまわる場合などは符号が一定には扱えなくなるので、それでも同じ式で扱うために絶対値で扱う
 	float Ret = FMath::Abs(HorizEdge ^ VertEdge) * 0.25f;
 	return Ret;
-}
-} // namespace
-
-namespace Quadtree
-{
-bool IsLeaf(const FQuadNode& Node)
-{
-	// 子がまったくなければ葉
-	return (Node.ChildNodeIndices[0] == INDEX_NONE) && (Node.ChildNodeIndices[1] == INDEX_NONE) && (Node.ChildNodeIndices[2] == INDEX_NONE) && (Node.ChildNodeIndices[3] == INDEX_NONE);
 }
 
 int32 BuildQuadtreeRecursively(int32 MaxLOD, int32 NumRowColumn, float MaxScreenCoverage, float PatchLength, const FVector& CameraPosition, const FMatrix& ViewProjectionMatrix, FQuadNode& Node, TArray<FQuadNode>& OutQuadNodeList)
@@ -144,7 +137,7 @@ int32 BuildQuadtreeRecursively(int32 MaxLOD, int32 NumRowColumn, float MaxScreen
 		Node.ChildNodeIndices[3] = BuildQuadtreeRecursively(MaxLOD, NumRowColumn, MaxScreenCoverage, PatchLength, CameraPosition, ViewProjectionMatrix, ChildNodeTopLeft, OutQuadNodeList);
 
 		// すべての子ノードがフラスタムカリング対象だったら、自分も不可視なはずで、カリング計算で漏れたとみるべきなのでカリングする
-		if (IsLeaf(Node))
+		if (Node.IsLeaf())
 		{
 			return INDEX_NONE;
 		}
@@ -153,6 +146,21 @@ int32 BuildQuadtreeRecursively(int32 MaxLOD, int32 NumRowColumn, float MaxScreen
 	int32 Index = OutQuadNodeList.Add(Node);
 	return Index;
 }
-} // namespace Quadtree
+} // namespace
 
+namespace Quadtree
+{
+void BuildQuadtree(int32 MaxLOD, int32 NumRowColumn, float MaxScreenCoverage, float PatchLength, const FVector& CameraPosition, const FMatrix& ViewProjectionMatrix, FQuadNode& RootNode, TArray<FQuadNode>& OutAllQuadNodeList, TArray<FQuadNode>& OutRenderQuadNodeList)
+{
+	BuildQuadtreeRecursively(MaxLOD, NumRowColumn, MaxScreenCoverage, PatchLength, CameraPosition, ViewProjectionMatrix, RootNode, OutAllQuadNodeList);
+
+	for (const FQuadNode& Node : OutAllQuadNodeList)
+	{
+		if (Node.IsLeaf())
+		{
+			OutRenderQuadNodeList.Add(Node);
+		}
+	}
+}
+} // namespace Quadtree
 

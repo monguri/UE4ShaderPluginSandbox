@@ -26,17 +26,18 @@ struct FQuadNode
 	int32 LOD = 0;
 	/** Indices of child nodes in render list. If a child does not exist, it is INDEX_NONE. */
 	int32 ChildNodeIndices[4] = {INDEX_NONE, INDEX_NONE, INDEX_NONE, INDEX_NONE};
+
+	bool IsLeaf() const
+	{
+		return (ChildNodeIndices[0] == INDEX_NONE) && (ChildNodeIndices[1] == INDEX_NONE) && (ChildNodeIndices[2] == INDEX_NONE) && (ChildNodeIndices[3] == INDEX_NONE);
+	}
 };
 
 /** 
- * Check this node is leaf or not.
- */
-bool IsLeaf(const FQuadNode& Node);
-
-/** 
- * Build render list recursively.
+ * Build quad tree from given root node, and return two list.
+ * One is all quad node in quadtree, another is list which should be rendered.
  * @return assigned index for Node. If not assigned, INDEX_NONE.
  */
-int32 BuildQuadtreeRecursively(int32 MaxLOD, int32 NumRowColumn, float MaxScreenCoverage, float PatchLength, const FVector& CameraPosition, const FMatrix& ViewProjectionMatrix, FQuadNode& Node, TArray<FQuadNode>& OutQuadNodeList);
+void BuildQuadtree(int32 MaxLOD, int32 NumRowColumn, float MaxScreenCoverage, float PatchLength, const FVector& CameraPosition, const FMatrix& ViewProjectionMatrix, FQuadNode& RootNode, TArray<FQuadNode>& OutAllQuadNodeList, TArray<FQuadNode>& OutRenderQuadNodeList);
 } // namespace Quadtree
 
