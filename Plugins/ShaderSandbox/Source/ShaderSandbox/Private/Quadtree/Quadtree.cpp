@@ -114,7 +114,6 @@ int32 BuildQuadNodeRenderListRecursively(int32 MaxLOD, int32 NumRowColumn, float
 	FIntPoint NearestGrid;
 	float GridCoverage = EstimateGridScreenCoverage(NumRowColumn, CameraPosition, ViewProjectionMatrix, Node, NearestGrid);
 
-	bool bVisible = true;
 	if (GridCoverage > MaxScreenCoverage // グリッドが表示面積率上限より大きければ子に分割する。自分を描画しないのはリストの使用側でIsLeafで判定する。
 		&& Node.Length > PatchLength // パッチサイズ以下の縦横長さであればそれ以上分割しない。上の条件だけだとカメラが近いといくらでも小さく分割してしまうので
 		&& Node.LOD > 0) // LOD0のものはそれ以上分割しない
