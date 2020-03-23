@@ -37,6 +37,6 @@ bool IsLeaf(const FQuadNode& Node);
  * Build render list recursively.
  * @return assigned index for Node. If not assigned, INDEX_NONE.
  */
-int32 BuildQuadTreeRecursively(int32 MaxLOD, int32 NumRowColumn, float MaxScreenCoverage, float PatchLength, const FVector& CameraPosition, const FMatrix& ViewProjectionMatrix, FQuadNode& Node, TArray<FQuadNode>& OutQuadNodeList);
+int32 BuildQuadtreeRecursively(int32 MaxLOD, int32 NumRowColumn, float MaxScreenCoverage, float PatchLength, const FVector& CameraPosition, const FMatrix& ViewProjectionMatrix, FQuadNode& Node, TArray<FQuadNode>& OutQuadNodeList);
 } // namespace Quadtree
 

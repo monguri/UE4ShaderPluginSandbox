@@ -99,7 +99,7 @@ bool IsLeaf(const FQuadNode& Node)
 	return (Node.ChildNodeIndices[0] == INDEX_NONE) && (Node.ChildNodeIndices[1] == INDEX_NONE) && (Node.ChildNodeIndices[2] == INDEX_NONE) && (Node.ChildNodeIndices[3] == INDEX_NONE);
 }
 
-int32 BuildQuadNodeRenderListRecursively(int32 MaxLOD, int32 NumRowColumn, float MaxScreenCoverage, float PatchLength, const FVector& CameraPosition, const FMatrix& ViewProjectionMatrix, FQuadNode& Node, TArray<FQuadNode>& OutQuadNodeList)
+int32 BuildQuadtreeRecursively(int32 MaxLOD, int32 NumRowColumn, float MaxScreenCoverage, float PatchLength, const FVector& CameraPosition, const FMatrix& ViewProjectionMatrix, FQuadNode& Node, TArray<FQuadNode>& OutQuadNodeList)
 {
 	bool bCulled = IsQuadNodeFrustumCulled(ViewProjectionMatrix, Node);
 	if (bCulled)
@@ -123,25 +123,25 @@ int32 BuildQuadNodeRenderListRecursively(int32 MaxLOD, int32 NumRowColumn, float
 		ChildNodeBottomRight.BottomRight = Node.BottomRight;
 		ChildNodeBottomRight.Length = Node.Length / 2.0f;
 		ChildNodeBottomRight.LOD = Node.LOD - 1;
-		Node.ChildNodeIndices[0] = BuildQuadNodeRenderListRecursively(MaxLOD, NumRowColumn, MaxScreenCoverage, PatchLength, CameraPosition, ViewProjectionMatrix, ChildNodeBottomRight, OutQuadNodeList);
+		Node.ChildNodeIndices[0] = BuildQuadtreeRecursively(MaxLOD, NumRowColumn, MaxScreenCoverage, PatchLength, CameraPosition, ViewProjectionMatrix, ChildNodeBottomRight, OutQuadNodeList);
 
 		FQuadNode ChildNodeBottomLeft;
 		ChildNodeBottomLeft.BottomRight = Node.BottomRight + FVector2D(Node.Length / 2.0f, 0.0f);
 		ChildNodeBottomLeft.Length = Node.Length / 2.0f;
 		ChildNodeBottomLeft.LOD = Node.LOD - 1;
-		Node.ChildNodeIndices[1] = BuildQuadNodeRenderListRecursively(MaxLOD, NumRowColumn, MaxScreenCoverage, PatchLength, CameraPosition, ViewProjectionMatrix, ChildNodeBottomLeft, OutQuadNodeList);
+		Node.ChildNodeIndices[1] = BuildQuadtreeRecursively(MaxLOD, NumRowColumn, MaxScreenCoverage, PatchLength, CameraPosition, ViewProjectionMatrix, ChildNodeBottomLeft, OutQuadNodeList);
 
 		FQuadNode ChildNodeTopRight;
 		ChildNodeTopRight.BottomRight = Node.BottomRight + FVector2D(0.0f, Node.Length / 2.0f);
 		ChildNodeTopRight.Length = Node.Length / 2.0f;
 		ChildNodeTopRight.LOD = Node.LOD - 1;
-		Node.ChildNodeIndices[2] = BuildQuadNodeRenderListRecursively(MaxLOD, NumRowColumn, MaxScreenCoverage, PatchLength, CameraPosition, ViewProjectionMatrix, ChildNodeTopRight, OutQuadNodeList);
+		Node.ChildNodeIndices[2] = BuildQuadtreeRecursively(MaxLOD, NumRowColumn, MaxScreenCoverage, PatchLength, CameraPosition, ViewProjectionMatrix, ChildNodeTopRight, OutQuadNodeList);
 
 		FQuadNode ChildNodeTopLeft;
 		ChildNodeTopLeft.BottomRight = Node.BottomRight + FVector2D(Node.Length / 2.0f, Node.Length / 2.0f);
 		ChildNodeTopLeft.Length = Node.Length / 2.0f;
 		ChildNodeTopLeft.LOD = Node.LOD - 1;
-		Node.ChildNodeIndices[3] = BuildQuadNodeRenderListRecursively(MaxLOD, NumRowColumn, MaxScreenCoverage, PatchLength, CameraPosition, ViewProjectionMatrix, ChildNodeTopLeft, OutQuadNodeList);
+		Node.ChildNodeIndices[3] = BuildQuadtreeRecursively(MaxLOD, NumRowColumn, MaxScreenCoverage, PatchLength, CameraPosition, ViewProjectionMatrix, ChildNodeTopLeft, OutQuadNodeList);
 
 		// すべての子ノードがフラスタムカリング対象だったら、自分も不可視なはずで、カリング計算で漏れたとみるべきなのでカリングする
 		if (IsLeaf(Node))

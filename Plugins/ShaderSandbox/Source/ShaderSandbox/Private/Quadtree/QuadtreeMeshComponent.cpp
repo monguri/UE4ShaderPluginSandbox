@@ -119,7 +119,7 @@ public:
 				TArray<FQuadNode> QuadNodeList;
 				QuadNodeList.Reserve(512); //TODO:とりあえず512。ここで毎回確保は処理不可が無駄だが、この関数がconstなのでとりあえず
 
-				Quadtree::BuildQuadTreeRecursively(MaxLOD, NumGridRowColumn, MaxScreenCoverage, PatchLength, View->ViewLocation, View->ViewMatrices.GetViewProjectionMatrix(), RootNode, QuadNodeList);
+				Quadtree::BuildQuadtreeRecursively(MaxLOD, NumGridRowColumn, MaxScreenCoverage, PatchLength, View->ViewLocation, View->ViewMatrices.GetViewProjectionMatrix(), RootNode, QuadNodeList);
 
 				int32 MIDIndex = 0;
 				for (const FQuadNode& Node : QuadNodeList)
