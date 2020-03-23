@@ -123,13 +123,11 @@ public:
 
 				Quadtree::BuildQuadtree(MaxLOD, NumGridRowColumn, MaxScreenCoverage, PatchLength, View->ViewLocation, View->ViewMatrices.GetViewProjectionMatrix(), RootNode, QuadNodeList, RenderList);
 
-				int32 MIDIndex = 0;
 				for (const FQuadNode& Node : RenderList)
 				{
 					if(!bWireframe)
 					{
 						MaterialProxy = LODMIDList[Node.LOD]->GetRenderProxy();
-						MIDIndex++;
 					}
 
 					// Draw the mesh.
