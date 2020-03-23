@@ -35,7 +35,8 @@ bool IsQuadNodeFrustumCulled(const FMatrix& ViewProjectionMatrix, const Quadtree
 	{
 		return true;
 	}
-	if (BottomRightNDC.Z < -1.0f && BottomLeftNDC.Z < -1.0f && TopRightNDC.Z < -1.0f && TopLeftNDC.Z < -1.0f)
+	// Z‚ÍUE4‚ÌNDC‚Å‚Í[0,1]‚Å‚ ‚éB
+	if (BottomRightNDC.Z < 0.0f && BottomLeftNDC.Z < 0.0f && TopRightNDC.Z < 0.0f && TopLeftNDC.Z < 0.0f)
 	{
 		return true;
 	}
