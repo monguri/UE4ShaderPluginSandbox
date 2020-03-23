@@ -124,55 +124,39 @@ int32 BuildQuadNodeRenderListRecursively(int32 MaxLOD, int32 NumRowColumn, float
 
 	bool bVisible = true;
 	if (GridCoverage > MaxScreenCoverage // グリッドが表示面積率上限より大きければ子に分割する。自分を描画しないのはリストの使用側でIsLeafで判定する。
-		&& Node.Length > PatchLength) // パッチサイズ以下の縦横長さであればそれ以上分割しない。上の条件だけだとカメラが近いといくらでも小さく分割してしまうので
+		&& Node.Length > PatchLength // パッチサイズ以下の縦横長さであればそれ以上分割しない。上の条件だけだとカメラが近いといくらでも小さく分割してしまうので
+		&& Node.LOD > 0) // LOD0のものはそれ以上分割しない
 	{
 		// LODとchildListIndicesは初期値通り
 		FQuadNode ChildNodeBottomRight;
 		ChildNodeBottomRight.BottomRight = Node.BottomRight;
 		ChildNodeBottomRight.Length = Node.Length / 2.0f;
+		ChildNodeBottomRight.LOD = Node.LOD - 1;
 		Node.ChildNodeIndices[0] = BuildQuadNodeRenderListRecursively(MaxLOD, NumRowColumn, MaxScreenCoverage, PatchLength, CameraPosition, ViewProjectionMatrix, ChildNodeBottomRight, OutRenderList);
 
 		FQuadNode ChildNodeBottomLeft;
 		ChildNodeBottomLeft.BottomRight = Node.BottomRight + FVector2D(Node.Length / 2.0f, 0.0f);
 		ChildNodeBottomLeft.Length = Node.Length / 2.0f;
+		ChildNodeBottomLeft.LOD = Node.LOD - 1;
 		Node.ChildNodeIndices[1] = BuildQuadNodeRenderListRecursively(MaxLOD, NumRowColumn, MaxScreenCoverage, PatchLength, CameraPosition, ViewProjectionMatrix, ChildNodeBottomLeft, OutRenderList);
 
 		FQuadNode ChildNodeTopRight;
 		ChildNodeTopRight.BottomRight = Node.BottomRight + FVector2D(0.0f, Node.Length / 2.0f);
 		ChildNodeTopRight.Length = Node.Length / 2.0f;
+		ChildNodeTopRight.LOD = Node.LOD - 1;
 		Node.ChildNodeIndices[2] = BuildQuadNodeRenderListRecursively(MaxLOD, NumRowColumn, MaxScreenCoverage, PatchLength, CameraPosition, ViewProjectionMatrix, ChildNodeTopRight, OutRenderList);
 
 		FQuadNode ChildNodeTopLeft;
 		ChildNodeTopLeft.BottomRight = Node.BottomRight + FVector2D(Node.Length / 2.0f, Node.Length / 2.0f);
 		ChildNodeTopLeft.Length = Node.Length / 2.0f;
+		ChildNodeTopLeft.LOD = Node.LOD - 1;
 		Node.ChildNodeIndices[3] = BuildQuadNodeRenderListRecursively(MaxLOD, NumRowColumn, MaxScreenCoverage, PatchLength, CameraPosition, ViewProjectionMatrix, ChildNodeTopLeft, OutRenderList);
 
 		// すべての子ノードがフラスタムカリング対象だったら、自分も不可視なはずで、カリング計算で漏れたとみるべきなのでカリングする
-		bVisible = !IsLeaf(Node);
-	}
-
-	if (bVisible)
-	{
-		// TODO:ここの計算も関数化したいな。。。
-		// メッシュのLODをスクリーン表示面積率から決める
-		// LODレベルが上がるごとに縦横2倍するので、グリッドのスクリーン表示面積率が上限値の1/4^xになっていればxがLODレベルである
-		int32 LOD = 0;
-		for (; LOD < MaxLOD - 1; LOD++)  //TODO:最大LODレベル8がマジックナンバー
+		if (IsLeaf(Node))
 		{
-			if (GridCoverage > MaxScreenCoverage)
-			{
-				break;
-			}
-
-			GridCoverage *= 4;
+			return INDEX_NONE;
 		}
-
-		// TODO:LODの最大レベルと、それよりひとつ下のレベルは使わない。あとで考え直す
-		Node.LOD = FMath::Max(FMath::Min(LOD, MaxLOD - 2), 0);
-	}
-	else
-	{
-		return INDEX_NONE;
 	}
 
 	int32 Index = OutRenderList.Add(Node);

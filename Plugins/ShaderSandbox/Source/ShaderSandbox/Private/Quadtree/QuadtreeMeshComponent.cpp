@@ -111,6 +111,7 @@ public:
 				FQuadNode RootNode;
 				RootNode.Length = PatchLength * (1 << MaxLOD);
 				RootNode.BottomRight = FVector2D(-RootNode.Length * 0.5f);
+				RootNode.LOD = MaxLOD;
 
 				// Area()‚Æ‚¢‚¤ŠÖ”‚à‚ ‚é‚ªA‘å‚«‚È”‚ÅŠ„‚Á‚Ä¸“x‚ð—Ž‚Æ‚³‚È‚¢‚æ‚¤‚É2’iŠK‚ÅŠ„‚é
 				float MaxScreenCoverage = (float)GridMaxPixelCoverage * GridMaxPixelCoverage / View->UnscaledViewRect.Width() / View->UnscaledViewRect.Height();
@@ -130,7 +131,8 @@ public:
 
 					if(!bWireframe)
 					{
-						MIDPool[MIDIndex]->SetVectorParameterValue(FName("Color"), FLinearColor(1.0f * (MaxLOD - Node.LOD) / MaxLOD, 1.0f * Node.LOD / MaxLOD, 0.0f));
+						float InvMaxLOD = 1.0f / MaxLOD;
+						MIDPool[MIDIndex]->SetVectorParameterValue(FName("Color"), FLinearColor((MaxLOD - Node.LOD) * InvMaxLOD, Node.LOD * InvMaxLOD, 0.0f));
 						MaterialProxy = MIDPool[MIDIndex]->GetRenderProxy();
 						MIDIndex++;
 					}
@@ -270,11 +272,6 @@ void UQuadtreeMeshComponent::OnRegister()
 	{
 		MIDPool[i] = UMaterialInstanceDynamic::Create(Material, this);
 	}
-}
-
-int32 UQuadtreeMeshComponent::GetNumMaterials() const
-{
-	return 512;
 }
 
 FBoxSphereBounds UQuadtreeMeshComponent::CalcBounds(const FTransform& LocalToWorld) const
