@@ -121,7 +121,7 @@ public:
 				TArray<FQuadNode> RenderList;
 				RenderList.Reserve(512); //TODO:とりあえず512。ここで毎回確保は処理不可が無駄だが、この関数がconstなのでとりあえず
 
-				Quadtree::BuildQuadtree(MaxLOD, NumGridRowColumn, MaxScreenCoverage, PatchLength, View->ViewLocation, View->ViewMatrices.GetViewProjectionMatrix(), RootNode, QuadNodeList, RenderList);
+				Quadtree::BuildQuadtree(MaxLOD, NumGridRowColumn, MaxScreenCoverage, PatchLength, View->ViewMatrices.GetViewOrigin(), View->ViewMatrices.GetViewProjectionMatrix(), RootNode, QuadNodeList, RenderList);
 
 				for (const FQuadNode& Node : RenderList)
 				{
