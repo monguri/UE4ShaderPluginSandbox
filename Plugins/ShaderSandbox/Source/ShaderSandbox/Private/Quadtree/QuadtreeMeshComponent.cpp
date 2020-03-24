@@ -121,14 +121,7 @@ public:
 				TArray<FQuadNode> RenderList;
 				RenderList.Reserve(512); //TODO:とりあえず512。ここで毎回確保は処理不可が無駄だが、この関数がconstなのでとりあえず
 
-				const FVector& CameraLocation = View->ViewMatrices.GetViewOrigin();
-				float QuadtreePlaneZ = GetLocalToWorld().GetOrigin().Z;
-				float CameraHeightFromPlane = CameraLocation.Z - QuadtreePlaneZ;
-				const FVector& CameraRayDir = View->ViewMatrices.GetInvViewMatrix().TransformVector(FVector::UpVector);
-				float CameraRayLength = CameraHeightFromPlane / FMath::Abs(CameraRayDir.Z);
-				const FVector& CameraRayIntersectionPoint = CameraLocation + CameraRayDir * CameraRayLength;
-
-				Quadtree::BuildQuadtree(MaxLOD, NumGridRowColumn, MaxScreenCoverage, PatchLength, CameraRayIntersectionPoint, View->ViewMatrices.GetViewProjectionMatrix(), RootNode, QuadNodeList, RenderList);
+				Quadtree::BuildQuadtree(MaxLOD, NumGridRowColumn, MaxScreenCoverage, PatchLength, View->ViewMatrices.GetViewOrigin(), View->ViewMatrices.GetViewProjectionMatrix(), RootNode, QuadNodeList, RenderList);
 
 				for (const FQuadNode& Node : RenderList)
 				{
