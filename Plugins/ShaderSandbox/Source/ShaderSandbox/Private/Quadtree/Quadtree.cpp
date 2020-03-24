@@ -114,25 +114,25 @@ int32 BuildQuadtreeRecursively(int32 MaxLOD, int32 NumRowColumn, float MaxScreen
 		// LODÇ∆childListIndicesÇÕèâä˙ílí ÇË
 		FQuadNode ChildNodeBottomRight;
 		ChildNodeBottomRight.BottomRight = Node.BottomRight;
-		ChildNodeBottomRight.Length = Node.Length / 2.0f;
+		ChildNodeBottomRight.Length = Node.Length * 0.5f;
 		ChildNodeBottomRight.LOD = Node.LOD - 1;
 		Node.ChildNodeIndices[0] = BuildQuadtreeRecursively(MaxLOD, NumRowColumn, MaxScreenCoverage, PatchLength, CameraPosition, ViewProjectionMatrix, ChildNodeBottomRight, OutQuadNodeList);
 
 		FQuadNode ChildNodeBottomLeft;
-		ChildNodeBottomLeft.BottomRight = Node.BottomRight + FVector2D(Node.Length / 2.0f, 0.0f);
-		ChildNodeBottomLeft.Length = Node.Length / 2.0f;
+		ChildNodeBottomLeft.BottomRight = Node.BottomRight + FVector2D(Node.Length * 0.5f, 0.0f);
+		ChildNodeBottomLeft.Length = Node.Length * 0.5f;
 		ChildNodeBottomLeft.LOD = Node.LOD - 1;
 		Node.ChildNodeIndices[1] = BuildQuadtreeRecursively(MaxLOD, NumRowColumn, MaxScreenCoverage, PatchLength, CameraPosition, ViewProjectionMatrix, ChildNodeBottomLeft, OutQuadNodeList);
 
 		FQuadNode ChildNodeTopRight;
-		ChildNodeTopRight.BottomRight = Node.BottomRight + FVector2D(0.0f, Node.Length / 2.0f);
-		ChildNodeTopRight.Length = Node.Length / 2.0f;
+		ChildNodeTopRight.BottomRight = Node.BottomRight + FVector2D(0.0f, Node.Length * 0.5f);
+		ChildNodeTopRight.Length = Node.Length * 0.5f;
 		ChildNodeTopRight.LOD = Node.LOD - 1;
 		Node.ChildNodeIndices[2] = BuildQuadtreeRecursively(MaxLOD, NumRowColumn, MaxScreenCoverage, PatchLength, CameraPosition, ViewProjectionMatrix, ChildNodeTopRight, OutQuadNodeList);
 
 		FQuadNode ChildNodeTopLeft;
-		ChildNodeTopLeft.BottomRight = Node.BottomRight + FVector2D(Node.Length / 2.0f, Node.Length / 2.0f);
-		ChildNodeTopLeft.Length = Node.Length / 2.0f;
+		ChildNodeTopLeft.BottomRight = Node.BottomRight + FVector2D(Node.Length * 0.5f, Node.Length * 0.5f);
+		ChildNodeTopLeft.Length = Node.Length * 0.5f;
 		ChildNodeTopLeft.LOD = Node.LOD - 1;
 		Node.ChildNodeIndices[3] = BuildQuadtreeRecursively(MaxLOD, NumRowColumn, MaxScreenCoverage, PatchLength, CameraPosition, ViewProjectionMatrix, ChildNodeTopLeft, OutQuadNodeList);
 
