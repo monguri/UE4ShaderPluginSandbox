@@ -19,7 +19,7 @@ public:
 	UPROPERTY(EditAnywhere, Category="Components|Quadtree", BlueprintReadOnly, Meta = (UIMin = "1", UIMax = "10", ClampMin = "1", ClampMax = "10"))
 	int32 MaxLOD = 8;
 
-	UPROPERTY(EditAnywhere, Category="Components|Quadtree", BlueprintReadOnly, Meta = (UIMin = "2", UIMax = "100", ClampMin = "2", ClampMax = "100"))
+	UPROPERTY(EditAnywhere, Category="Components|Quadtree", BlueprintReadOnly, Meta = (UIMin = "1", UIMax = "256", ClampMin = "1", ClampMax = "256"))
 	int32 GridMaxPixelCoverage = 64;
 
 	UPROPERTY(EditAnywhere, Category="Components|Quadtree", BlueprintReadOnly, Meta = (UIMin = "10", UIMax = "10000", ClampMin = "10", ClampMax = "10000"))
