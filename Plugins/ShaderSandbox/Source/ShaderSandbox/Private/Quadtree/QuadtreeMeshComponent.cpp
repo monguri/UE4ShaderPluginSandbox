@@ -244,6 +244,7 @@ void UQuadtreeMeshComponent::OnRegister()
 	Super::OnRegister();
 
 	// デフォルト値では、VertexBufferは128x128のグリッド、グリッドの縦横は1cmにする。描画時はスケールして使う。
+	// ここでは正方形の中心を原点にする平行移動はしない。実際にメッシュを描画に渡すときに平行移動を行う。
 	InitGridMeshSetting(NumGridRowColumn, NumGridRowColumn, GridLength, GridLength);
 
 	UMaterialInterface* Material = GetMaterial(0);
@@ -273,12 +274,13 @@ FBoxSphereBounds UQuadtreeMeshComponent::CalcBounds(const FTransform& LocalToWor
 {
 	// QuadtreeのRootNodeのサイズにしておく。アクタのBPエディタのビューポート表示やフォーカス操作などでこのBoundが使われるのでなるべく正確にする
 	// また、QuadNodeの各メッシュのBoundを計算する基準サイズとしても使う。
-	float RootNodeLength = PatchLength * (1 << MaxLOD);
-	const FVector& Min = LocalToWorld.TransformPosition(FVector::ZeroVector);
-	const FVector& Max = LocalToWorld.TransformPosition(FVector(RootNodeLength, RootNodeLength, 0.0f));
+	float HalfRootNodeLength = PatchLength * (1 << (MaxLOD - 1));
+	const FVector& Min = LocalToWorld.TransformPosition(FVector(-HalfRootNodeLength, -HalfRootNodeLength, 0.0f));
+	const FVector& Max = LocalToWorld.TransformPosition(FVector(HalfRootNodeLength, HalfRootNodeLength, 0.0f));
 	FBox Box(Min, Max);
 
-	return FBoxSphereBounds(Box);
+	const FBoxSphereBounds& Ret = FBoxSphereBounds(Box);
+	return Ret;
 }
 
 const TArray<class UMaterialInstanceDynamic*>& UQuadtreeMeshComponent::GetLODMIDList() const
