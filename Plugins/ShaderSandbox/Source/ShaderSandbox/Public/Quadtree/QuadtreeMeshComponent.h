@@ -11,7 +11,7 @@ class SHADERSANDBOX_API UQuadtreeMeshComponent : public UDeformableGridMeshCompo
 
 public:
 	UPROPERTY(EditAnywhere, Category="Components|Quadtree", BlueprintReadOnly, Meta = (UIMin = "1", UIMax = "1000", ClampMin = "1", ClampMax = "1000"))
-	int32 NumGridRowColumn = 128;
+	int32 NumGridDivision = 128;
 
 	UPROPERTY(EditAnywhere, Category="Components|Quadtree", BlueprintReadOnly, Meta = (UIMin = "1.0", UIMax = "100.0", ClampMin = "1.0", ClampMax = "100.0"))
 	float GridLength = 1.0f;

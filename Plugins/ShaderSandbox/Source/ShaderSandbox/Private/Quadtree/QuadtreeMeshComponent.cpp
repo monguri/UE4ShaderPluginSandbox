@@ -33,7 +33,7 @@ public:
 		, VertexFactory(GetScene().GetFeatureLevel(), "FQuadtreeMeshSceneProxy")
 		, MaterialRelevance(Component->GetMaterialRelevance(GetScene().GetFeatureLevel()))
 		, LODMIDList(Component->GetLODMIDList())
-		, NumGridRowColumn(Component->NumGridRowColumn)
+		, NumGridDivision(Component->NumGridDivision)
 		, GridLength(Component->GridLength)
 		, MaxLOD(Component->MaxLOD)
 		, GridMaxPixelCoverage(Component->GridMaxPixelCoverage)
@@ -121,7 +121,7 @@ public:
 				TArray<FQuadNode> RenderList;
 				RenderList.Reserve(512); //TODO:とりあえず512。ここで毎回確保は処理不可が無駄だが、この関数がconstなのでとりあえず
 
-				Quadtree::BuildQuadtree(MaxLOD, NumGridRowColumn, MaxScreenCoverage, PatchLength, View->ViewMatrices.GetViewOrigin(), View->ViewMatrices.GetViewProjectionMatrix(), RootNode, QuadNodeList, RenderList);
+				Quadtree::BuildQuadtree(MaxLOD, NumGridDivision, MaxScreenCoverage, PatchLength, View->ViewMatrices.GetViewOrigin(), View->ViewMatrices.GetViewProjectionMatrix(), RootNode, QuadNodeList, RenderList);
 
 				for (const FQuadNode& Node : RenderList)
 				{
@@ -145,7 +145,7 @@ public:
 					GetScene().GetPrimitiveUniformShaderParameters_RenderThread(GetPrimitiveSceneInfo(), bHasPrecomputedVolumetricLightmap, PreviousLocalToWorld, SingleCaptureIndex, bOutputVelocity);
 
 					// メッシュサイズをQuadNodeのサイズに応じてスケールさせる
-					float MeshScale = Node.Length / (NumGridRowColumn * GridLength);
+					float MeshScale = Node.Length / (NumGridDivision * GridLength);
 
 					FDynamicPrimitiveUniformBuffer& DynamicPrimitiveUniformBuffer = Collector.AllocateOneFrameResource<FDynamicPrimitiveUniformBuffer>();
 					// FPrimitiveSceneProxy::ApplyLateUpdateTransform()を参考にした
@@ -215,7 +215,7 @@ private:
 
 	FMaterialRelevance MaterialRelevance;
 	TArray<UMaterialInstanceDynamic*> LODMIDList; // Component側でUMaterialInstanceDynamicは保持されてるのでGCで解放はされない
-	int32 NumGridRowColumn;
+	int32 NumGridDivision;
 	float GridLength;
 	int32 MaxLOD;
 	int32 GridMaxPixelCoverage;
@@ -245,7 +245,7 @@ void UQuadtreeMeshComponent::OnRegister()
 
 	// デフォルト値では、VertexBufferは128x128のグリッド、グリッドの縦横は1cmにする。描画時はスケールして使う。
 	// ここでは正方形の中心を原点にする平行移動はしない。実際にメッシュを描画に渡すときに平行移動を行う。
-	InitGridMeshSetting(NumGridRowColumn, NumGridRowColumn, GridLength, GridLength);
+	InitGridMeshSetting(NumGridDivision, NumGridDivision, GridLength, GridLength);
 
 	UMaterialInterface* Material = GetMaterial(0);
 	if(Material == NULL)
