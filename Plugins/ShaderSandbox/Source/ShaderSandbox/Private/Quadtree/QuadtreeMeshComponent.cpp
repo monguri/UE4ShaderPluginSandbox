@@ -107,10 +107,10 @@ public:
 			{
 				const FSceneView* View = Views[ViewIndex];
 
-				// RootNodeの辺の長さはPatchLengthを2のMaxLOD乗したサイズ。中央が原点。
+				// RootNodeの辺の長さはPatchLengthを2のMaxLOD乗したサイズ
 				FQuadNode RootNode;
 				RootNode.Length = PatchLength * (1 << MaxLOD);
-				RootNode.BottomRight = FVector2D(-RootNode.Length * 0.5f);
+				RootNode.BottomRight = GetLocalToWorld().GetOrigin() + FVector(-RootNode.Length * 0.5f, -RootNode.Length * 0.5f, 0.0f);
 				RootNode.LOD = MaxLOD;
 
 				// Area()という関数もあるが、大きな数で割って精度を落とさないように2段階で割る

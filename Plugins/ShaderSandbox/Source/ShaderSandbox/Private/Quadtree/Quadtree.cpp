@@ -9,10 +9,10 @@ bool IsQuadNodeFrustumCulled(const FMatrix& ViewProjectionMatrix, const FQuadNod
 {
 	//FSceneView::ProjectWorldToScreen()を参考にしている
 
-	const FVector4& BottomRightProjSpace = ViewProjectionMatrix.TransformFVector4(FVector4(Node.BottomRight.X, Node.BottomRight.Y, 0.0f, 1.0f));
-	const FVector4& BottomLeftProjSpace = ViewProjectionMatrix.TransformFVector4(FVector4(Node.BottomRight.X + Node.Length, Node.BottomRight.Y, 0.0f, 1.0f));
-	const FVector4& TopRightProjSpace = ViewProjectionMatrix.TransformFVector4(FVector4(Node.BottomRight.X, Node.BottomRight.Y + Node.Length, 0.0f, 1.0f));
-	const FVector4& TopLeftProjSpace = ViewProjectionMatrix.TransformFVector4(FVector4(Node.BottomRight.X + Node.Length, Node.BottomRight.Y + Node.Length, 0.0f, 1.0f));
+	const FVector4& BottomRightProjSpace = ViewProjectionMatrix.TransformFVector4(FVector4(Node.BottomRight.X, Node.BottomRight.Y, Node.BottomRight.Z, 1.0f));
+	const FVector4& BottomLeftProjSpace = ViewProjectionMatrix.TransformFVector4(FVector4(Node.BottomRight.X + Node.Length, Node.BottomRight.Y, Node.BottomRight.Z, 1.0f));
+	const FVector4& TopRightProjSpace = ViewProjectionMatrix.TransformFVector4(FVector4(Node.BottomRight.X, Node.BottomRight.Y + Node.Length, Node.BottomRight.Z, 1.0f));
+	const FVector4& TopLeftProjSpace = ViewProjectionMatrix.TransformFVector4(FVector4(Node.BottomRight.X + Node.Length, Node.BottomRight.Y + Node.Length, Node.BottomRight.Z, 1.0f));
 
 	// NDCへの変換でWで除算したいのでWが0に近い場合はKINDA_SMALL_NUMBERで割る。その場合は本来より結果が小さい値になるので大抵カリングされない
 	const FVector4& BottomRightNDC = BottomRightProjSpace / FMath::Max(FMath::Abs(BottomRightProjSpace.W), KINDA_SMALL_NUMBER);
@@ -119,19 +119,19 @@ int32 BuildQuadtreeRecursively(int32 MaxLOD, int32 NumRowColumn, float MaxScreen
 		Node.ChildNodeIndices[0] = BuildQuadtreeRecursively(MaxLOD, NumRowColumn, MaxScreenCoverage, PatchLength, CameraPosition, ViewProjectionMatrix, ChildNodeBottomRight, OutQuadNodeList);
 
 		FQuadNode ChildNodeBottomLeft;
-		ChildNodeBottomLeft.BottomRight = Node.BottomRight + FVector2D(Node.Length * 0.5f, 0.0f);
+		ChildNodeBottomLeft.BottomRight = Node.BottomRight + FVector(Node.Length * 0.5f, 0.0f, 0.0f);
 		ChildNodeBottomLeft.Length = Node.Length * 0.5f;
 		ChildNodeBottomLeft.LOD = Node.LOD - 1;
 		Node.ChildNodeIndices[1] = BuildQuadtreeRecursively(MaxLOD, NumRowColumn, MaxScreenCoverage, PatchLength, CameraPosition, ViewProjectionMatrix, ChildNodeBottomLeft, OutQuadNodeList);
 
 		FQuadNode ChildNodeTopRight;
-		ChildNodeTopRight.BottomRight = Node.BottomRight + FVector2D(0.0f, Node.Length * 0.5f);
+		ChildNodeTopRight.BottomRight = Node.BottomRight + FVector(0.0f, Node.Length * 0.5f, 0.0f);
 		ChildNodeTopRight.Length = Node.Length * 0.5f;
 		ChildNodeTopRight.LOD = Node.LOD - 1;
 		Node.ChildNodeIndices[2] = BuildQuadtreeRecursively(MaxLOD, NumRowColumn, MaxScreenCoverage, PatchLength, CameraPosition, ViewProjectionMatrix, ChildNodeTopRight, OutQuadNodeList);
 
 		FQuadNode ChildNodeTopLeft;
-		ChildNodeTopLeft.BottomRight = Node.BottomRight + FVector2D(Node.Length * 0.5f, Node.Length * 0.5f);
+		ChildNodeTopLeft.BottomRight = Node.BottomRight + FVector(Node.Length * 0.5f, Node.Length * 0.5f, 0.0f);
 		ChildNodeTopLeft.Length = Node.Length * 0.5f;
 		ChildNodeTopLeft.LOD = Node.LOD - 1;
 		Node.ChildNodeIndices[3] = BuildQuadtreeRecursively(MaxLOD, NumRowColumn, MaxScreenCoverage, PatchLength, CameraPosition, ViewProjectionMatrix, ChildNodeTopLeft, OutQuadNodeList);

@@ -19,7 +19,7 @@ namespace Quadtree
 struct FQuadNode
 {
 	/** Position of bottom right corner. */
-	FVector2D BottomRight = FVector2D::ZeroVector;
+	FVector BottomRight = FVector::ZeroVector;
 	/** Length of edge. */
 	float Length = 0.0f;
 	/** LOD level. */
