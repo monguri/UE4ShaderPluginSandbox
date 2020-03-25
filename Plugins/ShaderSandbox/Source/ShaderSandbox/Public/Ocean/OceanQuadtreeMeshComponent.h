@@ -95,9 +95,17 @@ public:
 	virtual FPrimitiveSceneProxy* CreateSceneProxy() override;
 	//~ End UPrimitiveComponent Interface.
 
+	//~ Begin USceneComponent Interface.
+	virtual FBoxSphereBounds CalcBounds(const FTransform& LocalToWorld) const override;
+	//~ End USceneComponent Interface.
+
+	const TArray<class UMaterialInstanceDynamic*>& GetLODMIDList() const;
+
 protected:
+	//~ Begin UActorComponent Interface.
 	virtual void OnRegister() override;
 	virtual void SendRenderDynamicData_Concurrent() override;
+	//~ End UActorComponent Interface.
 
 private:
 	// explanation of parametes are in OceanSimulator.h
@@ -118,5 +126,8 @@ private:
 	FUnorderedAccessViewRHIRef _DkxDebugViewUAV;
 	FUnorderedAccessViewRHIRef _DkyDebugViewUAV;
 	FUnorderedAccessViewRHIRef _DxyzDebugViewUAV;
+
+	UPROPERTY(Transient)
+	TArray<class UMaterialInstanceDynamic*> LODMIDList;
 };
 

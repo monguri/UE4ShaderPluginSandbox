@@ -16,6 +16,10 @@
 #include "Ocean/OceanSimulator.h"
 #include "Engine/CanvasRenderTarget2D.h"
 #include "ResourceArrayStructuredBuffer.h"
+#include "Materials/MaterialInstanceDynamic.h"
+#include "Quadtree/Quadtree.h"
+
+using namespace Quadtree;
 
 namespace
 {
@@ -105,6 +109,12 @@ public:
 		: FPrimitiveSceneProxy(Component)
 		, VertexFactory(GetScene().GetFeatureLevel(), "FOceanQuadtreeMeshSceneProxy")
 		, MaterialRelevance(Component->GetMaterialRelevance(GetScene().GetFeatureLevel()))
+		, LODMIDList(Component->GetLODMIDList())
+		, NumGridDivision(Component->NumGridDivision)
+		, GridLength(Component->GridLength)
+		, MaxLOD(Component->MaxLOD)
+		, GridMaxPixelCoverage(Component->GridMaxPixelCoverage)
+		, PatchLength(Component->PatchLength)
 	{
 		TArray<FDynamicMeshVertex> Vertices;
 		Vertices.Reset(Component->GetVertices().Num());
@@ -130,6 +140,11 @@ public:
 		{
 			Material = UMaterial::GetDefaultMaterial(MD_Surface);
 		}
+
+		// GetDynamicMeshElements()のあと、VerifyUsedMaterial()によってマテリアルがコンポーネントにあったものかチェックされるので
+		// SetUsedMaterialForVerification()で登録する手もあるが、レンダースレッド出ないとcheckにひっかかるので
+		bVerifyUsedMaterials = false;
+
 
 		int32 SizeX, SizeY;
 		Component->GetDisplacementMap()->GetSize(SizeX, SizeY);
@@ -218,43 +233,82 @@ public:
 		{
 			MaterialProxy = WireframeMaterialInstance;
 		}
-		else
-		{
-			MaterialProxy = Material->GetRenderProxy();
-		}
 
 		for (int32 ViewIndex = 0; ViewIndex < Views.Num(); ViewIndex++)
 		{
 			if (VisibilityMap & (1 << ViewIndex))
 			{
 				const FSceneView* View = Views[ViewIndex];
-				// Draw the mesh.
-				FMeshBatch& Mesh = Collector.AllocateMesh();
-				FMeshBatchElement& BatchElement = Mesh.Elements[0];
-				BatchElement.IndexBuffer = &IndexBuffer;
-				Mesh.bWireframe = bWireframe;
-				Mesh.VertexFactory = &VertexFactory;
-				Mesh.MaterialRenderProxy = MaterialProxy;
 
-				bool bHasPrecomputedVolumetricLightmap;
-				FMatrix PreviousLocalToWorld;
-				int32 SingleCaptureIndex;
-				bool bOutputVelocity;
-				GetScene().GetPrimitiveUniformShaderParameters_RenderThread(GetPrimitiveSceneInfo(), bHasPrecomputedVolumetricLightmap, PreviousLocalToWorld, SingleCaptureIndex, bOutputVelocity);
+				// RootNodeの辺の長さはPatchLengthを2のMaxLOD乗したサイズ。中央が原点。
+				FQuadNode RootNode;
+				RootNode.Length = PatchLength * (1 << MaxLOD);
+				RootNode.BottomRight = FVector2D(-RootNode.Length * 0.5f);
+				RootNode.LOD = MaxLOD;
 
-				FDynamicPrimitiveUniformBuffer& DynamicPrimitiveUniformBuffer = Collector.AllocateOneFrameResource<FDynamicPrimitiveUniformBuffer>();
-				DynamicPrimitiveUniformBuffer.Set(GetLocalToWorld(), PreviousLocalToWorld, GetBounds(), GetLocalBounds(), true, bHasPrecomputedVolumetricLightmap, DrawsVelocity(), false);
-				BatchElement.PrimitiveUniformBufferResource = &DynamicPrimitiveUniformBuffer.UniformBuffer;
+				// Area()という関数もあるが、大きな数で割って精度を落とさないように2段階で割る
+				float MaxScreenCoverage = (float)GridMaxPixelCoverage * GridMaxPixelCoverage / View->UnscaledViewRect.Width() / View->UnscaledViewRect.Height();
 
-				BatchElement.FirstIndex = 0;
-				BatchElement.NumPrimitives = IndexBuffer.Indices.Num() / 3;
-				BatchElement.MinVertexIndex = 0;
-				BatchElement.MaxVertexIndex = VertexBuffers.PositionVertexBuffer.GetNumVertices() - 1;
-				Mesh.ReverseCulling = IsLocalToWorldDeterminantNegative();
-				Mesh.Type = PT_TriangleList;
-				Mesh.DepthPriorityGroup = SDPG_World;
-				Mesh.bCanApplyViewModeOverrides = false;
-				Collector.AddMesh(ViewIndex, Mesh);
+				TArray<FQuadNode> QuadNodeList;
+				QuadNodeList.Reserve(512); //TODO:とりあえず512。ここで毎回確保は処理不可が無駄だが、この関数がconstなのでとりあえず
+				TArray<FQuadNode> RenderList;
+				RenderList.Reserve(512); //TODO:とりあえず512。ここで毎回確保は処理不可が無駄だが、この関数がconstなのでとりあえず
+
+				Quadtree::BuildQuadtree(MaxLOD, NumGridDivision, MaxScreenCoverage, PatchLength, View->ViewMatrices.GetViewOrigin(), View->ViewMatrices.GetViewProjectionMatrix(), RootNode, QuadNodeList, RenderList);
+
+				for (const FQuadNode& Node : RenderList)
+				{
+					if(!bWireframe)
+					{
+						MaterialProxy = LODMIDList[Node.LOD]->GetRenderProxy();
+					}
+
+					// Draw the mesh.
+					FMeshBatch& Mesh = Collector.AllocateMesh();
+					FMeshBatchElement& BatchElement = Mesh.Elements[0];
+					BatchElement.IndexBuffer = &IndexBuffer;
+					Mesh.bWireframe = bWireframe;
+					Mesh.VertexFactory = &VertexFactory;
+					Mesh.MaterialRenderProxy = MaterialProxy;
+
+					bool bHasPrecomputedVolumetricLightmap;
+					FMatrix PreviousLocalToWorld;
+					int32 SingleCaptureIndex;
+					bool bOutputVelocity;
+					GetScene().GetPrimitiveUniformShaderParameters_RenderThread(GetPrimitiveSceneInfo(), bHasPrecomputedVolumetricLightmap, PreviousLocalToWorld, SingleCaptureIndex, bOutputVelocity);
+
+					// メッシュサイズをQuadNodeのサイズに応じてスケールさせる
+					float MeshScale = Node.Length / (NumGridDivision * GridLength);
+
+					FDynamicPrimitiveUniformBuffer& DynamicPrimitiveUniformBuffer = Collector.AllocateOneFrameResource<FDynamicPrimitiveUniformBuffer>();
+					// FPrimitiveSceneProxy::ApplyLateUpdateTransform()を参考にした
+					const FMatrix& NewLocalToWorld = GetLocalToWorld().ApplyScale(MeshScale).ConcatTranslation(FVector(Node.BottomRight.X, Node.BottomRight.Y, 0.0f));
+					PreviousLocalToWorld = PreviousLocalToWorld.ApplyScale(MeshScale).ConcatTranslation(FVector(Node.BottomRight.X, Node.BottomRight.Y, 0.0f));
+
+					// コンポーネントのCalcBounds()はRootNodeのサイズに合わせて実装されているのでスケールさせる。
+					// 実際は描画するメッシュはQuadtreeを作る際の独自フラスタムカリングで選抜しているのでBoundsはすべてRootNodeサイズでも
+					// 構わないが、一応正確なサイズにしておく
+					float BoundScale = Node.Length / RootNode.Length;
+
+					FBoxSphereBounds NewBounds = GetBounds();
+					NewBounds = FBoxSphereBounds(NewBounds.Origin + NewLocalToWorld.TransformPosition(FVector(Node.BottomRight.X, Node.BottomRight.Y, 0.0f)), NewBounds.BoxExtent * BoundScale, NewBounds.SphereRadius * BoundScale);
+
+					FBoxSphereBounds NewLocalBounds = GetLocalBounds();
+					NewLocalBounds = FBoxSphereBounds(NewLocalBounds.Origin, NewLocalBounds.BoxExtent * BoundScale, NewLocalBounds.SphereRadius * BoundScale);
+
+					DynamicPrimitiveUniformBuffer.Set(NewLocalToWorld, PreviousLocalToWorld, NewBounds, NewLocalBounds, true, bHasPrecomputedVolumetricLightmap, DrawsVelocity(), false);
+					BatchElement.PrimitiveUniformBufferResource = &DynamicPrimitiveUniformBuffer.UniformBuffer;
+
+					BatchElement.FirstIndex = 0;
+					BatchElement.NumPrimitives = IndexBuffer.Indices.Num() / 3;
+					BatchElement.MinVertexIndex = 0;
+					BatchElement.MaxVertexIndex = VertexBuffers.PositionVertexBuffer.GetNumVertices() - 1;
+					Mesh.ReverseCulling = (NewLocalToWorld.Determinant() < 0.0f);
+					Mesh.Type = PT_TriangleList;
+					Mesh.DepthPriorityGroup = SDPG_World;
+					Mesh.bCanApplyViewModeOverrides = false;
+					Collector.AddMesh(ViewIndex, Mesh);
+				}
 			}
 		}
 	}
@@ -331,11 +385,11 @@ public:
 	}
 
 private:
-
 	UMaterialInterface* Material;
 	FDeformableVertexBuffers VertexBuffers;
 	FDynamicMeshIndexBuffer32 IndexBuffer;
 	FLocalVertexFactory VertexFactory;
+	FMaterialRelevance MaterialRelevance;
 
 	TResourceArray<FComplex> H0Data;
 	TResourceArray<float> Omega0Data;
@@ -356,7 +410,12 @@ private:
 	FResourceArrayStructuredBuffer DyBuffer;
 	FResourceArrayStructuredBuffer DzBuffer;
 
-	FMaterialRelevance MaterialRelevance;
+	TArray<UMaterialInstanceDynamic*> LODMIDList; // Component側でUMaterialInstanceDynamicは保持されてるのでGCで解放はされない
+	int32 NumGridDivision;
+	float GridLength;
+	int32 MaxLOD;
+	int32 GridMaxPixelCoverage;
+	int32 PatchLength;
 };
 
 //////////////////////////////////////////////////////////////////////////
@@ -509,6 +568,41 @@ void UOceanQuadtreeMeshComponent::OnRegister()
 	{
 		_DxyzDebugViewUAV = RHICreateUnorderedAccessView(DxyzDebugView->GameThread_GetRenderTargetResource()->TextureRHI);
 	}
+
+	UMaterialInterface* Material = GetMaterial(0);
+	if(Material == NULL)
+	{
+		Material = UMaterial::GetDefaultMaterial(MD_Surface);
+	}
+
+	// QuadNodeの数は、MaxLOD-2が最小レベルなのですべて最小のQuadNodeで敷き詰めると
+	// 2^(MaxLOD-2)*2^(MaxLOD-2)
+	// 通常はそこまでいかない。カメラから遠くなるにつれて2倍になっていけば
+	// 2*6=12になるだろう。それは原点にカメラがあるときで、かつカメラの高さが0に近いときなので、
+	// せいぜその4倍程度の数と見積もってでいいはず
+
+	float InvMaxLOD = 1.0f / MaxLOD;
+	//LODMIDList.SetNumZeroed(48);
+	//for (int32 i = 0; i < 48; i++)
+	LODMIDList.SetNumZeroed(MaxLOD + 1);
+	for (int32 LOD = 0; LOD < MaxLOD + 1; LOD++)
+	{
+		LODMIDList[LOD] = UMaterialInstanceDynamic::Create(Material, this);
+		LODMIDList[LOD]->SetVectorParameterValue(FName("Color"), FLinearColor((MaxLOD - LOD) * InvMaxLOD, 0.0f, LOD * InvMaxLOD));
+	}
+}
+
+FBoxSphereBounds UOceanQuadtreeMeshComponent::CalcBounds(const FTransform& LocalToWorld) const
+{
+	// QuadtreeのRootNodeのサイズにしておく。アクタのBPエディタのビューポート表示やフォーカス操作などでこのBoundが使われるのでなるべく正確にする
+	// また、QuadNodeの各メッシュのBoundを計算する基準サイズとしても使う。
+	float HalfRootNodeLength = PatchLength * (1 << (MaxLOD - 1));
+	const FVector& Min = LocalToWorld.TransformPosition(FVector(-HalfRootNodeLength, -HalfRootNodeLength, 0.0f));
+	const FVector& Max = LocalToWorld.TransformPosition(FVector(HalfRootNodeLength, HalfRootNodeLength, 0.0f));
+	FBox Box(Min, Max);
+
+	const FBoxSphereBounds& Ret = FBoxSphereBounds(Box);
+	return Ret;
 }
 
 void UOceanQuadtreeMeshComponent::SendRenderDynamicData_Concurrent()
@@ -550,5 +644,10 @@ void UOceanQuadtreeMeshComponent::SendRenderDynamicData_Concurrent()
 			}
 		);
 	}
+}
+
+const TArray<class UMaterialInstanceDynamic*>& UOceanQuadtreeMeshComponent::GetLODMIDList() const
+{
+	return LODMIDList;
 }
 
