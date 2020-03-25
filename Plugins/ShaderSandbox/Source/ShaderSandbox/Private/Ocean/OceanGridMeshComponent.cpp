@@ -62,7 +62,7 @@ float CalculatePhillipsCoefficient(const FVector2D& K, float Gravity, const FOce
 	return Phillips * FMath::Exp(-KSqr * CutLength * CutLength);
 }
 
-void InitHeightMap(const FOceanSpectrumParameters& Params, float GravityZ, TResourceArray<Complex>& OutH0, TResourceArray<float>& OutOmega0)
+void InitHeightMap(const FOceanSpectrumParameters& Params, float GravityZ, TResourceArray<FComplex>& OutH0, TResourceArray<float>& OutOmega0)
 {
 	FVector2D K;
 	float GravityConstant = FMath::Abs(GravityZ);
@@ -139,8 +139,8 @@ public:
 		
 		// Phyllips Spectrumを使った初期化
 		// Height map H(0)
-		H0Data.Init(Complex::ZeroVector, DispMapDimension * DispMapDimension);
-		// Complex::ZeroVectorという名前が少し格好悪いが、Zeroみたいな新しい定数を作ろうと思うとtypedef FVector2D Complexではできないので今は妥協する
+		H0Data.Init(FComplex::ZeroVector, DispMapDimension * DispMapDimension);
+		// FComplex::ZeroVectorという名前が少し格好悪いが、Zeroみたいな新しい定数を作ろうと思うとtypedef FVector2D FComplexではできないので今は妥協する
 
 		Omega0Data.Init(0.0f, DispMapDimension * DispMapDimension);
 
@@ -157,20 +157,20 @@ public:
 
 		InitHeightMap(Params, Component->GetWorld()->GetGravityZ(), H0Data, Omega0Data);
 
-		H0Buffer.Initialize(H0Data, sizeof(Complex));
+		H0Buffer.Initialize(H0Data, sizeof(FComplex));
 		Omega0Buffer.Initialize(Omega0Data, sizeof(float));
 
-		HtZeroInitData.Init(Complex::ZeroVector, DispMapDimension * DispMapDimension);
-		HtBuffer.Initialize(HtZeroInitData, sizeof(Complex));
+		HtZeroInitData.Init(FComplex::ZeroVector, DispMapDimension * DispMapDimension);
+		HtBuffer.Initialize(HtZeroInitData, sizeof(FComplex));
 
-		DkxZeroInitData.Init(Complex::ZeroVector, DispMapDimension * DispMapDimension);
-		DkxBuffer.Initialize(DkxZeroInitData, sizeof(Complex));
+		DkxZeroInitData.Init(FComplex::ZeroVector, DispMapDimension * DispMapDimension);
+		DkxBuffer.Initialize(DkxZeroInitData, sizeof(FComplex));
 
-		DkyZeroInitData.Init(Complex::ZeroVector, DispMapDimension * DispMapDimension);
-		DkyBuffer.Initialize(DkyZeroInitData, sizeof(Complex));
+		DkyZeroInitData.Init(FComplex::ZeroVector, DispMapDimension * DispMapDimension);
+		DkyBuffer.Initialize(DkyZeroInitData, sizeof(FComplex));
 
-		FFTWorkZeroInitData.Init(Complex::ZeroVector, DispMapDimension * DispMapDimension);
-		FFTWorkBuffer.Initialize(FFTWorkZeroInitData, sizeof(Complex));
+		FFTWorkZeroInitData.Init(FComplex::ZeroVector, DispMapDimension * DispMapDimension);
+		FFTWorkBuffer.Initialize(FFTWorkZeroInitData, sizeof(FComplex));
 
 		DxZeroInitData.Init(0.0f, DispMapDimension * DispMapDimension);
 		DxBuffer.Initialize(DxZeroInitData, sizeof(float));
@@ -359,12 +359,12 @@ private:
 	FDynamicMeshIndexBuffer32 IndexBuffer;
 	FLocalVertexFactory VertexFactory;
 
-	TResourceArray<Complex> H0Data;
+	TResourceArray<FComplex> H0Data;
 	TResourceArray<float> Omega0Data;
-	TResourceArray<Complex> HtZeroInitData;
-	TResourceArray<Complex> DkxZeroInitData;
-	TResourceArray<Complex> DkyZeroInitData;
-	TResourceArray<Complex> FFTWorkZeroInitData;
+	TResourceArray<FComplex> HtZeroInitData;
+	TResourceArray<FComplex> DkxZeroInitData;
+	TResourceArray<FComplex> DkyZeroInitData;
+	TResourceArray<FComplex> FFTWorkZeroInitData;
 	TResourceArray<float> DxZeroInitData;
 	TResourceArray<float> DyZeroInitData;
 	TResourceArray<float> DzZeroInitData;

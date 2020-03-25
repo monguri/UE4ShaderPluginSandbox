@@ -5,7 +5,7 @@
 #include "Engine/EngineTypes.h"
 #include "RHICommandList.h"
 
-typedef FVector2D Complex;
+typedef FVector2D FComplex;
 
 /** Phillips spectrum configuration */
 struct FOceanSpectrumParameters
