@@ -163,7 +163,7 @@ public:
 		Params.DispMapDimension = DispMapDimension;
 		Params.PatchLength = PatchLength;
 		Params.AmplitudeScale = Component->AmplitudeScale;
-		Params.WindDirection = Component->WindDirection;
+		Params.WindDirection = Component->WindDirection.GetSafeNormal();
 		Params.WindSpeed = Component->WindSpeed;
 		Params.WindDependency = Component->WindDependency;
 		Params.ChoppyScale = Component->ChoppyScale;
@@ -349,7 +349,7 @@ public:
 		Params.DispMapDimension = TextureRenderTargetResource->GetSizeX(); // TODO:³•ûŒ`‘O’ñ‚ÅSizeY‚ÍŒ©‚Ä‚È‚¢
 		Params.PatchLength = PatchLength;
 		Params.AmplitudeScale = Component->AmplitudeScale;
-		Params.WindDirection = Component->WindDirection;
+		Params.WindDirection = Component->WindDirection.GetSafeNormal();
 		Params.WindSpeed = Component->WindSpeed;
 		Params.WindDependency = Component->WindDependency;
 		Params.ChoppyScale = Component->ChoppyScale;
