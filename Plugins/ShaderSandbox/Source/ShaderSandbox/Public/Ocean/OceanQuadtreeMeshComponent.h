@@ -69,13 +69,6 @@ public:
 	float DxyzDebugAmplitude = 100.0f;
 
 	float GetAccumulatedTime() const { return _AccumulatedTime; }
-	float GetPatchLength() const { return _PatchLength; }
-	float GetTimeScale() const { return _TimeScale; }
-	float GetAmplitudeScale() const { return _AmplitudeScale; }
-	FVector2D GetWindDirection() const { return _WindDirection; }
-	float GetWindSpeed() const { return _WindSpeed; }
-	float GetWindDependency() const { return _WindDependency; }
-	float GetChoppyScale() const { return _ChoppyScale; }
 
 	UCanvasRenderTarget2D* GetDisplacementMap() const { return DisplacementMap; }
 	FShaderResourceViewRHIRef GetDisplacementMapSRV() const { return _DisplacementMapSRV; }
@@ -108,16 +101,6 @@ protected:
 	//~ End UActorComponent Interface.
 
 private:
-	// explanation of parametes are in OceanSimulator.h
-
-	float _PatchLength = 2000.0f;
-	float _TimeScale = 0.8f;
-	float _AmplitudeScale = 0.35f;
-	FVector2D _WindDirection = FVector2D(0.8f, 0.6f);
-	float _WindSpeed = 600.0f;
-	float _WindDependency = 0.07f;
-	float _ChoppyScale = 1.3f;
-
 	FShaderResourceViewRHIRef _DisplacementMapSRV;
 	FUnorderedAccessViewRHIRef _DisplacementMapUAV;
 	FUnorderedAccessViewRHIRef _GradientFoldingMapUAV;

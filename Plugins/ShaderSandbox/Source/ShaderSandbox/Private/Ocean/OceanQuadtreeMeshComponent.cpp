@@ -161,13 +161,13 @@ public:
 
 		FOceanSpectrumParameters Params;
 		Params.DispMapDimension = DispMapDimension;
-		Params.PatchLength = Component->GetGridWidth() * Component->GetNumColumn(); // GetPatchLength()は現状未使用。数式から考えてメッシュサイズを使うのが正しいから
-		Params.AmplitudeScale = Component->GetAmplitudeScale();
-		Params.WindDirection = Component->GetWindDirection();
-		Params.WindSpeed = Component->GetWindSpeed();
-		Params.WindDependency = Component->GetWindDependency();
-		Params.ChoppyScale = Component->GetChoppyScale();
-		Params.AccumulatedTime = Component->GetAccumulatedTime() * Component->GetTimeScale();
+		Params.PatchLength = PatchLength;
+		Params.AmplitudeScale = Component->AmplitudeScale;
+		Params.WindDirection = Component->WindDirection;
+		Params.WindSpeed = Component->WindSpeed;
+		Params.WindDependency = Component->WindDependency;
+		Params.ChoppyScale = Component->ChoppyScale;
+		Params.AccumulatedTime = Component->GetAccumulatedTime() * Component->TimeScale;
 		Params.DxyzDebugAmplitude = Component->DxyzDebugAmplitude;
 
 		InitHeightMap(Params, Component->GetWorld()->GetGravityZ(), H0Data, Omega0Data);
@@ -347,13 +347,13 @@ public:
 
 		FOceanSpectrumParameters Params;
 		Params.DispMapDimension = TextureRenderTargetResource->GetSizeX(); // TODO:正方形前提でSizeYは見てない
-		Params.PatchLength = Component->GetGridWidth() * Component->GetNumColumn(); // GetPatchLength()は現状未使用。数式から考えてメッシュサイズを使うのが正しいから
-		Params.AmplitudeScale = Component->GetAmplitudeScale();
-		Params.WindDirection = Component->GetWindDirection();
-		Params.WindSpeed = Component->GetWindSpeed();
-		Params.WindDependency = Component->GetWindDependency();
-		Params.ChoppyScale = Component->GetChoppyScale();
-		Params.AccumulatedTime = Component->GetAccumulatedTime() * Component->GetTimeScale();
+		Params.PatchLength = PatchLength;
+		Params.AmplitudeScale = Component->AmplitudeScale;
+		Params.WindDirection = Component->WindDirection;
+		Params.WindSpeed = Component->WindSpeed;
+		Params.WindDependency = Component->WindDependency;
+		Params.ChoppyScale = Component->ChoppyScale;
+		Params.AccumulatedTime = Component->GetAccumulatedTime() * Component->TimeScale;
 		Params.DxyzDebugAmplitude = Component->DxyzDebugAmplitude;
 
 		FOceanBufferViews Views;
@@ -485,14 +485,6 @@ void UOceanQuadtreeMeshComponent::OnRegister()
 	// デフォルト値では、VertexBufferは128x128のグリッド、グリッドの縦横は1cmにする。描画時はスケールして使う。
 	// ここでは正方形の中心を原点にする平行移動はしない。実際にメッシュを描画に渡すときに平行移動を行う。
 	InitGridMeshSetting(NumGridDivision, NumGridDivision, GridLength, GridLength);
-
-	_PatchLength = PatchLength;
-	_TimeScale = TimeScale;
-	_AmplitudeScale = AmplitudeScale;
-	_WindDirection = WindDirection.GetSafeNormal(); // 正規化しておく
-	_WindSpeed = WindSpeed;
-	_WindDependency = WindDependency;
-	_ChoppyScale = ChoppyScale;
 
 	if (_DisplacementMapSRV.IsValid())
 	{
