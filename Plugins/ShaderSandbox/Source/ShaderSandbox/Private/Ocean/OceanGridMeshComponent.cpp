@@ -145,8 +145,8 @@ public:
 		Omega0Data.Init(0.0f, DispMapDimension * DispMapDimension);
 
 		FOceanSpectrumParameters Params;
-		Params.DispMapDimension = DispMapDimension;
-		Params.PatchLength = Component->GetGridWidth() * Component->GetNumColumn(); // GetPatchLength()は現状未使用。数式から考えてメッシュサイズを使うのが正しいから
+		Params.DispMapDimension = DispMapDimension; // TODO:正方形前提
+		Params.PatchLength = Component->GetGridWidth() * Component->GetNumColumn(); // このコンポーネントだとグリッドメッシュのPatchLengthに合わせたスケーリングは行っておらず、メッシュサイズはGridWidthのNumColumnから決めている。正方形を前提にしている
 		Params.AmplitudeScale = Component->GetAmplitudeScale();
 		Params.WindDirection = Component->GetWindDirection();
 		Params.WindSpeed = Component->GetWindSpeed();
@@ -315,7 +315,7 @@ public:
 
 		FOceanSpectrumParameters Params;
 		Params.DispMapDimension = TextureRenderTargetResource->GetSizeX(); // TODO:正方形前提でSizeYは見てない
-		Params.PatchLength = Component->GetGridWidth() * Component->GetNumColumn(); // GetPatchLength()は現状未使用。数式から考えてメッシュサイズを使うのが正しいから
+		Params.PatchLength = Component->GetGridWidth() * Component->GetNumColumn(); // このコンポーネントだとメッシュのPatchLengthに合わせたスケーリングは行っておらず、GridWidth、NumColumnなどの
 		Params.AmplitudeScale = Component->GetAmplitudeScale();
 		Params.WindDirection = Component->GetWindDirection();
 		Params.WindSpeed = Component->GetWindSpeed();
@@ -459,9 +459,8 @@ void UOceanGridMeshComponent::SetSinWaveSettings(float WaveLengthRow, float Wave
 	}
 }
 
-void UOceanGridMeshComponent::SetOceanSpectrumSettings(float PatchLength, float TimeScale, float AmplitudeScale, FVector2D WindDirection, float WindSpeed, float WindDependency, float ChoppyScale)
+void UOceanGridMeshComponent::SetOceanSpectrumSettings(float TimeScale, float AmplitudeScale, FVector2D WindDirection, float WindSpeed, float WindDependency, float ChoppyScale)
 {
-	_PatchLength = PatchLength;
 	_TimeScale = TimeScale;
 	_AmplitudeScale = AmplitudeScale;
 	_WindDirection = WindDirection.GetSafeNormal(); // 正規化しておく
