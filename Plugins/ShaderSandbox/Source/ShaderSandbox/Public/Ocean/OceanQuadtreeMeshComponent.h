@@ -35,7 +35,7 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Components|OceanQuadtree", BlueprintReadOnly)
 	FVector2D WindDirection = FVector2D(0.8f, 0.6f);
 
-	UPROPERTY(EditAnywhere, Category="Components|OceanQuadtree", BlueprintReadOnly, Meta = (UIMin = "0.0", UIMax = "1000.0", ClampMin = "0.0", ClampMax = "1000.0"))
+	UPROPERTY(EditAnywhere, Category="Components|OceanQuadtree", BlueprintReadOnly, Meta = (UIMin = "0.0", UIMax = "10000.0", ClampMin = "0.0", ClampMax = "10000.0"))
 	float WindSpeed = 600.0f;
 
 	UPROPERTY(EditAnywhere, Category="Components|OceanQuadtree", BlueprintReadOnly, Meta = (UIMin = "0.0", UIMax = "1.0", ClampMin = "0.0", ClampMax = "1.0"))
