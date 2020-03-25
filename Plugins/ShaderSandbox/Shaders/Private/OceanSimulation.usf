@@ -283,6 +283,7 @@ void DkzVerticalIFFT512x512CS(uint GroupID : SV_GroupID, uint GroupThreadID : SV
 StructuredBuffer<float> InDxBuffer;
 StructuredBuffer<float> InDyBuffer;
 StructuredBuffer<float> InDzBuffer;
+Texture2D<float4> PerlinNoise;
 RWTexture2D<float4> OutDisplacementMap;
 
 [numthreads(8, 8, 1)]

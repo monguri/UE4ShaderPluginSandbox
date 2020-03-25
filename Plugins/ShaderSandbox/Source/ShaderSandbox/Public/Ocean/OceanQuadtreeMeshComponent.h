@@ -45,6 +45,9 @@ public:
 	float ChoppyScale = 1.3f;
 
 	UPROPERTY(EditAnywhere, Category="Components|OceanQuadtree", BlueprintReadOnly)
+	class UTexture2D* PerlinNoise = nullptr;
+
+	UPROPERTY(EditAnywhere, Category="Components|OceanQuadtree", BlueprintReadOnly)
 	class UCanvasRenderTarget2D* DisplacementMap = nullptr;
 
 	UPROPERTY(EditAnywhere, Category="Components|OceanQuadtree", BlueprintReadOnly)
@@ -70,6 +73,7 @@ public:
 
 	float GetAccumulatedTime() const { return _AccumulatedTime; }
 
+	FShaderResourceViewRHIRef GetPerlinNoiseSRV() const { return _PerlinNoiseSRV; }
 	UCanvasRenderTarget2D* GetDisplacementMap() const { return DisplacementMap; }
 	FShaderResourceViewRHIRef GetDisplacementMapSRV() const { return _DisplacementMapSRV; }
 	FUnorderedAccessViewRHIRef GetDisplacementMapUAV() const { return _DisplacementMapUAV; }
@@ -101,6 +105,7 @@ protected:
 	//~ End UActorComponent Interface.
 
 private:
+	FShaderResourceViewRHIRef _PerlinNoiseSRV;
 	FShaderResourceViewRHIRef _DisplacementMapSRV;
 	FUnorderedAccessViewRHIRef _DisplacementMapUAV;
 	FUnorderedAccessViewRHIRef _GradientFoldingMapUAV;
