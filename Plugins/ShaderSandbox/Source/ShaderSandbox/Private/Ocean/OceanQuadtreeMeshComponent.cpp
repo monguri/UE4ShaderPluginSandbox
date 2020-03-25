@@ -580,7 +580,7 @@ void UOceanQuadtreeMeshComponent::OnRegister()
 	for (int32 LOD = 0; LOD < MaxLOD + 1; LOD++)
 	{
 		LODMIDList[LOD] = UMaterialInstanceDynamic::Create(Material, this);
-		LODMIDList[LOD]->SetVectorParameterValue(FName("Color"), FLinearColor((MaxLOD - LOD) * InvMaxLOD, 0.0f, LOD * InvMaxLOD));
+		LODMIDList[LOD]->SetScalarParameterValue(FName("UVScale"), (float)(1 << LOD));
 	}
 }
 
