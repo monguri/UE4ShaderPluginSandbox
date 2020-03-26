@@ -27,7 +27,7 @@ void UDeformableGridMeshComponent::InitGridMeshSetting(int32 NumRow, int32 NumCo
 	{
 		for (int32 x = 0; x < NumColumn + 1; x++)
 		{
-			_TexCoords.Emplace((float)x / (NumColumn + 1), (float)y / (NumRow + 1));
+			_TexCoords.Emplace((float)x / NumColumn, (float)y / NumRow);
 		}
 	}
 
