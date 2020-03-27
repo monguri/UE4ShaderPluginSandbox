@@ -323,11 +323,10 @@ void GenerateGradientFoldingMapCS(uint2 DispatchThreadId : SV_DispatchThreadID)
 	int2 DownPixelCoord = int2(PixelCoord.x, (PixelCoord.y + 1) % MapSize);
 
 	//TODO: Zの変位しか考慮していないNormalの計算方法である
+	//マテリアル側でノイズによる変位をXYに含めた上で改めて正規化するのでここでは正規化しない
 	float3 Normal = float3(-(InDisplacementMap[RightPixelCoord].z - InDisplacementMap[LeftPixelCoord].z),
 					-(InDisplacementMap[DownPixelCoord].z - InDisplacementMap[UpPixelCoord].z),
 					PatchLength / (float)MapSize * 2.0);
-	Normal = normalize(Normal);
-
 	OutGradientFoldingMap[PixelCoord] = float4(Normal.x, Normal.y, Normal.z, 1.0);
 }
 
