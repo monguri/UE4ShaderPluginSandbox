@@ -17,6 +17,7 @@
 #include "Engine/CanvasRenderTarget2D.h"
 #include "ResourceArrayStructuredBuffer.h"
 #include "Materials/MaterialInstanceDynamic.h"
+#include "Materials/MaterialParameterCollectionInstance.h"
 #include "Quadtree/Quadtree.h"
 
 using namespace Quadtree;
@@ -37,6 +38,7 @@ public:
 		, VertexFactory(GetScene().GetFeatureLevel(), "FOceanQuadtreeMeshSceneProxy")
 		, MaterialRelevance(Component->GetMaterialRelevance(GetScene().GetFeatureLevel()))
 		, LODMIDList(Component->GetLODMIDList())
+		, MPCInstance(Component->GetMPCInstance())
 		, NumGridDivision(Component->NumGridDivision)
 		, GridLength(Component->GridLength)
 		, MaxLOD(Component->MaxLOD)
@@ -285,9 +287,9 @@ public:
 
 		// レンダースレッド内でやればコマンドキューに別のコマンドを発行せずに即実行して無駄がないのでここでやる
 		const FVector2D& PerlinUVOffset = -Params.WindDirection * Params.AccumulatedTime * Component->PerlinUVSpeed; // 風の方向と逆方向にしている
-		for (int32 LOD = 0; LOD < MaxLOD + 1; LOD++)
+		if (MPCInstance != nullptr)
 		{
-			LODMIDList[LOD]->SetVectorParameterValue(FName("PerlinUVOffset"), FVector(PerlinUVOffset.X, PerlinUVOffset.Y, 0.0f));
+			MPCInstance->SetVectorParameterValue(FName("PerlinUVOffset"), FVector(PerlinUVOffset.X, PerlinUVOffset.Y, 0.0f));
 		}
 
 		FOceanBufferViews Views;
@@ -345,6 +347,7 @@ private:
 	FResourceArrayStructuredBuffer DzBuffer;
 
 	TArray<UMaterialInstanceDynamic*> LODMIDList; // Component側でUMaterialInstanceDynamicは保持されてるのでGCで解放はされない
+	UMaterialParameterCollectionInstance* MPCInstance = nullptr; // Component側でUMaterialInstanceDynamicは保持されてるのでGCで解放はされない
 	int32 NumGridDivision;
 	float GridLength;
 	int32 MaxLOD;
@@ -495,6 +498,17 @@ void UOceanQuadtreeMeshComponent::OnRegister()
 		_DxyzDebugViewUAV = RHICreateUnorderedAccessView(DxyzDebugView->GameThread_GetRenderTargetResource()->TextureRHI);
 	}
 
+	_MPCInstance = nullptr;
+	if (OceanMPC != nullptr)
+	{
+		_MPCInstance = GetWorld()->GetParameterCollectionInstance(OceanMPC);
+		_MPCInstance->SetVectorParameterValue(FName("PerlinDisplacement"), PerlinDisplacement);
+		_MPCInstance->SetVectorParameterValue(FName("PerlinGradient"), PerlinGradient);
+		// UVスケールが整数の逆数にならないと、ループ構造でperinノイズを使っている以上、境界部分でずれが起きる。よってUPROPERTYでは逆数をFIntVectorで扱っている。
+		// PerlinUVScaleはLODのUVスケールで決められたパッチの中でさらにスケールさせるものである。
+		_MPCInstance->SetVectorParameterValue(FName("PerlinUVScale"), FVector(1.0f / PerlinUVInvScale.X, 1.0f / PerlinUVInvScale.Y, 1.0f / PerlinUVInvScale.Z));
+	}
+
 	UMaterialInterface* Material = GetMaterial(0);
 	if(Material == NULL)
 	{
@@ -510,17 +524,12 @@ void UOceanQuadtreeMeshComponent::OnRegister()
 	float InvMaxLOD = 1.0f / MaxLOD;
 	//LODMIDList.SetNumZeroed(48);
 	//for (int32 i = 0; i < 48; i++)
-	LODMIDList.SetNumZeroed(MaxLOD + 1);
+	_LODMIDList.SetNumZeroed(MaxLOD + 1);
 	for (int32 LOD = 0; LOD < MaxLOD + 1; LOD++)
 	{
-		LODMIDList[LOD] = UMaterialInstanceDynamic::Create(Material, this);
-		LODMIDList[LOD]->SetScalarParameterValue(FName("UVScale"), (float)(1 << LOD));
-		LODMIDList[LOD]->SetVectorParameterValue(FName("LODColor"), FLinearColor((MaxLOD - LOD) * InvMaxLOD, 0.0f, LOD * InvMaxLOD));
-		LODMIDList[LOD]->SetVectorParameterValue(FName("PerlinDisplacement"), PerlinDisplacement);
-		LODMIDList[LOD]->SetVectorParameterValue(FName("PerlinGradient"), PerlinGradient);
-		// UVスケールが整数の逆数にならないと、ループ構造でperinノイズを使っている以上、境界部分でずれが起きる。よってUPROPERTYでは逆数をFIntVectorで扱っている。
-		// PerlinUVScaleは上のUVスケールで決められたパッチの中でさらにスケールさせるものである。
-		LODMIDList[LOD]->SetVectorParameterValue(FName("PerlinUVScale"), FVector(1.0f / PerlinUVInvScale.X, 1.0f / PerlinUVInvScale.Y, 1.0f / PerlinUVInvScale.Z));
+		_LODMIDList[LOD] = UMaterialInstanceDynamic::Create(Material, this);
+		_LODMIDList[LOD]->SetScalarParameterValue(FName("UVScale"), (float)(1 << LOD));
+		_LODMIDList[LOD]->SetVectorParameterValue(FName("LODColor"), FLinearColor((MaxLOD - LOD) * InvMaxLOD, 0.0f, LOD * InvMaxLOD));
 	}
 }
 
@@ -580,6 +589,11 @@ void UOceanQuadtreeMeshComponent::SendRenderDynamicData_Concurrent()
 
 const TArray<class UMaterialInstanceDynamic*>& UOceanQuadtreeMeshComponent::GetLODMIDList() const
 {
-	return LODMIDList;
+	return _LODMIDList;
+}
+
+UMaterialParameterCollectionInstance* UOceanQuadtreeMeshComponent::GetMPCInstance() const
+{
+	return _MPCInstance;
 }
 

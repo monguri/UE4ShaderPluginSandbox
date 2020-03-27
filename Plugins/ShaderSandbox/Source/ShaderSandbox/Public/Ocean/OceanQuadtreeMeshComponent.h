@@ -56,6 +56,9 @@ public:
 	UPROPERTY(EditAnywhere, Category="Components|OceanQuadtree", BlueprintReadOnly)
 	FIntVector PerlinUVInvScale = FIntVector(1, 2, 4);
 
+	UPROPERTY(EditAnywhere, Category = "Components|OceanQuadtree", BlueprintReadOnly)
+	class UMaterialParameterCollection* OceanMPC = nullptr;
+
 	UPROPERTY(EditAnywhere, Category="Components|OceanQuadtree", BlueprintReadOnly)
 	class UCanvasRenderTarget2D* DisplacementMap = nullptr;
 
@@ -105,6 +108,7 @@ public:
 	//~ End USceneComponent Interface.
 
 	const TArray<class UMaterialInstanceDynamic*>& GetLODMIDList() const;
+	class UMaterialParameterCollectionInstance* GetMPCInstance() const;
 
 protected:
 	//~ Begin UActorComponent Interface.
@@ -123,6 +127,8 @@ private:
 	FUnorderedAccessViewRHIRef _DxyzDebugViewUAV;
 
 	UPROPERTY(Transient)
-	TArray<class UMaterialInstanceDynamic*> LODMIDList;
+	TArray<class UMaterialInstanceDynamic*> _LODMIDList;
+	UPROPERTY(Transient)
+	class UMaterialParameterCollectionInstance* _MPCInstance = nullptr;
 };
 
