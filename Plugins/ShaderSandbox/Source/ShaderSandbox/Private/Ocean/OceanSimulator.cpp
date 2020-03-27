@@ -292,7 +292,6 @@ class FOceanUpdateDisplacementMapCS : public FGlobalShader
 		SHADER_PARAMETER_SRV(StructuredBuffer<float>, InDxBuffer)
 		SHADER_PARAMETER_SRV(StructuredBuffer<float>, InDyBuffer)
 		SHADER_PARAMETER_SRV(StructuredBuffer<float>, InDzBuffer)
-		SHADER_PARAMETER_SRV(Texture2D<float4>, PerlinNoise)
 		SHADER_PARAMETER_UAV(RWTexture2D<float4>, OutDisplacementMap) // TODO:‚È‚º<float4>‚Æ‚¢‚¤‘‚«•û‚Å‘åä•vH
 	END_SHADER_PARAMETER_STRUCT()
 
@@ -537,7 +536,6 @@ void SimulateOcean(FRHICommandListImmediate& RHICmdList, const FOceanSpectrumPar
 		UpdateDisplacementMapParams->InDxBuffer = Views.DxSRV;
 		UpdateDisplacementMapParams->InDyBuffer = Views.DySRV;
 		UpdateDisplacementMapParams->InDzBuffer = Views.DzSRV;
-		UpdateDisplacementMapParams->PerlinNoise = Views.PerlinNoiseSRV;
 		UpdateDisplacementMapParams->OutDisplacementMap = Views.DisplacementMapUAV;
 
 		FComputeShaderUtils::AddPass(

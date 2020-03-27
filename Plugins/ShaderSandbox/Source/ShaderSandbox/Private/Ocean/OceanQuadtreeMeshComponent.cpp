@@ -304,7 +304,6 @@ public:
 		Views.DkxDebugViewUAV = Component->GetDkxDebugViewUAV();
 		Views.DkyDebugViewUAV = Component->GetDkyDebugViewUAV();
 		Views.DxyzDebugViewUAV = Component->GetDxyzDebugViewUAV();
-		Views.PerlinNoiseSRV = Component->GetPerlinNoiseSRV();
 		Views.DisplacementMapSRV = Component->GetDisplacementMapSRV();
 		Views.DisplacementMapUAV = Component->GetDisplacementMapUAV();
 		Views.GradientFoldingMapUAV = Component->GetGradientFoldingMapUAV();
@@ -355,11 +354,6 @@ UOceanQuadtreeMeshComponent::UOceanQuadtreeMeshComponent()
 
 UOceanQuadtreeMeshComponent::~UOceanQuadtreeMeshComponent()
 {
-	if (_PerlinNoiseSRV.IsValid())
-	{
-		_PerlinNoiseSRV.SafeRelease();
-	}
-
 	if (_DisplacementMapSRV.IsValid())
 	{
 		_DisplacementMapSRV.SafeRelease();
@@ -418,17 +412,6 @@ void UOceanQuadtreeMeshComponent::OnRegister()
 	// デフォルト値では、VertexBufferは128x128のグリッド、グリッドの縦横は1cmにする。描画時はスケールして使う。
 	// ここでは正方形の中心を原点にする平行移動はしない。実際にメッシュを描画に渡すときに平行移動を行う。
 	InitGridMeshSetting(NumGridDivision, NumGridDivision, GridLength, GridLength);
-
-	if (_PerlinNoiseSRV.IsValid())
-	{
-		_PerlinNoiseSRV.SafeRelease();
-	}
-
-	if (PerlinNoise != nullptr && PerlinNoise->TextureReference.TextureReferenceRHI.IsValid())
-	{
-		// TODO:UTexture2DのSRVを作る方法としてこれが最適かは不明
-		_PerlinNoiseSRV = RHICreateShaderResourceView(PerlinNoise->TextureReference.TextureReferenceRHI->GetReferencedTexture(), 0);
-	}
 
 	if (_DisplacementMapSRV.IsValid())
 	{

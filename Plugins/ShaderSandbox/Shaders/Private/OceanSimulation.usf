@@ -283,7 +283,6 @@ void DkzVerticalIFFT512x512CS(uint GroupID : SV_GroupID, uint GroupThreadID : SV
 StructuredBuffer<float> InDxBuffer;
 StructuredBuffer<float> InDyBuffer;
 StructuredBuffer<float> InDzBuffer;
-Texture2D<float4> PerlinNoise;
 RWTexture2D<float4> OutDisplacementMap;
 
 [numthreads(8, 8, 1)]
@@ -318,18 +317,14 @@ void GenerateGradientFoldingMapCS(uint2 DispatchThreadId : SV_DispatchThreadID)
 {
 	int2 PixelCoord = (int2)DispatchThreadId; // 負も扱えるようにキャスト
 
-	int2 LeftPixelCoord = int2(max(PixelCoord.x - 1, 0), PixelCoord.y);
-	int2 RightPixelCoord = int2(min(PixelCoord.x + 1, MapSize - 1), PixelCoord.y);
-	int2 UpPixelCoord = int2(PixelCoord.x, max(PixelCoord.y - 1, 0));
-	int2 DownPixelCoord = int2(PixelCoord.x, min(PixelCoord.y + 1, MapSize - 1));
-
-	// マップの端の部分はLeftあるいはRightを代わりに自分のピクセルを使うため、Z変位を倍にする必要がある
-	float LeftRightScale = 1.0 + max(1 - PixelCoord.x, 0) + max(PixelCoord.x - ((int)MapSize - 2), 0);
-	float UpDownEdgeScale = 1.0 + max(1 - PixelCoord.y, 0) + max(PixelCoord.y - ((int)MapSize - 2), 0);
+	int2 LeftPixelCoord = int2((PixelCoord.x - 1) % MapSize , PixelCoord.y);
+	int2 RightPixelCoord = int2((PixelCoord.x + 1) % MapSize, PixelCoord.y);
+	int2 UpPixelCoord = int2(PixelCoord.x, (PixelCoord.y - 1) % MapSize);
+	int2 DownPixelCoord = int2(PixelCoord.x, (PixelCoord.y + 1) % MapSize);
 
 	//TODO: Zの変位しか考慮していないNormalの計算方法である
-	float3 Normal = float3(-(InDisplacementMap[RightPixelCoord].z - InDisplacementMap[LeftPixelCoord].z) * LeftRightScale,
-					-(InDisplacementMap[DownPixelCoord].z - InDisplacementMap[UpPixelCoord].z) * UpDownEdgeScale,
+	float3 Normal = float3(-(InDisplacementMap[RightPixelCoord].z - InDisplacementMap[LeftPixelCoord].z),
+					-(InDisplacementMap[DownPixelCoord].z - InDisplacementMap[UpPixelCoord].z),
 					PatchLength / (float)MapSize * 2.0);
 	Normal = normalize(Normal);
 
