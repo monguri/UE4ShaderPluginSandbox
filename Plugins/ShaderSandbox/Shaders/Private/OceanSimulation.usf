@@ -316,21 +316,21 @@ RWTexture2D<float4> OutGradientFoldingMap;
 [numthreads(8, 8, 1)]
 void GenerateGradientFoldingMapCS(uint2 DispatchThreadId : SV_DispatchThreadID)
 {
-	uint2 PixelCoord = DispatchThreadId;
+	int2 PixelCoord = (int2)DispatchThreadId; // 負も扱えるようにキャスト
 
-	uint2 LeftPixelCoord = uint2(max(PixelCoord.x - 1, 0), PixelCoord.y);
-	uint2 RightPixelCoord = uint2(min(PixelCoord.x + 1, MapSize - 1), PixelCoord.y);
-	uint2 UpPixelCoord = uint2(PixelCoord.x, max(PixelCoord.y - 1, 0));
-	uint2 DownPixelCoord = uint2(PixelCoord.x, min(PixelCoord.y + 1, MapSize - 1));
+	int2 LeftPixelCoord = int2(max(PixelCoord.x - 1, 0), PixelCoord.y);
+	int2 RightPixelCoord = int2(min(PixelCoord.x + 1, MapSize - 1), PixelCoord.y);
+	int2 UpPixelCoord = int2(PixelCoord.x, max(PixelCoord.y - 1, 0));
+	int2 DownPixelCoord = int2(PixelCoord.x, min(PixelCoord.y + 1, MapSize - 1));
 
 	// マップの端の部分はLeftあるいはRightを代わりに自分のピクセルを使うため、Z変位を倍にする必要がある
-	float LeftRightScale = 1.0 + max(1 - (int)PixelCoord.x, 0) + max((int)PixelCoord.x - ((int)MapSize - 2), 0);
-	float UpDownEdgeScale = 1.0 + max(1 - (int)PixelCoord.y, 0) + max((int)PixelCoord.y - ((int)MapSize - 2), 0);
+	float LeftRightScale = 1.0 + max(1 - PixelCoord.x, 0) + max(PixelCoord.x - ((int)MapSize - 2), 0);
+	float UpDownEdgeScale = 1.0 + max(1 - PixelCoord.y, 0) + max(PixelCoord.y - ((int)MapSize - 2), 0);
 
 	//TODO: Zの変位しか考慮していないNormalの計算方法である
 	float3 Normal = float3(-(InDisplacementMap[RightPixelCoord].z - InDisplacementMap[LeftPixelCoord].z) * LeftRightScale,
 					-(InDisplacementMap[DownPixelCoord].z - InDisplacementMap[UpPixelCoord].z) * UpDownEdgeScale,
-					PatchLength / (float) MapSize * 2.0);
+					PatchLength / (float)MapSize * 2.0);
 	Normal = normalize(Normal);
 
 	OutGradientFoldingMap[PixelCoord] = float4(Normal.x, Normal.y, Normal.z, 1.0);
