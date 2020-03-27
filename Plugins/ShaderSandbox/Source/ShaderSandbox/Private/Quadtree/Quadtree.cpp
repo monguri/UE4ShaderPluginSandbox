@@ -51,7 +51,7 @@ bool IsQuadNodeFrustumCulled(const FMatrix& ViewProjectionMatrix, const FQuadNod
 }
 
 // QuadNodeのメッシュのグリッドの中でもっともカメラに近いもののスクリーン表示面積率を取得する
-float EstimateGridScreenCoverage(int32 NumRowColumn, const FVector& CameraPosition, const FMatrix& ViewProjectionMatrix, const FQuadNode& Node, FIntPoint& OutNearestGrid)
+float EstimateGridScreenCoverage(int32 NumRowColumn, const FVector& CameraPosition, const FVector2D& ProjectionScale, const FMatrix& ViewProjectionMatrix, const FQuadNode& Node, FIntPoint& OutNearestGrid)
 {
 	// 表示面積が最大のグリッドを調べたいので、カメラに最も近いグリッドを調べる。
 	// グリッドの中には表示されていないものもありうるが、ここに渡されるQuadNodeはフラスタムカリングはされてない前提なので
@@ -69,31 +69,15 @@ float EstimateGridScreenCoverage(int32 NumRowColumn, const FVector& CameraPositi
 	NearestGridBottomRight.Y = Node.BottomRight.Y + Column * GridLength;
 	NearestGridBottomRight.Z = Node.BottomRight.Z;
 
-	// 最近接グリッドのスクリーンでの表示面積率計算
-	const FVector4& NearestGridBottomRightProjSpace = ViewProjectionMatrix.TransformFVector4(FVector4(NearestGridBottomRight.X, NearestGridBottomRight.Y, NearestGridBottomRight.Z, 1.0f));
-	const FVector4& NearestGridBottomLeftProjSpace = ViewProjectionMatrix.TransformFVector4(FVector4(NearestGridBottomRight.X + GridLength, NearestGridBottomRight.Y, NearestGridBottomRight.Z, 1.0f));
-	const FVector4& NearestGridTopRightProjSpace = ViewProjectionMatrix.TransformFVector4(FVector4(NearestGridBottomRight.X, NearestGridBottomRight.Y + GridLength, NearestGridBottomRight.Z, 1.0f));
-	const FVector4& NearestGridTopLeftProjSpace = ViewProjectionMatrix.TransformFVector4(FVector4(NearestGridBottomRight.X + GridLength, NearestGridBottomRight.Y + GridLength, NearestGridBottomRight.Z, 1.0f));
-
-	// NDCへの変換でWで除算したいのでWが0に近い場合はKINDA_SMALL_NUMBERで割る。その場合は本来より結果が小さい値になるので、より、葉になりやすくなり表示されやすくなる。
-	const FVector2D& NearestGridBottomRightNDC = FVector2D(NearestGridBottomRightProjSpace) / FMath::Max(FMath::Abs(NearestGridBottomRightProjSpace.W), KINDA_SMALL_NUMBER);
-	const FVector2D& NearestGridBottomLeftNDC = FVector2D(NearestGridBottomLeftProjSpace) / FMath::Max(FMath::Abs(NearestGridBottomLeftProjSpace.W), KINDA_SMALL_NUMBER);
-	const FVector2D& NearestGridTopRightNDC = FVector2D(NearestGridTopRightProjSpace) / FMath::Max(FMath::Abs(NearestGridTopRightProjSpace.W), KINDA_SMALL_NUMBER);
-
-	// 面積を求めるにはヘロンの公式を使うのが厳密だが、Sqrtの処理が多く入るので処理負荷のため、おおよそ平行四辺形ととらえて面積を計算する。
-	// あとで2乗するので平均をとるときに正負の符号は無視。
-	const FVector2D& HorizEdge = NearestGridBottomLeftNDC - NearestGridBottomRightNDC;
-	const FVector2D& VertEdge = NearestGridTopRightNDC - NearestGridBottomRightNDC;
-
-	// グリッドのインデックスが増える方向はX軸Y軸方向でUE4は左手系なので、カメラがZ軸正にあるという前提なら外積の符号は反転させたものが平行四辺形の面積になる
+	// グリッドにカメラは正対していないが、正対してると想定したときのスクリーン表示面積を返す。
+	// 実際の正対してないスクリーン表示面積を使うと、かなり矩形がゆがむために、ゆがみが激しいときだとちょっとしたカメラの動きで面積が大きく変わり安定しなくなる。
 	// NDCは[-1,1]なのでXY面も面積は4なので、表示面積率としては1/4を乗算したものになる
-	// ただし、カメラと近く、メッシュの目が粗いものほど、平行四辺形近似は粗くなる
-	// コーナーがカメラの後ろにまわる場合などは符号が一定には扱えなくなるので、それでも同じ式で扱うために絶対値で扱う
-	float Ret = FMath::Abs(HorizEdge ^ VertEdge) * 0.25f;
+	float CameraDistanceSquare = (CameraPosition - NearestGridBottomRight).SizeSquared();
+	float Ret = GridLength * ProjectionScale.X * GridLength * ProjectionScale.Y * 0.25f / CameraDistanceSquare;
 	return Ret;
 }
 
-int32 BuildQuadtreeRecursively(int32 MaxLOD, int32 NumRowColumn, float MaxScreenCoverage, float PatchLength, const FVector& CameraPosition, const FMatrix& ViewProjectionMatrix, FQuadNode& Node, TArray<FQuadNode>& OutQuadNodeList)
+int32 BuildQuadtreeRecursively(int32 MaxLOD, int32 NumRowColumn, float MaxScreenCoverage, float PatchLength, const FVector& CameraPosition, const FVector2D& ProjectionScale, const FMatrix& ViewProjectionMatrix, FQuadNode& Node, TArray<FQuadNode>& OutQuadNodeList)
 {
 	bool bCulled = IsQuadNodeFrustumCulled(ViewProjectionMatrix, Node);
 	if (bCulled)
@@ -106,7 +90,7 @@ int32 BuildQuadtreeRecursively(int32 MaxLOD, int32 NumRowColumn, float MaxScreen
 
 	// QuadNodeの全グリッドのスクリーン表示面積率の中で最大のもの。
 	FIntPoint NearestGrid;
-	float GridCoverage = EstimateGridScreenCoverage(NumRowColumn, CameraPosition, ViewProjectionMatrix, Node, NearestGrid);
+	float GridCoverage = EstimateGridScreenCoverage(NumRowColumn, CameraPosition, ProjectionScale, ViewProjectionMatrix, Node, NearestGrid);
 
 	if (GridCoverage > MaxScreenCoverage // グリッドが表示面積率上限より大きければ子に分割する。自分を描画しないのはリストの使用側でIsLeafで判定する。
 		&& Node.Length > PatchLength // パッチサイズ以下の縦横長さであればそれ以上分割しない。上の条件だけだとカメラが近いといくらでも小さく分割してしまうので
@@ -117,25 +101,25 @@ int32 BuildQuadtreeRecursively(int32 MaxLOD, int32 NumRowColumn, float MaxScreen
 		ChildNodeBottomRight.BottomRight = Node.BottomRight;
 		ChildNodeBottomRight.Length = Node.Length * 0.5f;
 		ChildNodeBottomRight.LOD = Node.LOD - 1;
-		Node.ChildNodeIndices[0] = BuildQuadtreeRecursively(MaxLOD, NumRowColumn, MaxScreenCoverage, PatchLength, CameraPosition, ViewProjectionMatrix, ChildNodeBottomRight, OutQuadNodeList);
+		Node.ChildNodeIndices[0] = BuildQuadtreeRecursively(MaxLOD, NumRowColumn, MaxScreenCoverage, PatchLength, CameraPosition, ProjectionScale, ViewProjectionMatrix, ChildNodeBottomRight, OutQuadNodeList);
 
 		FQuadNode ChildNodeBottomLeft;
 		ChildNodeBottomLeft.BottomRight = Node.BottomRight + FVector(Node.Length * 0.5f, 0.0f, 0.0f);
 		ChildNodeBottomLeft.Length = Node.Length * 0.5f;
 		ChildNodeBottomLeft.LOD = Node.LOD - 1;
-		Node.ChildNodeIndices[1] = BuildQuadtreeRecursively(MaxLOD, NumRowColumn, MaxScreenCoverage, PatchLength, CameraPosition, ViewProjectionMatrix, ChildNodeBottomLeft, OutQuadNodeList);
+		Node.ChildNodeIndices[1] = BuildQuadtreeRecursively(MaxLOD, NumRowColumn, MaxScreenCoverage, PatchLength, CameraPosition, ProjectionScale, ViewProjectionMatrix, ChildNodeBottomLeft, OutQuadNodeList);
 
 		FQuadNode ChildNodeTopRight;
 		ChildNodeTopRight.BottomRight = Node.BottomRight + FVector(0.0f, Node.Length * 0.5f, 0.0f);
 		ChildNodeTopRight.Length = Node.Length * 0.5f;
 		ChildNodeTopRight.LOD = Node.LOD - 1;
-		Node.ChildNodeIndices[2] = BuildQuadtreeRecursively(MaxLOD, NumRowColumn, MaxScreenCoverage, PatchLength, CameraPosition, ViewProjectionMatrix, ChildNodeTopRight, OutQuadNodeList);
+		Node.ChildNodeIndices[2] = BuildQuadtreeRecursively(MaxLOD, NumRowColumn, MaxScreenCoverage, PatchLength, CameraPosition, ProjectionScale, ViewProjectionMatrix, ChildNodeTopRight, OutQuadNodeList);
 
 		FQuadNode ChildNodeTopLeft;
 		ChildNodeTopLeft.BottomRight = Node.BottomRight + FVector(Node.Length * 0.5f, Node.Length * 0.5f, 0.0f);
 		ChildNodeTopLeft.Length = Node.Length * 0.5f;
 		ChildNodeTopLeft.LOD = Node.LOD - 1;
-		Node.ChildNodeIndices[3] = BuildQuadtreeRecursively(MaxLOD, NumRowColumn, MaxScreenCoverage, PatchLength, CameraPosition, ViewProjectionMatrix, ChildNodeTopLeft, OutQuadNodeList);
+		Node.ChildNodeIndices[3] = BuildQuadtreeRecursively(MaxLOD, NumRowColumn, MaxScreenCoverage, PatchLength, CameraPosition, ProjectionScale, ViewProjectionMatrix, ChildNodeTopLeft, OutQuadNodeList);
 
 		// すべての子ノードがフラスタムカリング対象だったら、自分も不可視なはずで、カリング計算で漏れたとみるべきなのでカリングする
 		if (Node.IsLeaf())
@@ -151,9 +135,9 @@ int32 BuildQuadtreeRecursively(int32 MaxLOD, int32 NumRowColumn, float MaxScreen
 
 namespace Quadtree
 {
-void BuildQuadtree(int32 MaxLOD, int32 NumRowColumn, float MaxScreenCoverage, float PatchLength, const FVector& CameraPosition, const FMatrix& ViewProjectionMatrix, FQuadNode& RootNode, TArray<FQuadNode>& OutAllQuadNodeList, TArray<FQuadNode>& OutRenderQuadNodeList)
+void BuildQuadtree(int32 MaxLOD, int32 NumRowColumn, float MaxScreenCoverage, float PatchLength, const FVector& CameraPosition, const FVector2D& ProjectionScale, const FMatrix& ViewProjectionMatrix, FQuadNode& RootNode, TArray<FQuadNode>& OutAllQuadNodeList, TArray<FQuadNode>& OutRenderQuadNodeList)
 {
-	BuildQuadtreeRecursively(MaxLOD, NumRowColumn, MaxScreenCoverage, PatchLength, CameraPosition, ViewProjectionMatrix, RootNode, OutAllQuadNodeList);
+	BuildQuadtreeRecursively(MaxLOD, NumRowColumn, MaxScreenCoverage, PatchLength, CameraPosition, ProjectionScale, ViewProjectionMatrix, RootNode, OutAllQuadNodeList);
 
 	for (const FQuadNode& Node : OutAllQuadNodeList)
 	{
