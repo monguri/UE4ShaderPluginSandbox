@@ -62,7 +62,7 @@ struct FOceanBufferViews
 
 float GaussianRand();
 float CalculatePhillipsCoefficient(const FVector2D& K, float Gravity, const FOceanSpectrumParameters& Params);
-void InitHeightMap(const FOceanSpectrumParameters& Params, float GravityZ, class TResourceArray<FComplex>& OutH0, class TResourceArray<float>& OutOmega0);
+void CreateInitialHeightMap(const FOceanSpectrumParameters& Params, float GravityZ, class TResourceArray<FComplex>& OutH0, class TResourceArray<float>& OutOmega0);
 void SimulateOcean(FRHICommandListImmediate& RHICmdList, const FOceanSpectrumParameters& Params, const FOceanBufferViews& Views);
 
 struct FOceanSinWaveParameters

@@ -50,7 +50,7 @@ float CalculatePhillipsCoefficient(const FVector2D& K, float Gravity, const FOce
 	return Phillips * FMath::Exp(-KSqr * CutLength * CutLength);
 }
 
-void InitHeightMap(const FOceanSpectrumParameters& Params, float GravityZ, TResourceArray<FComplex>& OutH0, TResourceArray<float>& OutOmega0)
+void CreateInitialHeightMap(const FOceanSpectrumParameters& Params, float GravityZ, TResourceArray<FComplex>& OutH0, TResourceArray<float>& OutOmega0)
 {
 	// TODO:‚±‚±‚ç‚Ö‚ñ‚ÍCS‚ÅŽÀ‘•‚·‚é‚Ì‚à‚ ‚è‚¾‚ë‚¤
 	FVector2D K;

@@ -99,7 +99,7 @@ public:
 		Params.AccumulatedTime = Component->GetAccumulatedTime() * Component->TimeScale;
 		Params.DxyzDebugAmplitude = Component->DxyzDebugAmplitude;
 
-		InitHeightMap(Params, Component->GetWorld()->GetGravityZ(), H0Data, Omega0Data);
+		CreateInitialHeightMap(Params, Component->GetWorld()->GetGravityZ(), H0Data, Omega0Data);
 
 		H0Buffer.Initialize(H0Data, sizeof(FComplex));
 		Omega0Buffer.Initialize(Omega0Data, sizeof(float));
