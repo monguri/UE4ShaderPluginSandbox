@@ -59,7 +59,7 @@ float EstimateGridScreenCoverage(int32 NumRowColumn, const FVector& CameraPositi
 
 	// QuadNodeメッシュのグリッドへの縦横分割数は同じであり、メッシュは正方形であるという前提がある
 	float GridLength = Node.Length / NumRowColumn;
-	FVector2D NearestGridBottomRight;
+	FVector NearestGridBottomRight;
 
 	// カメラの真下にグリッドがあればそれ。なければClampする
 	int32 Row = FMath::Clamp<int32>((CameraPosition.X - Node.BottomRight.X) / GridLength, 0, NumRowColumn - 1); // floatはint32キャストで切り捨て
@@ -67,12 +67,13 @@ float EstimateGridScreenCoverage(int32 NumRowColumn, const FVector& CameraPositi
 	OutNearestGrid = FIntPoint(Row, Column);
 	NearestGridBottomRight.X = Node.BottomRight.X + Row * GridLength;
 	NearestGridBottomRight.Y = Node.BottomRight.Y + Column * GridLength;
+	NearestGridBottomRight.Z = Node.BottomRight.Z;
 
 	// 最近接グリッドのスクリーンでの表示面積率計算
-	const FVector4& NearestGridBottomRightProjSpace = ViewProjectionMatrix.TransformFVector4(FVector4(NearestGridBottomRight.X, NearestGridBottomRight.Y, 0.0f, 1.0f));
-	const FVector4& NearestGridBottomLeftProjSpace = ViewProjectionMatrix.TransformFVector4(FVector4(NearestGridBottomRight.X + GridLength, NearestGridBottomRight.Y, 0.0f, 1.0f));
-	const FVector4& NearestGridTopRightProjSpace = ViewProjectionMatrix.TransformFVector4(FVector4(NearestGridBottomRight.X, NearestGridBottomRight.Y + GridLength, 0.0f, 1.0f));
-	const FVector4& NearestGridTopLeftProjSpace = ViewProjectionMatrix.TransformFVector4(FVector4(NearestGridBottomRight.X + GridLength, NearestGridBottomRight.Y + GridLength, 0.0f, 1.0f));
+	const FVector4& NearestGridBottomRightProjSpace = ViewProjectionMatrix.TransformFVector4(FVector4(NearestGridBottomRight.X, NearestGridBottomRight.Y, NearestGridBottomRight.Z, 1.0f));
+	const FVector4& NearestGridBottomLeftProjSpace = ViewProjectionMatrix.TransformFVector4(FVector4(NearestGridBottomRight.X + GridLength, NearestGridBottomRight.Y, NearestGridBottomRight.Z, 1.0f));
+	const FVector4& NearestGridTopRightProjSpace = ViewProjectionMatrix.TransformFVector4(FVector4(NearestGridBottomRight.X, NearestGridBottomRight.Y + GridLength, NearestGridBottomRight.Z, 1.0f));
+	const FVector4& NearestGridTopLeftProjSpace = ViewProjectionMatrix.TransformFVector4(FVector4(NearestGridBottomRight.X + GridLength, NearestGridBottomRight.Y + GridLength, NearestGridBottomRight.Z, 1.0f));
 
 	// NDCへの変換でWで除算したいのでWが0に近い場合はKINDA_SMALL_NUMBERで割る。その場合は本来より結果が小さい値になるので、より、葉になりやすくなり表示されやすくなる。
 	const FVector2D& NearestGridBottomRightNDC = FVector2D(NearestGridBottomRightProjSpace) / FMath::Max(FMath::Abs(NearestGridBottomRightProjSpace.W), KINDA_SMALL_NUMBER);
