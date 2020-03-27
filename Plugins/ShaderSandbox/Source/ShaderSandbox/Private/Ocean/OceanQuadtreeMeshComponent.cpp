@@ -283,6 +283,13 @@ public:
 		Params.AccumulatedTime = Component->GetAccumulatedTime() * Component->TimeScale;
 		Params.DxyzDebugAmplitude = Component->DxyzDebugAmplitude;
 
+		// レンダースレッド内でやればコマンドキューに別のコマンドを発行せずに即実行して無駄がないのでここでやる
+		const FVector2D& PerlinMovement = -Params.WindDirection * Params.AccumulatedTime * Component->PerlinSpeed; // 風の方向と逆方向にしている
+		for (int32 LOD = 0; LOD < MaxLOD + 1; LOD++)
+		{
+			LODMIDList[LOD]->SetVectorParameterValue(FName("PerlinMovement"), FVector(PerlinMovement.X, PerlinMovement.Y, 0.0f));
+		}
+
 		FOceanBufferViews Views;
 		Views.H0SRV = H0Buffer.GetSRV();
 		Views.OmegaSRV = Omega0Buffer.GetSRV();
@@ -509,6 +516,9 @@ void UOceanQuadtreeMeshComponent::OnRegister()
 		LODMIDList[LOD] = UMaterialInstanceDynamic::Create(Material, this);
 		LODMIDList[LOD]->SetScalarParameterValue(FName("UVScale"), (float)(1 << LOD));
 		LODMIDList[LOD]->SetVectorParameterValue(FName("LODColor"), FLinearColor((MaxLOD - LOD) * InvMaxLOD, 0.0f, LOD * InvMaxLOD));
+		LODMIDList[LOD]->SetVectorParameterValue(FName("PerlinDisplacement"), PerlinDisplacement);
+		LODMIDList[LOD]->SetVectorParameterValue(FName("PerlinGradient"), PerlinGradient);
+		LODMIDList[LOD]->SetVectorParameterValue(FName("PerlinOctave"), PerlinOctave);
 	}
 }
 

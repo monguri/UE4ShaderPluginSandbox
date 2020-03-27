@@ -44,6 +44,18 @@ public:
 	UPROPERTY(EditAnywhere, Category="Components|OceanQuadtree", BlueprintReadOnly, Meta = (UIMin = "0.0", UIMax = "10.0", ClampMin = "0.0", ClampMax = "10.0"))
 	float ChoppyScale = 1.3f;
 
+	UPROPERTY(EditAnywhere, Category="Components|OceanQuadtree", BlueprintReadOnly, Meta = (UIMin = "0.0", UIMax = "1.0", ClampMin = "0.0", ClampMax = "1.0"))
+	float PerlinSpeed = 0.06f;
+
+	UPROPERTY(EditAnywhere, Category="Components|OceanQuadtree", BlueprintReadOnly)
+	FVector PerlinDisplacement = FVector(35.0f, 42.0f, 57.0f);
+
+	UPROPERTY(EditAnywhere, Category="Components|OceanQuadtree", BlueprintReadOnly)
+	FVector PerlinGradient = FVector(1.4f, 1.6f, 2.2f);
+
+	UPROPERTY(EditAnywhere, Category="Components|OceanQuadtree", BlueprintReadOnly)
+	FVector PerlinOctave = FVector(1.12f, 0.59f, 0.23f);
+
 	UPROPERTY(EditAnywhere, Category="Components|OceanQuadtree", BlueprintReadOnly)
 	class UCanvasRenderTarget2D* DisplacementMap = nullptr;
 
