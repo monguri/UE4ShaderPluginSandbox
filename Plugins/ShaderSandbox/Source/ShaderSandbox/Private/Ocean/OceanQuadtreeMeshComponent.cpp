@@ -284,10 +284,10 @@ public:
 		Params.DxyzDebugAmplitude = Component->DxyzDebugAmplitude;
 
 		// レンダースレッド内でやればコマンドキューに別のコマンドを発行せずに即実行して無駄がないのでここでやる
-		const FVector2D& PerlinMovement = -Params.WindDirection * Params.AccumulatedTime * Component->PerlinSpeed; // 風の方向と逆方向にしている
+		const FVector2D& PerlinUVOffset = -Params.WindDirection * Params.AccumulatedTime * Component->PerlinUVSpeed; // 風の方向と逆方向にしている
 		for (int32 LOD = 0; LOD < MaxLOD + 1; LOD++)
 		{
-			LODMIDList[LOD]->SetVectorParameterValue(FName("PerlinMovement"), FVector(PerlinMovement.X, PerlinMovement.Y, 0.0f));
+			LODMIDList[LOD]->SetVectorParameterValue(FName("PerlinUVOffset"), FVector(PerlinUVOffset.X, PerlinUVOffset.Y, 0.0f));
 		}
 
 		FOceanBufferViews Views;
@@ -518,7 +518,9 @@ void UOceanQuadtreeMeshComponent::OnRegister()
 		LODMIDList[LOD]->SetVectorParameterValue(FName("LODColor"), FLinearColor((MaxLOD - LOD) * InvMaxLOD, 0.0f, LOD * InvMaxLOD));
 		LODMIDList[LOD]->SetVectorParameterValue(FName("PerlinDisplacement"), PerlinDisplacement);
 		LODMIDList[LOD]->SetVectorParameterValue(FName("PerlinGradient"), PerlinGradient);
-		LODMIDList[LOD]->SetVectorParameterValue(FName("PerlinOctave"), PerlinOctave);
+		// UVスケールが整数の逆数にならないと、ループ構造でperinノイズを使っている以上、境界部分でずれが起きる。よってUPROPERTYでは逆数をFIntVectorで扱っている。
+		// PerlinUVScaleは上のUVスケールで決められたパッチの中でさらにスケールさせるものである。
+		LODMIDList[LOD]->SetVectorParameterValue(FName("PerlinUVScale"), FVector(1.0f / PerlinUVInvScale.X, 1.0f / PerlinUVInvScale.Y, 1.0f / PerlinUVInvScale.Z));
 	}
 }
 
