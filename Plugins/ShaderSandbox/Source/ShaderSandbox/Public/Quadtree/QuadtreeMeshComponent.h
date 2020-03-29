@@ -51,6 +51,6 @@ private:
 
 	void CreateQuadMesh();
 	uint32 CreateInnerMesh();
-	uint32 CreateBoundaryMesh();
+	uint32 CreateBoundaryMesh(Quadtree::EAdjacentQuadNodeLODDifference RightAdjLODDiff, Quadtree::EAdjacentQuadNodeLODDifference LeftAdjLODDiff, Quadtree::EAdjacentQuadNodeLODDifference BottomAdjLODDiff, Quadtree::EAdjacentQuadNodeLODDifference TopAdjLODDiff);
 };
 

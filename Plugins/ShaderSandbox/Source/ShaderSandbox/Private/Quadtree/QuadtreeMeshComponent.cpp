@@ -331,7 +331,7 @@ void UQuadtreeMeshComponent::CreateQuadMesh()
 				for (uint32 TopType = (uint32)EAdjacentQuadNodeLODDifference::LESS_OR_EQUAL_OR_NOT_EXIST; TopType < (uint32)EAdjacentQuadNodeLODDifference::MAX; TopType++)
 				{
 					uint32 NumInnerMeshIndices = CreateInnerMesh();
-					uint32 NumBoundaryMeshIndices = CreateBoundaryMesh();
+					uint32 NumBoundaryMeshIndices = CreateBoundaryMesh((EAdjacentQuadNodeLODDifference)RightType, (EAdjacentQuadNodeLODDifference)LeftType, (EAdjacentQuadNodeLODDifference)BottomType, (EAdjacentQuadNodeLODDifference)TopType);
 					// TArrayのインデックスは、RightType * 3^3 + LeftType * 3^2 + BottomType * 3^1 + TopType * 3^0となる
 					QuadMeshParams.Emplace(IndexOffset, NumInnerMeshIndices + NumBoundaryMeshIndices);
 					IndexOffset += NumInnerMeshIndices + NumBoundaryMeshIndices;
@@ -346,7 +346,6 @@ void UQuadtreeMeshComponent::CreateQuadMesh()
 
 uint32 UQuadtreeMeshComponent::CreateInnerMesh()
 {
-#if 0
 	// 内側の部分はどのメッシュパターンでも同じだが、すべて同じものを作成する。ドローコールでインデックスバッファの不連続アクセスはできないので
 	for (int32 Row = 1; Row < NumGridDivision - 1; Row++)
 	{
@@ -363,11 +362,14 @@ uint32 UQuadtreeMeshComponent::CreateInnerMesh()
 	}
 
 	return 6 * (NumGridDivision - 2) * (NumGridDivision - 2);
-#else
-	// とりあえずデグレテストのために今までと同じメッシュをCreateInnerMesh()だけで作る
-	for (int32 Row = 0; Row < NumGridDivision; Row++)
+}
+
+uint32 UQuadtreeMeshComponent::CreateBoundaryMesh(EAdjacentQuadNodeLODDifference RightAdjLODDiff, EAdjacentQuadNodeLODDifference LeftAdjLODDiff, EAdjacentQuadNodeLODDifference BottomAdjLODDiff, EAdjacentQuadNodeLODDifference TopAdjLODDiff)
+{
+	// Right
 	{
-		for (int32 Column = 0; Column < NumGridDivision; Column++)
+		int32 Column = 0;
+		for (int32 Row = 0; Row < NumGridDivision; Row++)
 		{
 			_Indices.Emplace(Row * (NumGridDivision + 1) + Column);
 			_Indices.Emplace((Row + 1) * (NumGridDivision + 1) + Column);
@@ -379,13 +381,52 @@ uint32 UQuadtreeMeshComponent::CreateInnerMesh()
 		}
 	}
 
-	return 6 * NumGridDivision * NumGridDivision;
-#endif
-}
+	// Left
+	{
+		int32 Column = NumGridDivision - 1;
+		for (int32 Row = 0; Row < NumGridDivision; Row++)
+		{
+			_Indices.Emplace(Row * (NumGridDivision + 1) + Column);
+			_Indices.Emplace((Row + 1) * (NumGridDivision + 1) + Column);
+			_Indices.Emplace((Row + 1) * (NumGridDivision + 1) + Column + 1);
 
-uint32 UQuadtreeMeshComponent::CreateBoundaryMesh()
-{
-	return 0;
+			_Indices.Emplace(Row * (NumGridDivision + 1) + Column);
+			_Indices.Emplace((Row + 1) * (NumGridDivision + 1) + Column + 1);
+			_Indices.Emplace(Row * (NumGridDivision + 1) + Column + 1);
+		}
+	}
+
+	// Bottom
+	{
+		int32 Row = 0;
+		for (int32 Column = 1; Column < NumGridDivision - 1; Column++) // Right、Leftとかぶらないように左右の一列は抜く
+		{
+			_Indices.Emplace(Row * (NumGridDivision + 1) + Column);
+			_Indices.Emplace((Row + 1) * (NumGridDivision + 1) + Column);
+			_Indices.Emplace((Row + 1) * (NumGridDivision + 1) + Column + 1);
+
+			_Indices.Emplace(Row * (NumGridDivision + 1) + Column);
+			_Indices.Emplace((Row + 1) * (NumGridDivision + 1) + Column + 1);
+			_Indices.Emplace(Row * (NumGridDivision + 1) + Column + 1);
+		}
+	}
+
+	// Top
+	{
+		int32 Row = NumGridDivision - 1;
+		for (int32 Column = 1; Column < NumGridDivision - 1; Column++) // Right、Leftとかぶらないように左右の一列は抜く
+		{
+			_Indices.Emplace(Row * (NumGridDivision + 1) + Column);
+			_Indices.Emplace((Row + 1) * (NumGridDivision + 1) + Column);
+			_Indices.Emplace((Row + 1) * (NumGridDivision + 1) + Column + 1);
+
+			_Indices.Emplace(Row * (NumGridDivision + 1) + Column);
+			_Indices.Emplace((Row + 1) * (NumGridDivision + 1) + Column + 1);
+			_Indices.Emplace(Row * (NumGridDivision + 1) + Column + 1);
+		}
+	}
+
+	return 6 * NumGridDivision * 2 + 6 * (NumGridDivision - 2) * 2;
 }
 
 FBoxSphereBounds UQuadtreeMeshComponent::CalcBounds(const FTransform& LocalToWorld) const
