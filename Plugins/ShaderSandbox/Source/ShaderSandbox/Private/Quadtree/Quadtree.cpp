@@ -134,7 +134,6 @@ int32 BuildQuadtreeRecursively(int32 MaxLOD, int32 NumRowColumn, float MaxScreen
 
 int32 SearchLeafContainsPosition2D(const TArray<FQuadNode>& RenderQuadNodeList, const FVector2D& Position2D)
 {
-#if 1
 	// AllQuadNodeListから木をたどって探してもいいが、ロジックが複雑になるし、現実的にそんなに処理数に大した差はでないのでRenderQuadNodeListからループで探す
 	for (int32 i = 0; i < RenderQuadNodeList.Num(); i++)
 	{
@@ -145,50 +144,6 @@ int32 SearchLeafContainsPosition2D(const TArray<FQuadNode>& RenderQuadNodeList, 
 	}
 
 	return INDEX_NONE;
-#else
-	// AllQuadNodeListから木をたどるバージョンの試し実装。テストはしてない
-	check(AllQuadNodeList.Num() > 0);
-	int32 Index = 0;
-	FQuadNode Node = AllQuadNodeList[Index]; // RootNode
-
-	if (!Node.ContainsPosition2D(Position2D))
-	{
-		return INDEX_NONE;
-	}
-
-	while (!Node.IsLeaf())
-	{
-		// 子を4つ見ていって位置を含んでいるもので最初に見つけたものを次のループでLeafチェックする
-		bool bFoundChildContains = false;
-		for (int32 i = 0; i < 4; i++)
-		{
-			Index = Node.ChildNodeIndices[i];
-			if (Index != INDEX_NONE)
-			{
-				Node = AllQuadNodeList[Index];
-				if (Node.ContainsPosition2D(Position2D))
-				{
-					bFoundChildContains = true;
-					break;
-				}
-			}
-		}
-
-		if (!bFoundChildContains)
-		{
-			break;
-		}
-	}
-
-	if (Node.IsLeaf())
-	{
-		return Index;
-	}
-	else
-	{
-		return INDEX_NONE;
-	}
-#endif
 }
 } // namespace
 
