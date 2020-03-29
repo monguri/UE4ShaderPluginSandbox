@@ -14,7 +14,6 @@
 #include "Engine/Engine.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "DeformMesh/DeformableVertexBuffers.h"
-#include "Quadtree/Quadtree.h"
 
 using namespace Quadtree;
 
@@ -33,6 +32,7 @@ public:
 		, VertexFactory(GetScene().GetFeatureLevel(), "FQuadtreeMeshSceneProxy")
 		, MaterialRelevance(Component->GetMaterialRelevance(GetScene().GetFeatureLevel()))
 		, LODMIDList(Component->GetLODMIDList())
+		, QuadMeshParams(Component->GetQuadMeshParams())
 		, NumGridDivision(Component->NumGridDivision)
 		, GridLength(Component->GridLength)
 		, MaxLOD(Component->MaxLOD)
@@ -130,6 +130,21 @@ public:
 						MaterialProxy = LODMIDList[Node.LOD]->GetRenderProxy();
 					}
 
+					// 隣接するノードとのLODの差から、使用するメッシュトポロジーを用意したもののなかから選択する
+					const FVector2D& RightAdjPos = FVector2D(Node.BottomRight.X - PatchLength * 0.5f, Node.BottomRight.Y + Node.Length * 0.5f);
+					const FVector2D& LeftAdjPos = FVector2D(Node.BottomRight.X + Node.Length + PatchLength * 0.5f, Node.BottomRight.Y + Node.Length * 0.5f);
+					const FVector2D& BottomAdjPos = FVector2D(Node.BottomRight.X + Node.Length * 0.5f, Node.BottomRight.Y - PatchLength * 0.5f);
+					const FVector2D& TopAdjPos = FVector2D(Node.BottomRight.X + Node.Length * 0.5f, Node.BottomRight.Y + Node.Length + PatchLength * 0.5f);
+
+					EAdjacentQuadNodeLODDifference RightAdjLODDiff = Quadtree::QueryAdjacentNodeType(Node, RightAdjPos, RenderList);
+					EAdjacentQuadNodeLODDifference LeftAdjLODDiff = Quadtree::QueryAdjacentNodeType(Node, LeftAdjPos, RenderList);
+					EAdjacentQuadNodeLODDifference BottomAdjLODDiff = Quadtree::QueryAdjacentNodeType(Node, BottomAdjPos, RenderList);
+					EAdjacentQuadNodeLODDifference TopAdjLODDiff = Quadtree::QueryAdjacentNodeType(Node, TopAdjPos, RenderList);
+
+					// 3進数によって4つの隣ノードのタイプとインデックスを対応させる
+					uint32 QuadMeshParamsIndex = 27 * (uint32)RightAdjLODDiff + 9 * (uint32)LeftAdjLODDiff + 3 * (uint32)BottomAdjLODDiff + (uint32)TopAdjLODDiff;
+					FQuadMeshParameter MeshParams = QuadMeshParams[QuadMeshParamsIndex];
+
 					// Draw the mesh.
 					FMeshBatch& Mesh = Collector.AllocateMesh();
 					FMeshBatchElement& BatchElement = Mesh.Elements[0];
@@ -167,8 +182,8 @@ public:
 					DynamicPrimitiveUniformBuffer.Set(NewLocalToWorld, PreviousLocalToWorld, NewBounds, NewLocalBounds, true, bHasPrecomputedVolumetricLightmap, DrawsVelocity(), false);
 					BatchElement.PrimitiveUniformBufferResource = &DynamicPrimitiveUniformBuffer.UniformBuffer;
 
-					BatchElement.FirstIndex = 0;
-					BatchElement.NumPrimitives = IndexBuffer.Indices.Num() / 3;
+					BatchElement.FirstIndex = MeshParams.IndexBufferOffset;
+					BatchElement.NumPrimitives = MeshParams.NumIndices / 3;
 					BatchElement.MinVertexIndex = 0;
 					BatchElement.MaxVertexIndex = VertexBuffers.PositionVertexBuffer.GetNumVertices() - 1;
 					//Mesh.ReverseCulling = IsLocalToWorldDeterminantNegative();
@@ -215,6 +230,7 @@ private:
 
 	FMaterialRelevance MaterialRelevance;
 	TArray<UMaterialInstanceDynamic*> LODMIDList; // Component側でUMaterialInstanceDynamicは保持されてるのでGCで解放はされない
+	TArray<Quadtree::FQuadMeshParameter> QuadMeshParams;
 	int32 NumGridDivision;
 	float GridLength;
 	int32 MaxLOD;
@@ -243,9 +259,7 @@ void UQuadtreeMeshComponent::OnRegister()
 {
 	Super::OnRegister();
 
-	// デフォルト値では、VertexBufferは128x128のグリッド、グリッドの縦横は1cmにする。描画時はスケールして使う。
-	// ここでは正方形の中心を原点にする平行移動はしない。実際にメッシュを描画に渡すときに平行移動を行う。
-	InitGridMeshSetting(NumGridDivision, NumGridDivision, GridLength, GridLength);
+	CreateQuadMesh();
 
 	UMaterialInterface* Material = GetMaterial(0);
 	if(Material == NULL)
@@ -270,6 +284,110 @@ void UQuadtreeMeshComponent::OnRegister()
 	}
 }
 
+void UQuadtreeMeshComponent::CreateQuadMesh()
+{
+	// グリッドメッシュ型のVertexBufferやTexCoordsBufferを用意するのはUDeformableGridMeshComponent::Ini:tGridMeshSetting()と同じだが、
+	// 接するQuadNodeのLODの差を考慮して数パターンのインデックス配列を用意せねばならないので独自の実装をする
+	_NumRow = NumGridDivision;
+	_NumColumn = NumGridDivision;
+	_GridWidth = GridLength;
+	_GridHeight = GridLength;
+	_Vertices.Reset((NumGridDivision + 1) * (NumGridDivision + 1));
+	_TexCoords.Reset((NumGridDivision + 1) * (NumGridDivision + 1));
+	// TODO:数は計算式から求まる？
+	//_Indices.Reset(NumRow * NumColumn * 2 * 3); // ひとつのグリッドには3つのTriangle、6つの頂点インデックス指定がある
+
+	// ここでは正方形の中心を原点にする平行移動やLODに応じたスケールはしない。実際にメッシュを描画に渡すときに平行移動とスケールを行う。
+
+	for (int32 y = 0; y < NumGridDivision + 1; y++)
+	{
+		for (int32 x = 0; x < NumGridDivision + 1; x++)
+		{
+			_Vertices.Emplace(x * GridLength, y * GridLength, 0.0f, 0.0f);
+		}
+	}
+
+	for (int32 y = 0; y < NumGridDivision + 1; y++)
+	{
+		for (int32 x = 0; x < NumGridDivision + 1; x++)
+		{
+			_TexCoords.Emplace((float)x / NumGridDivision, (float)y / NumGridDivision);
+		}
+	}
+
+	check((uint32)EAdjacentQuadNodeLODDifference::LESS_OR_EQUAL_OR_NOT_EXIST == 0);
+	check((uint32)EAdjacentQuadNodeLODDifference::MAX == 3);
+
+	// 右隣がLODが自分以下なのと、一段階上なのと、二段階以上なのの3パターン。左隣、下隣、上隣でも3パターンでそれらの組み合わせで3*3*3*3パターン。
+	QuadMeshParams.Reset(81);
+
+	uint32 IndexOffset = 0;
+	for (uint32 RightType = (uint32)EAdjacentQuadNodeLODDifference::LESS_OR_EQUAL_OR_NOT_EXIST; RightType < (uint32)EAdjacentQuadNodeLODDifference::MAX; RightType++)
+	{
+		for (uint32 LeftType = (uint32)EAdjacentQuadNodeLODDifference::LESS_OR_EQUAL_OR_NOT_EXIST; LeftType < (uint32)EAdjacentQuadNodeLODDifference::MAX; LeftType++)
+		{
+			for (uint32 BottomType = (uint32)EAdjacentQuadNodeLODDifference::LESS_OR_EQUAL_OR_NOT_EXIST; BottomType < (uint32)EAdjacentQuadNodeLODDifference::MAX; BottomType++)
+			{
+				for (uint32 TopType = (uint32)EAdjacentQuadNodeLODDifference::LESS_OR_EQUAL_OR_NOT_EXIST; TopType < (uint32)EAdjacentQuadNodeLODDifference::MAX; TopType++)
+				{
+					uint32 NumInnerMeshIndices = CreateInnerMesh();
+					uint32 NumBoundaryMeshIndices = CreateBoundaryMesh();
+					// TArrayのインデックスは、RightType * 3^3 + LeftType * 3^2 + BottomType * 3^1 + TopType * 3^0となる
+					QuadMeshParams.Emplace(IndexOffset, NumInnerMeshIndices + NumBoundaryMeshIndices);
+					IndexOffset += NumInnerMeshIndices + NumBoundaryMeshIndices;
+				}
+			}
+		}
+	}
+
+	MarkRenderStateDirty();
+	UpdateBounds();
+}
+
+uint32 UQuadtreeMeshComponent::CreateInnerMesh()
+{
+#if 0
+	// 内側の部分はどのメッシュパターンでも同じだが、すべて同じものを作成する。ドローコールでインデックスバッファの不連続アクセスはできないので
+	for (int32 Row = 1; Row < NumGridDivision - 1; Row++)
+	{
+		for (int32 Column = 1; Column < NumGridDivision - 1; Column++)
+		{
+			_Indices.Emplace(Row * (NumGridDivision + 1) + Column);
+			_Indices.Emplace((Row + 1) * (NumGridDivision + 1) + Column);
+			_Indices.Emplace((Row + 1) * (NumGridDivision + 1) + Column + 1);
+
+			_Indices.Emplace(Row * (NumGridDivision + 1) + Column);
+			_Indices.Emplace((Row + 1) * (NumGridDivision + 1) + Column + 1);
+			_Indices.Emplace(Row * (NumGridDivision + 1) + Column + 1);
+		}
+	}
+
+	return 6 * (NumGridDivision - 2) * (NumGridDivision - 2);
+#else
+	// とりあえずデグレテストのために今までと同じメッシュをCreateInnerMesh()だけで作る
+	for (int32 Row = 0; Row < NumGridDivision; Row++)
+	{
+		for (int32 Column = 0; Column < NumGridDivision; Column++)
+		{
+			_Indices.Emplace(Row * (NumGridDivision + 1) + Column);
+			_Indices.Emplace((Row + 1) * (NumGridDivision + 1) + Column);
+			_Indices.Emplace((Row + 1) * (NumGridDivision + 1) + Column + 1);
+
+			_Indices.Emplace(Row * (NumGridDivision + 1) + Column);
+			_Indices.Emplace((Row + 1) * (NumGridDivision + 1) + Column + 1);
+			_Indices.Emplace(Row * (NumGridDivision + 1) + Column + 1);
+		}
+	}
+
+	return 6 * NumGridDivision * NumGridDivision;
+#endif
+}
+
+uint32 UQuadtreeMeshComponent::CreateBoundaryMesh()
+{
+	return 0;
+}
+
 FBoxSphereBounds UQuadtreeMeshComponent::CalcBounds(const FTransform& LocalToWorld) const
 {
 	// QuadtreeのRootNodeのサイズにしておく。アクタのBPエディタのビューポート表示やフォーカス操作などでこのBoundが使われるのでなるべく正確にする
@@ -286,5 +404,10 @@ FBoxSphereBounds UQuadtreeMeshComponent::CalcBounds(const FTransform& LocalToWor
 const TArray<class UMaterialInstanceDynamic*>& UQuadtreeMeshComponent::GetLODMIDList() const
 {
 	return LODMIDList;
+}
+
+const TArray<Quadtree::FQuadMeshParameter>& UQuadtreeMeshComponent::GetQuadMeshParams() const
+{
+	return QuadMeshParams;
 }
 

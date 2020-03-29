@@ -1,6 +1,7 @@
 #pragma once
 
 #include "DeformMesh/DeformableGridMeshComponent.h"
+#include "Quadtree.h"
 #include "QuadtreeMeshComponent.generated.h"
 
 // almost all is copy of UCustomMeshComponent
@@ -37,6 +38,7 @@ public:
 	//~ Begin USceneComponent Interface.
 
 	const TArray<class UMaterialInstanceDynamic*>& GetLODMIDList() const;
+	const TArray<Quadtree::FQuadMeshParameter>& GetQuadMeshParams() const;
 
 protected:
 	virtual void OnRegister() override;
@@ -44,5 +46,11 @@ protected:
 private:
 	UPROPERTY(Transient)
 	TArray<class UMaterialInstanceDynamic*> LODMIDList;
+
+	TArray<Quadtree::FQuadMeshParameter> QuadMeshParams;
+
+	void CreateQuadMesh();
+	uint32 CreateInnerMesh();
+	uint32 CreateBoundaryMesh();
 };
 

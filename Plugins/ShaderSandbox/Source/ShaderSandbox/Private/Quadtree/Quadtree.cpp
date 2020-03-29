@@ -131,10 +131,79 @@ int32 BuildQuadtreeRecursively(int32 MaxLOD, int32 NumRowColumn, float MaxScreen
 	int32 Index = OutQuadNodeList.Add(Node);
 	return Index;
 }
+
+int32 SearchLeafContainsPosition2D(const TArray<FQuadNode>& RenderQuadNodeList, const FVector2D& Position2D)
+{
+#if 1
+	// AllQuadNodeListから木をたどって探してもいいが、ロジックが複雑になるし、現実的にそんなに処理数に大した差はでないのでRenderQuadNodeListからループで探す
+	for (int32 i = 0; i < RenderQuadNodeList.Num(); i++)
+	{
+		if (RenderQuadNodeList[i].ContainsPosition2D(Position2D))
+		{
+			return i;
+		}
+	}
+
+	return INDEX_NONE;
+#else
+	// AllQuadNodeListから木をたどるバージョンの試し実装。テストはしてない
+	check(AllQuadNodeList.Num() > 0);
+	int32 Index = 0;
+	FQuadNode Node = AllQuadNodeList[Index]; // RootNode
+
+	if (!Node.ContainsPosition2D(Position2D))
+	{
+		return INDEX_NONE;
+	}
+
+	while (!Node.IsLeaf())
+	{
+		// 子を4つ見ていって位置を含んでいるもので最初に見つけたものを次のループでLeafチェックする
+		bool bFoundChildContains = false;
+		for (int32 i = 0; i < 4; i++)
+		{
+			Index = Node.ChildNodeIndices[i];
+			if (Index != INDEX_NONE)
+			{
+				Node = AllQuadNodeList[Index];
+				if (Node.ContainsPosition2D(Position2D))
+				{
+					bFoundChildContains = true;
+					break;
+				}
+			}
+		}
+
+		if (!bFoundChildContains)
+		{
+			break;
+		}
+	}
+
+	if (Node.IsLeaf())
+	{
+		return Index;
+	}
+	else
+	{
+		return INDEX_NONE;
+	}
+#endif
+}
 } // namespace
 
 namespace Quadtree
 {
+bool FQuadNode::IsLeaf() const
+{
+	return (ChildNodeIndices[0] == INDEX_NONE) && (ChildNodeIndices[1] == INDEX_NONE) && (ChildNodeIndices[2] == INDEX_NONE) && (ChildNodeIndices[3] == INDEX_NONE);
+}
+
+bool FQuadNode::ContainsPosition2D(const FVector2D& Position2D) const
+{
+	return (BottomRight.X <= Position2D.X && Position2D.X <= (BottomRight.X + Length) && BottomRight.Y <= Position2D.Y && Position2D.Y <= (BottomRight.Y + Length));
+}
+
 void BuildQuadtree(int32 MaxLOD, int32 NumRowColumn, float MaxScreenCoverage, float PatchLength, const FVector& CameraPosition, const FVector2D& ProjectionScale, const FMatrix& ViewProjectionMatrix, FQuadNode& RootNode, TArray<FQuadNode>& OutAllQuadNodeList, TArray<FQuadNode>& OutRenderQuadNodeList)
 {
 	BuildQuadtreeRecursively(MaxLOD, NumRowColumn, MaxScreenCoverage, PatchLength, CameraPosition, ProjectionScale, ViewProjectionMatrix, RootNode, OutAllQuadNodeList);
@@ -146,6 +215,27 @@ void BuildQuadtree(int32 MaxLOD, int32 NumRowColumn, float MaxScreenCoverage, fl
 			OutRenderQuadNodeList.Add(Node);
 		}
 	}
+}
+
+EAdjacentQuadNodeLODDifference QueryAdjacentNodeType(const FQuadNode& Node, const FVector2D& AdjacentPosition, const TArray<FQuadNode>& RenderQuadNodeList)
+{
+	int32 AdjNodeIndex = SearchLeafContainsPosition2D(RenderQuadNodeList, AdjacentPosition);
+
+	EAdjacentQuadNodeLODDifference Ret = EAdjacentQuadNodeLODDifference::LESS_OR_EQUAL_OR_NOT_EXIST;
+	if (AdjNodeIndex != INDEX_NONE)
+	{
+		int32 AdjNodeLOD = RenderQuadNodeList[AdjNodeIndex].LOD;
+		if (Node.LOD + 2 <= AdjNodeLOD)
+		{
+			Ret = EAdjacentQuadNodeLODDifference::GREATER_BY_MORE_THAN_2;
+		}
+		else if (Node.LOD + 1 <= AdjNodeLOD)
+		{
+			Ret = EAdjacentQuadNodeLODDifference::GREATER_BY_1;
+		}
+	}
+
+	return Ret;
 }
 } // namespace Quadtree
 
