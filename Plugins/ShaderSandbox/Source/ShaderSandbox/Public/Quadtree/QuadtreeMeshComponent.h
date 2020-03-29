@@ -42,6 +42,7 @@ public:
 
 protected:
 	virtual void OnRegister() override;
+	virtual int32 GetMeshIndex(int32 Row, int32 Column) override;
 
 private:
 	UPROPERTY(Transient)

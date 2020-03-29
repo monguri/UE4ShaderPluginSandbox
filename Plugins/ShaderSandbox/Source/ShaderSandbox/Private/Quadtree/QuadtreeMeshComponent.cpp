@@ -371,13 +371,13 @@ uint32 UQuadtreeMeshComponent::CreateBoundaryMesh(EAdjacentQuadNodeLODDifference
 		int32 Column = 0;
 		for (int32 Row = 0; Row < NumGridDivision; Row++)
 		{
-			_Indices.Emplace(Row * (NumGridDivision + 1) + Column);
-			_Indices.Emplace((Row + 1) * (NumGridDivision + 1) + Column);
-			_Indices.Emplace((Row + 1) * (NumGridDivision + 1) + Column + 1);
+			_Indices.Emplace(GetMeshIndex(Row, Column));
+			_Indices.Emplace(GetMeshIndex(Row + 1, Column));
+			_Indices.Emplace(GetMeshIndex(Row + 1, Column + 1));
 
-			_Indices.Emplace(Row * (NumGridDivision + 1) + Column);
-			_Indices.Emplace((Row + 1) * (NumGridDivision + 1) + Column + 1);
-			_Indices.Emplace(Row * (NumGridDivision + 1) + Column + 1);
+			_Indices.Emplace(GetMeshIndex(Row, Column));
+			_Indices.Emplace(GetMeshIndex(Row + 1, Column + 1));
+			_Indices.Emplace(GetMeshIndex(Row, Column + 1));
 		}
 	}
 
@@ -386,13 +386,13 @@ uint32 UQuadtreeMeshComponent::CreateBoundaryMesh(EAdjacentQuadNodeLODDifference
 		int32 Column = NumGridDivision - 1;
 		for (int32 Row = 0; Row < NumGridDivision; Row++)
 		{
-			_Indices.Emplace(Row * (NumGridDivision + 1) + Column);
-			_Indices.Emplace((Row + 1) * (NumGridDivision + 1) + Column);
-			_Indices.Emplace((Row + 1) * (NumGridDivision + 1) + Column + 1);
+			_Indices.Emplace(GetMeshIndex(Row, Column));
+			_Indices.Emplace(GetMeshIndex(Row + 1, Column));
+			_Indices.Emplace(GetMeshIndex(Row + 1, Column + 1));
 
-			_Indices.Emplace(Row * (NumGridDivision + 1) + Column);
-			_Indices.Emplace((Row + 1) * (NumGridDivision + 1) + Column + 1);
-			_Indices.Emplace(Row * (NumGridDivision + 1) + Column + 1);
+			_Indices.Emplace(GetMeshIndex(Row, Column));
+			_Indices.Emplace(GetMeshIndex(Row + 1, Column + 1));
+			_Indices.Emplace(GetMeshIndex(Row, Column + 1));
 		}
 	}
 
@@ -401,13 +401,13 @@ uint32 UQuadtreeMeshComponent::CreateBoundaryMesh(EAdjacentQuadNodeLODDifference
 		int32 Row = 0;
 		for (int32 Column = 1; Column < NumGridDivision - 1; Column++) // Right、Leftとかぶらないように左右の一列は抜く
 		{
-			_Indices.Emplace(Row * (NumGridDivision + 1) + Column);
-			_Indices.Emplace((Row + 1) * (NumGridDivision + 1) + Column);
-			_Indices.Emplace((Row + 1) * (NumGridDivision + 1) + Column + 1);
+			_Indices.Emplace(GetMeshIndex(Row, Column));
+			_Indices.Emplace(GetMeshIndex(Row + 1, Column));
+			_Indices.Emplace(GetMeshIndex(Row + 1, Column + 1));
 
-			_Indices.Emplace(Row * (NumGridDivision + 1) + Column);
-			_Indices.Emplace((Row + 1) * (NumGridDivision + 1) + Column + 1);
-			_Indices.Emplace(Row * (NumGridDivision + 1) + Column + 1);
+			_Indices.Emplace(GetMeshIndex(Row, Column));
+			_Indices.Emplace(GetMeshIndex(Row + 1, Column + 1));
+			_Indices.Emplace(GetMeshIndex(Row, Column + 1));
 		}
 	}
 
@@ -416,17 +416,22 @@ uint32 UQuadtreeMeshComponent::CreateBoundaryMesh(EAdjacentQuadNodeLODDifference
 		int32 Row = NumGridDivision - 1;
 		for (int32 Column = 1; Column < NumGridDivision - 1; Column++) // Right、Leftとかぶらないように左右の一列は抜く
 		{
-			_Indices.Emplace(Row * (NumGridDivision + 1) + Column);
-			_Indices.Emplace((Row + 1) * (NumGridDivision + 1) + Column);
-			_Indices.Emplace((Row + 1) * (NumGridDivision + 1) + Column + 1);
+			_Indices.Emplace(GetMeshIndex(Row, Column));
+			_Indices.Emplace(GetMeshIndex(Row + 1, Column));
+			_Indices.Emplace(GetMeshIndex(Row + 1, Column + 1));
 
-			_Indices.Emplace(Row * (NumGridDivision + 1) + Column);
-			_Indices.Emplace((Row + 1) * (NumGridDivision + 1) + Column + 1);
-			_Indices.Emplace(Row * (NumGridDivision + 1) + Column + 1);
+			_Indices.Emplace(GetMeshIndex(Row, Column));
+			_Indices.Emplace(GetMeshIndex(Row + 1, Column + 1));
+			_Indices.Emplace(GetMeshIndex(Row, Column + 1));
 		}
 	}
 
 	return 6 * NumGridDivision * 2 + 6 * (NumGridDivision - 2) * 2;
+}
+
+int32 UQuadtreeMeshComponent::GetMeshIndex(int32 Row, int32 Column)
+{
+	return Row * (NumGridDivision + 1) + Column;
 }
 
 FBoxSphereBounds UQuadtreeMeshComponent::CalcBounds(const FTransform& LocalToWorld) const

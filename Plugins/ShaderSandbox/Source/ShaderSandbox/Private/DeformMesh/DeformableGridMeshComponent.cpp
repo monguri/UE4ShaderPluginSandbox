@@ -36,18 +36,23 @@ void UDeformableGridMeshComponent::InitGridMeshSetting(int32 NumRow, int32 NumCo
 	{
 		for (int32 Column = 0; Column < NumColumn; Column++)
 		{
-			_Indices.Emplace(Row * (NumColumn + 1) + Column);
-			_Indices.Emplace((Row + 1) * (NumColumn + 1) + Column);
-			_Indices.Emplace((Row + 1) * (NumColumn + 1) + Column + 1);
+			_Indices.Emplace(GetMeshIndex(Row, Column));
+			_Indices.Emplace(GetMeshIndex(Row + 1, Column));
+			_Indices.Emplace(GetMeshIndex(Row + 1, Column + 1));
 
-			_Indices.Emplace(Row * (NumColumn + 1) + Column);
-			_Indices.Emplace((Row + 1) * (NumColumn + 1) + Column + 1);
-			_Indices.Emplace(Row * (NumColumn + 1) + Column + 1);
+			_Indices.Emplace(GetMeshIndex(Row, Column));
+			_Indices.Emplace(GetMeshIndex(Row + 1, Column + 1));
+			_Indices.Emplace(GetMeshIndex(Row, Column + 1));
 		}
 	}
 
 	MarkRenderStateDirty();
 	UpdateBounds();
+}
+
+int32 UDeformableGridMeshComponent::GetMeshIndex(int32 Row, int32 Column)
+{
+	return Row * (_NumColumn + 1) + Column;
 }
 
 int32 UDeformableGridMeshComponent::GetNumMaterials() const

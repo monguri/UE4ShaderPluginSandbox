@@ -40,6 +40,7 @@ public:
 	//~ Begin USceneComponent Interface.
 
 protected:
+	virtual int32 GetMeshIndex(int32 Row, int32 Column);
 	virtual void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
 
 	uint32 _NumRow = 10;
