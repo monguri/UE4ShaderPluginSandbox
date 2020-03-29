@@ -354,9 +354,9 @@ void UQuadtreeMeshComponent::CreateQuadMesh()
 uint32 UQuadtreeMeshComponent::CreateInnerMesh()
 {
 	// 内側の部分はどのメッシュパターンでも同じだが、すべて同じものを作成する。ドローコールでインデックスバッファの不連続アクセスはできないので
-	for (int32 Row = 1; Row < NumGridDivision; Row++)
+	for (int32 Row = 1; Row < NumGridDivision - 1; Row++)
 	{
-		for (int32 Column = 1; Column < NumGridDivision; Column++)
+		for (int32 Column = 1; Column < NumGridDivision - 1; Column++)
 		{
 			// 4隅のグリッドをトライアングル2つに分割する対角線は、メッシュ全体の対角線の方向になっている方が、
 			// もし4隅の部分で一方の辺がLOD差がなく一方の辺がLOD差がある場合に、境界のジオメトリを作るのが扱いやすい。
@@ -387,7 +387,7 @@ uint32 UQuadtreeMeshComponent::CreateInnerMesh()
 		}
 	}
 
-	return 6 * (NumGridDivision - 1) * (NumGridDivision - 1);
+	return 6 * (NumGridDivision - 2) * (NumGridDivision - 2);
 }
 
 uint32 UQuadtreeMeshComponent::CreateBoundaryMesh(EAdjacentQuadNodeLODDifference RightAdjLODDiff, EAdjacentQuadNodeLODDifference LeftAdjLODDiff, EAdjacentQuadNodeLODDifference BottomAdjLODDiff, EAdjacentQuadNodeLODDifference TopAdjLODDiff)
@@ -401,7 +401,7 @@ uint32 UQuadtreeMeshComponent::CreateBoundaryMesh(EAdjacentQuadNodeLODDifference
 	{
 		if (RightAdjLODDiff == EAdjacentQuadNodeLODDifference::LESS_OR_EQUAL_OR_NOT_EXIST)
 		{
-			for (int32 Row = 0; Row < NumGridDivision + 1; Row++)
+			for (int32 Row = 0; Row < NumGridDivision; Row++)
 			{
 				if (Row % 2 == 0)
 				{
@@ -439,7 +439,7 @@ uint32 UQuadtreeMeshComponent::CreateBoundaryMesh(EAdjacentQuadNodeLODDifference
 		{
 			int32 Step = 1 << (int32)RightAdjLODDiff;
 
-			for (int32 Row = 0; Row < NumGridDivision + 1; Row += Step)
+			for (int32 Row = 0; Row < NumGridDivision; Row += Step)
 			{
 				// 接する部分の辺の長いトライアングル
 				_Indices.Emplace(GetMeshIndex(Row, 0));
@@ -465,7 +465,7 @@ uint32 UQuadtreeMeshComponent::CreateBoundaryMesh(EAdjacentQuadNodeLODDifference
 				// 辺の長いトライアングルの山の上側を埋めるトライアングル
 				for (int32 i = (Step >> 1); i < Step; i++)
 				{
-					if (Row == NumGridDivision && i == (Step - 1))
+					if (Row == (NumGridDivision - 1) && i == (Step - 1))
 					{
 						// Topと重複しないように4隅のトライアングルの分は作らない
 						continue;
@@ -484,16 +484,16 @@ uint32 UQuadtreeMeshComponent::CreateBoundaryMesh(EAdjacentQuadNodeLODDifference
 	{
 		if (LeftAdjLODDiff == EAdjacentQuadNodeLODDifference::LESS_OR_EQUAL_OR_NOT_EXIST)
 		{
-			for (int32 Row = 0; Row < NumGridDivision + 1; Row++)
+			for (int32 Row = 0; Row < NumGridDivision; Row++)
 			{
-				if ((Row + NumGridDivision) % 2 == 0)
+				if ((Row + NumGridDivision - 1) % 2 == 0)
 				{
 					_Indices.Emplace(GetMeshIndex(Row, NumGridDivision - 1));
 					_Indices.Emplace(GetMeshIndex(Row + 1, NumGridDivision));
 					_Indices.Emplace(GetMeshIndex(Row, NumGridDivision));
 					NumIndices += 3;
 
-					if (Row < NumGridDivision) // Topと重複しないように
+					if (Row < (NumGridDivision - 1)) // Topと重複しないように
 					{
 						_Indices.Emplace(GetMeshIndex(Row, NumGridDivision - 1));
 						_Indices.Emplace(GetMeshIndex(Row + 1, NumGridDivision - 1));
@@ -522,7 +522,7 @@ uint32 UQuadtreeMeshComponent::CreateBoundaryMesh(EAdjacentQuadNodeLODDifference
 		{
 			int32 Step = 1 << (int32)LeftAdjLODDiff;
 
-			for (int32 Row = 0; Row < NumGridDivision + 1; Row += Step)
+			for (int32 Row = 0; Row < NumGridDivision; Row += Step)
 			{
 				// 接する部分の辺の長いトライアングル
 				_Indices.Emplace(GetMeshIndex(Row, NumGridDivision));
@@ -548,7 +548,7 @@ uint32 UQuadtreeMeshComponent::CreateBoundaryMesh(EAdjacentQuadNodeLODDifference
 				// 辺の長いトライアングルの山の上側を埋めるトライアングル
 				for (int32 i = (Step >> 1); i < Step; i++)
 				{
-					if (Row == NumGridDivision && i == (Step - 1))
+					if (Row == (NumGridDivision - 1) && i == (Step - 1))
 					{
 						// Topと重複しないように4隅のトライアングルの分は作らない
 						continue;
@@ -567,19 +567,21 @@ uint32 UQuadtreeMeshComponent::CreateBoundaryMesh(EAdjacentQuadNodeLODDifference
 	{
 		if (BottomAdjLODDiff == EAdjacentQuadNodeLODDifference::LESS_OR_EQUAL_OR_NOT_EXIST)
 		{
-			for (int32 Column = 0; Column < NumGridDivision + 1; Column++)
+			for (int32 Column = 0; Column < NumGridDivision; Column++)
 			{
 				if (Column % 2 == 0)
 				{
 					_Indices.Emplace(GetMeshIndex(0, Column));
 					_Indices.Emplace(GetMeshIndex(1, Column + 1));
 					_Indices.Emplace(GetMeshIndex(0, Column + 1));
+					NumIndices += 3;
 
 					if (Column > 0) // Rightと重複しないように
 					{
 						_Indices.Emplace(GetMeshIndex(0, Column));
 						_Indices.Emplace(GetMeshIndex(1, Column));
 						_Indices.Emplace(GetMeshIndex(1, Column + 1));
+						NumIndices += 3;
 					}
 				}
 				else
@@ -587,12 +589,14 @@ uint32 UQuadtreeMeshComponent::CreateBoundaryMesh(EAdjacentQuadNodeLODDifference
 					_Indices.Emplace(GetMeshIndex(0, Column));
 					_Indices.Emplace(GetMeshIndex(1, Column));
 					_Indices.Emplace(GetMeshIndex(0, Column + 1));
+					NumIndices += 3;
 
-					if (Column < NumGridDivision) // Leftと重複しないように
+					if (Column < NumGridDivision - 1) // Leftと重複しないように
 					{
 						_Indices.Emplace(GetMeshIndex(1, Column));
 						_Indices.Emplace(GetMeshIndex(1, Column + 1));
 						_Indices.Emplace(GetMeshIndex(0, Column + 1));
+						NumIndices += 3;
 					}
 				}
 			}
@@ -601,7 +605,7 @@ uint32 UQuadtreeMeshComponent::CreateBoundaryMesh(EAdjacentQuadNodeLODDifference
 		{
 			int32 Step = 1 << (int32)BottomAdjLODDiff;
 
-			for (int32 Column = 0; Column < NumGridDivision + 1; Column += Step)
+			for (int32 Column = 0; Column < NumGridDivision; Column += Step)
 			{
 				// 接する部分の辺の長いトライアングル
 				_Indices.Emplace(GetMeshIndex(0, Column));
@@ -627,7 +631,7 @@ uint32 UQuadtreeMeshComponent::CreateBoundaryMesh(EAdjacentQuadNodeLODDifference
 				// 辺の長いトライアングルの山の左側を埋めるトライアングル
 				for (int32 i = (Step >> 1); i < Step; i++)
 				{
-					if (Column == NumGridDivision && i == (Step - 1))
+					if (Column == (NumGridDivision - 1) && i == (Step - 1))
 					{
 						// Topと重複しないように4隅のトライアングルの分は作らない
 						continue;
@@ -646,7 +650,7 @@ uint32 UQuadtreeMeshComponent::CreateBoundaryMesh(EAdjacentQuadNodeLODDifference
 	{
 		if (TopAdjLODDiff == EAdjacentQuadNodeLODDifference::LESS_OR_EQUAL_OR_NOT_EXIST)
 		{
-			for (int32 Column = 0; Column < NumGridDivision + 1; Column++)
+			for (int32 Column = 0; Column < NumGridDivision; Column++)
 			{
 				// 4隅のグリッドをトライアングル2つに分割する対角線は、メッシュ全体の対角線の方向になっている方が、
 				// もし4隅の部分で一方の辺がLOD差がなく一方の辺がLOD差がある場合に、境界のジオメトリを作るのが扱いやすい。
@@ -654,18 +658,20 @@ uint32 UQuadtreeMeshComponent::CreateBoundaryMesh(EAdjacentQuadNodeLODDifference
 				// TRIANGLE_STRIPと同じ。
 				// NumGridDivisionが偶数であることを前提にしている
 
-				if ((NumGridDivision + Column) % 2 == 0)
+				if ((NumGridDivision - 1 + Column) % 2 == 0)
 				{
-					if (Column < NumGridDivision) // Leftと重複しないように
+					if (Column < NumGridDivision - 1) // Leftと重複しないように
 					{
 						_Indices.Emplace(GetMeshIndex(NumGridDivision - 1, Column));
 						_Indices.Emplace(GetMeshIndex(NumGridDivision, Column + 1));
 						_Indices.Emplace(GetMeshIndex(NumGridDivision - 1, Column + 1));
+						NumIndices += 3;
 					}
 
 					_Indices.Emplace(GetMeshIndex(NumGridDivision - 1, Column));
 					_Indices.Emplace(GetMeshIndex(NumGridDivision, Column));
 					_Indices.Emplace(GetMeshIndex(NumGridDivision, Column + 1));
+					NumIndices += 3;
 				}
 				else
 				{
@@ -674,11 +680,13 @@ uint32 UQuadtreeMeshComponent::CreateBoundaryMesh(EAdjacentQuadNodeLODDifference
 						_Indices.Emplace(GetMeshIndex(NumGridDivision - 1, Column));
 						_Indices.Emplace(GetMeshIndex(NumGridDivision, Column));
 						_Indices.Emplace(GetMeshIndex(NumGridDivision - 1, Column + 1));
+						NumIndices += 3;
 					}
 
 					_Indices.Emplace(GetMeshIndex(NumGridDivision, Column));
 					_Indices.Emplace(GetMeshIndex(NumGridDivision, Column + 1));
 					_Indices.Emplace(GetMeshIndex(NumGridDivision - 1, Column + 1));
+					NumIndices += 3;
 				}
 			}
 		}
@@ -686,7 +694,7 @@ uint32 UQuadtreeMeshComponent::CreateBoundaryMesh(EAdjacentQuadNodeLODDifference
 		{
 			int32 Step = 1 << (int32)TopAdjLODDiff;
 
-			for (int32 Column = 0; Column < NumGridDivision + 1; Column += Step)
+			for (int32 Column = 0; Column < NumGridDivision; Column += Step)
 			{
 				// 接する部分の辺の長いトライアングル
 				_Indices.Emplace(GetMeshIndex(NumGridDivision, Column));
@@ -712,7 +720,7 @@ uint32 UQuadtreeMeshComponent::CreateBoundaryMesh(EAdjacentQuadNodeLODDifference
 				// 辺の長いトライアングルの山の左側を埋めるトライアングル
 				for (int32 i = (Step >> 1); i < Step; i++)
 				{
-					if (Column == NumGridDivision && i == (Step - 1))
+					if (Column == (NumGridDivision - 1) && i == (Step - 1))
 					{
 						// Topと重複しないように4隅のトライアングルの分は作らない
 						continue;
