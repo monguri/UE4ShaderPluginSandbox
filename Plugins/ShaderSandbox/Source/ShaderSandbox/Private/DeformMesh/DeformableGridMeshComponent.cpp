@@ -13,6 +13,7 @@ void UDeformableGridMeshComponent::InitGridMeshSetting(int32 NumRow, int32 NumCo
 	_GridWidth = GridWidth;
 	_GridHeight = GridHeight;
 	_Vertices.Reset((NumRow + 1) * (NumColumn + 1));
+	_TexCoords.Reset((NumRow + 1) * (NumColumn + 1));
 	_Indices.Reset(NumRow * NumColumn * 2 * 3); // ひとつのグリッドには3つのTriangle、6つの頂点インデックス指定がある
 
 	for (int32 y = 0; y < NumRow + 1; y++)
