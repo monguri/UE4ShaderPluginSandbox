@@ -1,6 +1,7 @@
 #pragma once
 
 #include "DeformMesh/DeformableGridMeshComponent.h"
+#include "Quadtree/Quadtree.h"
 #include "OceanQuadtreeMeshComponent.generated.h"
 
 
@@ -109,12 +110,15 @@ public:
 
 	const TArray<class UMaterialInstanceDynamic*>& GetLODMIDList() const;
 	class UMaterialParameterCollectionInstance* GetMPCInstance() const;
+	const TArray<Quadtree::FQuadMeshParameter>& GetQuadMeshParams() const;
 
 protected:
 	//~ Begin UActorComponent Interface.
 	virtual void OnRegister() override;
 	virtual void SendRenderDynamicData_Concurrent() override;
 	//~ End UActorComponent Interface.
+
+	virtual int32 GetMeshIndex(int32 Row, int32 Column) override;
 
 private:
 	FShaderResourceViewRHIRef _DisplacementMapSRV;
@@ -130,5 +134,11 @@ private:
 	TArray<class UMaterialInstanceDynamic*> _LODMIDList;
 	UPROPERTY(Transient)
 	class UMaterialParameterCollectionInstance* _MPCInstance = nullptr;
+
+	TArray<Quadtree::FQuadMeshParameter> QuadMeshParams;
+
+	void CreateQuadMeshes();
+	uint32 CreateInnerMesh();
+	uint32 CreateBoundaryMesh(Quadtree::EAdjacentQuadNodeLODDifference RightAdjLODDiff, Quadtree::EAdjacentQuadNodeLODDifference LeftAdjLODDiff, Quadtree::EAdjacentQuadNodeLODDifference BottomAdjLODDiff, Quadtree::EAdjacentQuadNodeLODDifference TopAdjLODDiff);
 };
 
