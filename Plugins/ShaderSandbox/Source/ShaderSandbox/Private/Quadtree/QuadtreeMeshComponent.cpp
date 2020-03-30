@@ -143,7 +143,7 @@ public:
 
 					// 3進数によって4つの隣ノードのタイプとインデックスを対応させる
 					uint32 QuadMeshParamsIndex = 27 * (uint32)RightAdjLODDiff + 9 * (uint32)LeftAdjLODDiff + 3 * (uint32)BottomAdjLODDiff + (uint32)TopAdjLODDiff;
-					FQuadMeshParameter MeshParams = QuadMeshParams[QuadMeshParamsIndex];
+					const FQuadMeshParameter& MeshParams = QuadMeshParams[QuadMeshParamsIndex];
 
 					// Draw the mesh.
 					FMeshBatch& Mesh = Collector.AllocateMesh();
@@ -266,7 +266,7 @@ void UQuadtreeMeshComponent::OnRegister()
 		return;
 	}
 
-	CreateQuadMesh();
+	CreateQuadMeshes();
 
 	UMaterialInterface* Material = GetMaterial(0);
 	if(Material == NULL)
@@ -289,9 +289,12 @@ void UQuadtreeMeshComponent::OnRegister()
 		LODMIDList[LOD] = UMaterialInstanceDynamic::Create(Material, this);
 		LODMIDList[LOD]->SetVectorParameterValue(FName("Color"), FLinearColor((MaxLOD - LOD) * InvMaxLOD, 0.0f, LOD * InvMaxLOD));
 	}
+
+	MarkRenderStateDirty();
+	UpdateBounds();
 }
 
-void UQuadtreeMeshComponent::CreateQuadMesh()
+void UQuadtreeMeshComponent::CreateQuadMeshes()
 {
 	// グリッドメッシュ型のVertexBufferやTexCoordsBufferを用意するのはUDeformableGridMeshComponent::Ini:tGridMeshSetting()と同じだが、
 	// 接するQuadNodeのLODの差を考慮して数パターンのインデックス配列を用意せねばならないので独自の実装をする
@@ -347,13 +350,12 @@ void UQuadtreeMeshComponent::CreateQuadMesh()
 			}
 		}
 	}
-
-	MarkRenderStateDirty();
-	UpdateBounds();
 }
 
 uint32 UQuadtreeMeshComponent::CreateInnerMesh()
 {
+	check(NumGridDivision % 2 == 0);
+
 	// 内側の部分はどのメッシュパターンでも同じだが、すべて同じものを作成する。ドローコールでインデックスバッファの不連続アクセスはできないので
 	for (int32 Row = 1; Row < NumGridDivision - 1; Row++)
 	{
@@ -393,6 +395,7 @@ uint32 UQuadtreeMeshComponent::CreateInnerMesh()
 
 uint32 UQuadtreeMeshComponent::CreateBoundaryMesh(EAdjacentQuadNodeLODDifference RightAdjLODDiff, EAdjacentQuadNodeLODDifference LeftAdjLODDiff, EAdjacentQuadNodeLODDifference BottomAdjLODDiff, EAdjacentQuadNodeLODDifference TopAdjLODDiff)
 {
+	check(NumGridDivision % 2 == 0);
 	uint32 NumIndices = 0;
 
 	// 境界部分は、LODの差に合わせて隣と接する部分のトライアングルの辺を2倍あるいは4倍にする
