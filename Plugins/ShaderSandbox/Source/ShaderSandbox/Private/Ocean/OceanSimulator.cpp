@@ -20,7 +20,7 @@ float GaussianRand()
 		U1 = SMALL_NUMBER;
 	}
 
-	// TODO:計算の理屈がわからん
+	// TODO:計算の理屈を調べる
 	return FMath::Sqrt(-2.0f * FMath::Loge(U1)) * FMath::Cos(2.0f * PI * U2);
 }
 
@@ -60,7 +60,7 @@ void CreateInitialHeightMap(const FOceanSpectrumParameters& Params, float Gravit
 
 	for (uint32 i = 0; i < Params.DispMapDimension; i++)
 	{
-		// Kは正規化された波数ベクトル。範囲は[-|DX/W, |DX/W], [-|DY/H, |DY/H]
+		// Kは正規化された波数ベクトル
 		K.Y = (-(int32)Params.DispMapDimension / 2.0f + i) * (2 * PI / Params.PatchLength);
 
 		for (uint32 j = 0; j < Params.DispMapDimension; j++)
@@ -72,8 +72,7 @@ void CreateInitialHeightMap(const FOceanSpectrumParameters& Params, float Gravit
 			OutH0[i * (Params.DispMapDimension) + j].X = PhillipsSqrt * GaussianRand() * UE_HALF_SQRT_2;
 			OutH0[i * (Params.DispMapDimension) + j].Y = PhillipsSqrt * GaussianRand() * UE_HALF_SQRT_2;
 
-			// The angular frequency is following the dispersion relation:
-			// OutOmega0^2 = g * k
+			// 周波数分布についてはdispersion relation、omega_0^2 = g * kを用いる
 			OutOmega0[i * (Params.DispMapDimension) + j] = FMath::Sqrt(GravityConstant * K.Size());
 		}
 	}
