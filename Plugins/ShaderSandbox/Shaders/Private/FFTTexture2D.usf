@@ -439,7 +439,7 @@ void TwoForOneRealFFTImage512x512(uint GroupID : SV_GroupID, uint GroupThreadID 
 	const uint ScanIdx  = GroupID;
 	// The main memory access pattern for this thread.
 	uint Head = ThreadIdx;
-	const uint Stride = STRIDE;   
+	const uint Stride = ARRAY_LENGTH / RADIX;
 
 	// Thread-local memory.  Reserve two arrays since we plit .xy and .zw channels   
 	Complex LocalComplexBuffer[2][RADIX];
@@ -497,7 +497,7 @@ void ComplexFFTImage512x512(uint GroupID : SV_GroupID, uint GroupThreadID : SV_G
 	const uint ScanIdx  = GroupID;
 	// The main memory access pattern for this thread.
 	uint Head = ThreadIdx;
-	const uint Stride = STRIDE;   
+	const uint Stride = ARRAY_LENGTH / RADIX;
 
 	// Thread-local memory.  Reserve two arrays since we plit .xy and .zw channels   
 	Complex LocalComplexBuffer[2][RADIX];

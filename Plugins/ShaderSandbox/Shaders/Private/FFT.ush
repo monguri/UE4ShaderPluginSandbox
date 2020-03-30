@@ -7,11 +7,11 @@
 #define Complex float2
 
 // 今回は用途が512x512の画像に固定されているのでFFTに用いる定数値を固定
+// 現状ではシェーダ内のロジックが512と8を前提に書かれているので、この値は変えても動作しないのに注意
 #define ARRAY_LENGTH 512
 #define RADIX 8
 
-#define NUMTHREADSX (512 / RADIX)
-#define STRIDE (512 / RADIX)
+#define NUMTHREADSX (ARRAY_LENGTH / RADIX)
 
 // ローカルバッファ内にNaNがあったら0にする
 void ScrubNANs(inout Complex Local[2][RADIX])
@@ -132,6 +132,10 @@ void RadixFFT(in bool bIsForward, inout Complex v[RADIX])
 groupshared float SharedRealBuffer[2 * ARRAY_LENGTH];
 #define NUM_BANKS 32
 
+//
+// グループ内スレッド共有メモリとスレッドのローカルなバッファとのデータ交換のための関数群
+//
+
 void CopyLocalXToGroupShared(in Complex Local[RADIX], in uint Head, in uint Stride, in uint BankSkip)
 {
 	UNROLL
@@ -182,21 +186,22 @@ void CopyLocalYToGroupShared(in Complex Local[RADIX], in uint Head, in uint Stri
 	CopyLocalYToGroupShared(Local, Head, Stride, 0);
 }
 
-// Exchange data with other threads by affecting a transpose 
-void TransposeData(inout Complex Local[RADIX], uint AHead, uint AStride, uint BHead, uint BStride)
+// グループ内スレッド間でのデータ交換。
+// 各スレッドでローカルメモリのバッファをHead1、Stride1で共有メモリに配置し、また、各スレッドでHead2、Stride2で取り出してローカルメモリに格納する。
+void TransposeData(inout Complex Local[RADIX], uint Head1, uint Stride1, uint Head2, uint Stride2)
 {
-	uint BankSkip = (AStride < NUM_BANKS) ? AStride : 0;
+	uint BankSkip = (Stride1 < NUM_BANKS) ? Stride1 : 0;
 
-	CopyLocalXToGroupShared(Local, AHead, AStride, BankSkip);
+	CopyLocalXToGroupShared(Local, Head1, Stride1, BankSkip);
 	GroupMemoryBarrierWithGroupSync();
-	CopyGroupSharedToLocalX(Local, BHead, BStride, BankSkip);
+	CopyGroupSharedToLocalX(Local, Head2, Stride2, BankSkip);
 	GroupMemoryBarrierWithGroupSync();
-	CopyLocalYToGroupShared(Local, AHead, AStride, BankSkip);
+	CopyLocalYToGroupShared(Local, Head1, Stride1, BankSkip);
 	GroupMemoryBarrierWithGroupSync();
-	CopyGroupSharedToLocalY(Local, BHead, BStride, BankSkip);
+	CopyGroupSharedToLocalY(Local, Head2, Stride2, BankSkip);
 }
 
-// This accounts for about 9% of total time
+// 8要素FFTのバタフライ演算
 void Butterfly(in const bool bIsForward, inout Complex Local[RADIX], uint ThreadIdx, uint Length)
 {
 	float angle = TWO_PI * (ThreadIdx % Length) / float(Length * RADIX);
@@ -215,6 +220,7 @@ void Butterfly(in const bool bIsForward, inout Complex Local[RADIX], uint Thread
 	}
 }
 
+// 次に共有メモリに配置するHead位置を計算する関数。
 // Utility: As a function of j, 
 // returns Ns contiguous values, then skips R*Ns values, then the next Ns values, etc
 // (e.g. R = 3, Ns = 2: 0, 1, 6, 7, 12, 13..)
@@ -226,62 +232,35 @@ uint Expand(in uint j, in uint Ns, in uint R) {
 // Stockham FFT。CSのグループ内の各スレッドで実行される。共有メモリを使ってスレッド同士でデータを交換し合う。
 void GroupSharedFFT(in const bool bIsForward, inout Complex Local[RADIX], in const uint ArrayLength, in const uint ThreadIdx)
 {
-	// Parallelism from writting the 1d array as a 2d row-major array: n = J *m + j.  0 <= j < m,  0 <= J < M
-	// f(n) = f(J*m + j) = f(J,j) transforms to
-	// F(k) = F(w*M + W) = f(w, W)                                                    0 <= w < m,  0 <= K < M 
-	//
-	//  F(k) = sum_{n=0}^{N-1} \exp\left( 2\pi i \frac{n k}{N} \right) f(n)
-	//
-	// can be expressed as
-	// 
-	//  F(w*m + W) = sum_{j=0}^{m-1} \exp\left( 2 \pi i \frac{w j}{m}\right)  \left[  \exp\left(2\pi i \frac{W j}{m M} \sum_{J=0}^{M-1} \exp(2\pi i \frac{J W}{M} f(J,j) \right]
-	
-	// Number of rows in 2d row-major layout of an array of lenght ArrayLength
-	uint NumCols = ArrayLength / RADIX;
-	//uint IdxS = Expand(j, NumCols, RADIX);
-	//uint IdxS = (ThreadIdx / NumCols) * ArrayLength + (ThreadIdx % NumCols);
-	uint IdxS = ThreadIdx;
-    // uint Ns = 1;
-	// (j / Ns) * Ns * R + (j % Ns);
-	// Expand(j, Ns, RADIX);
-	uint IdxD = ThreadIdx * RADIX;
+	uint NumThreads = ArrayLength / RADIX;
 
-	// Transform these RADIX values.
 	RadixFFT(bIsForward, Local);
 
-	// Exchange data with other threads 
-	TransposeData(Local, IdxD, 1, IdxS, NumCols);		
+	uint IdxSrc = ThreadIdx;
+	uint IdxDist = ThreadIdx * RADIX;
+	TransposeData(Local, IdxDist, 1, IdxSrc, NumThreads);		
 
-	// NumCols = ArrayLength / RADIX: NumCols is an int power of RADIX (ie. 0, 1, 2..)
-	uint Ns = RADIX;
+	uint Stride = RADIX;
 
-	for (; Ns < NumCols; Ns *= RADIX)
+	for (; Stride < NumThreads; Stride *= RADIX)
 	{
-		Butterfly(bIsForward, Local, ThreadIdx, Ns);
+		Butterfly(bIsForward, Local, ThreadIdx, Stride);
 
-		// IdxD(ThreadIdx) is contiguous blocks of lenght Ns
-		IdxD = Expand(ThreadIdx, Ns, RADIX);
-		//uint Expand(in uint j, in uint Ns, in uint R) { return (j / Ns) * Ns * R + (j % Ns);}
-
-		// Transform these RADIX values.
 		RadixFFT(bIsForward, Local);
 
-		// Wait for the rest of the thread group to finish working on this ArrayLength of data. 
 		GroupMemoryBarrierWithGroupSync();
 
-		TransposeData(Local, IdxD, Ns, IdxS, NumCols);
+		IdxDist = Expand(ThreadIdx, Stride, RADIX);
+		TransposeData(Local, IdxDist, Stride, IdxSrc, NumThreads);
 	}
 
-	Butterfly(bIsForward, Local, ThreadIdx, Ns);
+	Butterfly(bIsForward, Local, ThreadIdx, Stride);
 
-	// Transform these RADIX values.
 	RadixFFT(bIsForward, Local);
 
-	// not needed for the simple case
 	GroupMemoryBarrierWithGroupSync();
 }
 
-// Scale two complex signals.
 void Scale(inout Complex LocalComplexBuffer[2][RADIX], in float ScaleValue)
 {
 	for (uint r = 0; r < RADIX; ++r)
