@@ -8,10 +8,10 @@
 
 namespace FFTTexture2D
 {
-class FTwoForOneRealFFTImage512x512 : public FGlobalShader
+class FHalfCompressedComplexFFTImage512x512 : public FGlobalShader
 {
-	DECLARE_GLOBAL_SHADER(FTwoForOneRealFFTImage512x512);
-	SHADER_USE_PARAMETER_STRUCT(FTwoForOneRealFFTImage512x512, FGlobalShader);
+	DECLARE_GLOBAL_SHADER(FHalfCompressedComplexFFTImage512x512);
+	SHADER_USE_PARAMETER_STRUCT(FHalfCompressedComplexFFTImage512x512, FGlobalShader);
 
 	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
 		SHADER_PARAMETER(uint32, Forward)
@@ -30,7 +30,7 @@ public:
 	}
 };
 
-IMPLEMENT_GLOBAL_SHADER(FTwoForOneRealFFTImage512x512, "/Plugin/ShaderSandbox/Private/FFTTexture2D.usf", "TwoForOneRealFFTImage512x512", SF_Compute);
+IMPLEMENT_GLOBAL_SHADER(FHalfCompressedComplexFFTImage512x512, "/Plugin/ShaderSandbox/Private/FFTTexture2D.usf", "HalfCompressedComplexFFTImage512x512", SF_Compute);
 
 class FComplexFFTImage512x512 : public FGlobalShader
 {
@@ -88,23 +88,23 @@ void DoFFTTexture2D512x512(FRHICommandListImmediate& RHICmdList, EFFTMode Mode, 
 		TRefCountPtr<IPooledRenderTarget> TmpRenderTarget2;
 		GRenderTargetPool.FindFreeElement(RHICmdList, Desc, TmpRenderTarget2, TEXT("FFTTexture2D Tmp Buffer2"));
 
-		TShaderMapRef<FTwoForOneRealFFTImage512x512> TwoForOneForwardFFTCS(ShaderMap);
+		TShaderMapRef<FHalfCompressedComplexFFTImage512x512> HalfCompressedForwardFFTCS(ShaderMap);
 
-		FTwoForOneRealFFTImage512x512::FParameters* TwoForOneForwardFFTParams = GraphBuilder.AllocParameters<FTwoForOneRealFFTImage512x512::FParameters>();
-		TwoForOneForwardFFTParams->Forward = 1;
-		TwoForOneForwardFFTParams->SrcTexture = SrcTexture;
-		TwoForOneForwardFFTParams->SrcSampler = TStaticSamplerState<SF_Bilinear, AM_Wrap, AM_Wrap, AM_Wrap>::GetRHI();
-		TwoForOneForwardFFTParams->DstTexture = TmpRenderTarget->GetRenderTargetItem().UAV;
-		//TwoForOneForwardFFTParams->DstTexture = DstUAV;
-		TwoForOneForwardFFTParams->SrcRectMin = SrcRect.Min;
-		TwoForOneForwardFFTParams->SrcRectMax = SrcRect.Max;
-		TwoForOneForwardFFTParams->DstRect = TmpRect;
+		FHalfCompressedComplexFFTImage512x512::FParameters* HalfCompressedForwardFFTParams = GraphBuilder.AllocParameters<FHalfCompressedComplexFFTImage512x512::FParameters>();
+		HalfCompressedForwardFFTParams->Forward = 1;
+		HalfCompressedForwardFFTParams->SrcTexture = SrcTexture;
+		HalfCompressedForwardFFTParams->SrcSampler = TStaticSamplerState<SF_Bilinear, AM_Wrap, AM_Wrap, AM_Wrap>::GetRHI();
+		HalfCompressedForwardFFTParams->DstTexture = TmpRenderTarget->GetRenderTargetItem().UAV;
+		//HalfCompressedForwardFFTParams->DstTexture = DstUAV;
+		HalfCompressedForwardFFTParams->SrcRectMin = SrcRect.Min;
+		HalfCompressedForwardFFTParams->SrcRectMax = SrcRect.Max;
+		HalfCompressedForwardFFTParams->DstRect = TmpRect;
 
 		FComputeShaderUtils::AddPass(
 			GraphBuilder,
-			RDG_EVENT_NAME("TwoForOneRealFFTImage512x512ForwardHorizontal"),
-			*TwoForOneForwardFFTCS,
-			TwoForOneForwardFFTParams,
+			RDG_EVENT_NAME("HalfCompressedComplexFFTImage512x512ForwardHorizontal"),
+			*HalfCompressedForwardFFTCS,
+			HalfCompressedForwardFFTParams,
 			FIntVector(512, 1, 1)
 		);
 
@@ -147,22 +147,22 @@ void DoFFTTexture2D512x512(FRHICommandListImmediate& RHICmdList, EFFTMode Mode, 
 			FIntVector(512 + FREQUENCY_PADDING, 1, 1)
 		);
 
-		TShaderMapRef<FTwoForOneRealFFTImage512x512> TwoForOneInverseFFTCS(ShaderMap);
+		TShaderMapRef<FHalfCompressedComplexFFTImage512x512> HalfCompressedInverseFFTCS(ShaderMap);
 
-		FTwoForOneRealFFTImage512x512::FParameters* TwoForOneInverseFFTParams = GraphBuilder.AllocParameters<FTwoForOneRealFFTImage512x512::FParameters>();
-		TwoForOneInverseFFTParams->Forward = 0;
-		TwoForOneInverseFFTParams->SrcTexture = TmpRenderTarget->GetRenderTargetItem().ShaderResourceTexture;
-		TwoForOneInverseFFTParams->SrcSampler = TStaticSamplerState<SF_Bilinear, AM_Wrap, AM_Wrap, AM_Wrap>::GetRHI();
-		TwoForOneInverseFFTParams->DstTexture = DstUAV;
-		TwoForOneInverseFFTParams->SrcRectMin = TmpRect.Min;
-		TwoForOneInverseFFTParams->SrcRectMax = TmpRect.Max;
-		TwoForOneInverseFFTParams->DstRect = DstRect;
+		FHalfCompressedComplexFFTImage512x512::FParameters* HalfCompressedInverseFFTParams = GraphBuilder.AllocParameters<FHalfCompressedComplexFFTImage512x512::FParameters>();
+		HalfCompressedInverseFFTParams->Forward = 0;
+		HalfCompressedInverseFFTParams->SrcTexture = TmpRenderTarget->GetRenderTargetItem().ShaderResourceTexture;
+		HalfCompressedInverseFFTParams->SrcSampler = TStaticSamplerState<SF_Bilinear, AM_Wrap, AM_Wrap, AM_Wrap>::GetRHI();
+		HalfCompressedInverseFFTParams->DstTexture = DstUAV;
+		HalfCompressedInverseFFTParams->SrcRectMin = TmpRect.Min;
+		HalfCompressedInverseFFTParams->SrcRectMax = TmpRect.Max;
+		HalfCompressedInverseFFTParams->DstRect = DstRect;
 
 		FComputeShaderUtils::AddPass(
 			GraphBuilder,
-			RDG_EVENT_NAME("TwoForOneRealFFTImage512x512InverseHorizontal"),
-			*TwoForOneInverseFFTCS,
-			TwoForOneInverseFFTParams,
+			RDG_EVENT_NAME("HalfCompressedComplexFFTImage512x512InverseHorizontal"),
+			*HalfCompressedInverseFFTCS,
+			HalfCompressedInverseFFTParams,
 			FIntVector(512 + FREQUENCY_PADDING, 1, 1)
 		);
 	}

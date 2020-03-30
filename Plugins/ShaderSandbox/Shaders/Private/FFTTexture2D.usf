@@ -36,7 +36,7 @@ uint4 DstRect;
 // {F_o, G_o}, {F_1}, {F_2},..,{F_{N/2-1}}, {F_N/2, G_N/2}, {G_{N/2 +1}},  {G_{N/2 +2}}, .., {G_{N-2}},    {G_{N-1}} 
 //     0       , 1    , 2    ,..., N/2-1,       N/2,           N/2 +1,      N/2 +2,  ..,  N/2- (2-N/2),   N/2 - (1-N/2)
 // here {} := Complex
-void SplitTwoForOne(inout Complex LocalComplexBuffer[RADIX], in uint Head, in uint Stride, in uint N)
+void SplitHalfCompressed(inout Complex LocalComplexBuffer[RADIX], in uint Head, in uint Stride, in uint N)
 {
 	const uint Non2 = N / 2;
 	
@@ -126,7 +126,7 @@ void SplitTwoForOne(inout Complex LocalComplexBuffer[RADIX], in uint Head, in ui
 	}
 }
 
-// Inverse of SplitTwoForOne()
+// Inverse of SplitHalfCompressed()
 // Combine the FFT of two real signals (f,g) into a single complex signal
 // for use in inverting a "two-for-one" FFT .
 //
@@ -142,7 +142,7 @@ void SplitTwoForOne(inout Complex LocalComplexBuffer[RADIX], in uint Head, in ui
 // On return the data in LocalComplexBuffer across the threads in this group
 // hold the transform  of the complex signal z = f + ig of lenght N.
 //
-void MergeTwoForOne(inout Complex LocalComplexBuffer[RADIX], in uint Head, in uint Stride, in uint N)
+void MergeHalfCompressed(inout Complex LocalComplexBuffer[RADIX], in uint Head, in uint Stride, in uint N)
 {
 	uint Non2 = N / 2;
 
@@ -243,10 +243,10 @@ void MergeTwoForOne(inout Complex LocalComplexBuffer[RADIX], in uint Head, in ui
 	}
 }
 
-// The inverse of WriteTwoForOneFrequencyData()
-// Reads into local registers, data written in the TwoForOneFrequency layout back into the form consistent with the transform of a single complex signal.
+// The inverse of WriteHalfCompressedFrequencyData()
+// Reads into local registers, data written in the HalfCompressedFrequency layout back into the form consistent with the transform of a single complex signal.
 //const bool bIsHorizontal = true;
-void ReadTwoForOneFrequencyData(inout Complex LocalComplexBuffer[2][RADIX], in uint ScanIdx, in uint Loc, in uint Stride, in uint N)
+void ReadHalfCompressedFrequencyData(inout Complex LocalComplexBuffer[2][RADIX], in uint ScanIdx, in uint Loc, in uint Stride, in uint N)
 {
 	const bool bIsFirstElement = (Loc == 0);
 	const uint Non2 =  N / 2;
@@ -280,27 +280,27 @@ void ReadTwoForOneFrequencyData(inout Complex LocalComplexBuffer[2][RADIX], in u
 	}
 
 	// Combine the transforms of the two real signals (F,G) as Z = F + I G
-	MergeTwoForOne(LocalComplexBuffer[ 0 ], Loc, Stride, N);
+	MergeHalfCompressed(LocalComplexBuffer[ 0 ], Loc, Stride, N);
 	GroupMemoryBarrierWithGroupSync();
-	MergeTwoForOne(LocalComplexBuffer[ 1 ], Loc, Stride, N);
+	MergeHalfCompressed(LocalComplexBuffer[ 1 ], Loc, Stride, N);
 	
 	// Done with the group shared memory that was used in the merge
 	GroupMemoryBarrierWithGroupSync();
 }
 
-//const bool bIsHorizontal = true;
-void WriteTwoForOneFrequencyData(inout Complex LocalComplexBuffer[2][RADIX], uint ScanIdx, uint Loc, uint Stride, uint N)
+void WriteHalfCompressedFrequencyData(inout Complex LocalComplexBuffer[2][RADIX], uint ScanIdx, uint Loc, uint Stride, uint N)
 {
 	GroupMemoryBarrierWithGroupSync();
 
 	// Decompose the transforms.  Note '0' and 'N/2' offsets will still be mixed, and have to be explicitly dealt with below. 
-	SplitTwoForOne(LocalComplexBuffer[0], Loc, Stride, N);
+	SplitHalfCompressed(LocalComplexBuffer[0], Loc, Stride, N);
 	GroupMemoryBarrierWithGroupSync();
-	SplitTwoForOne(LocalComplexBuffer[1], Loc, Stride, N);
+	SplitHalfCompressed(LocalComplexBuffer[1], Loc, Stride, N);
 
 	const bool bIsFirstElement = (Loc == 0);
 	const uint Non2 =  N / 2;
 
+	// 行処理にしか使わない前提
 	uint2 Pixel = uint2(Loc, ScanIdx);
 	float4 DstValue;
 	UNROLL
@@ -333,7 +333,6 @@ void WriteTwoForOneFrequencyData(inout Complex LocalComplexBuffer[2][RADIX], uin
 	}
 }
 
-//const bool bIsHorizontal = true;
 void CopyDataSrcWindowToLocal(inout Complex LocalComplexBuffer[2][RADIX], in uint ScanIdx, uint Loc, uint Stride, uint4 Window)
 {
 	for (uint i = 0; i < RADIX; i++)
@@ -342,7 +341,7 @@ void CopyDataSrcWindowToLocal(inout Complex LocalComplexBuffer[2][RADIX], in uin
 		LocalComplexBuffer[1][i] = Complex(0.0f, 0.0f);
 	}
 
-	// offset for window start
+	// 行処理でしか使わない前提
 	uint2 Pixel = uint2(Loc, ScanIdx) + Window.xy;
 	UNROLL
 	for (uint i = 0; i < RADIX; ++i, Pixel.x += Stride)
@@ -367,6 +366,7 @@ void CopyDataSrcWindowToLocal(inout Complex LocalComplexBuffer[2][RADIX], uint S
 		LocalComplexBuffer[1][i] = Complex(0.0f, 0.0f);
 	}
 
+	// 列処理でしか使わない前提
 	uint2 Pixel = uint2(ScanIdx, Loc) + uint2(0, WindowMin.y);
 	UNROLL
 	for (uint i = 0; i < RADIX; ++i, Pixel.y += Stride)
@@ -415,8 +415,13 @@ void CopyDataLocalToDstWindow(in Complex LocalComplexBuffer[2][RADIX], bool bIsH
 }
 
 [numthreads(NUMTHREADSX, 1, 1)]
-void TwoForOneRealFFTImage512x512(uint GroupID : SV_GroupID, uint GroupThreadID : SV_GroupThreadID)
+void HalfCompressedComplexFFTImage512x512(uint GroupID : SV_GroupID, uint GroupThreadID : SV_GroupThreadID)
 {
+	// RGBAの4実数がある場合、フーリエ変換では4複素数が出力されるのでデータの容量が倍になる。
+	// しかし、実数配列をフーリエ変換した場合、KとN-Kの周波数のフーリエ変換結果が複素共役になるという対称性がある。
+	// それを用いて、保存データを半分で済ませることで、入力テクスチャと出力テクスチャを同じ容量で済ませるテクニックを用いる。
+	// 行、列、の順番にFFTあるいはIFFTするので、行処理の方にこのテクニックを用いたFFT/IFFTをやれば列処理の方は通常のFFT/IFFTでよい。
+
 	const bool bIsForward = (Forward > 0);
 	// 今回は用途として行処理固定
 	const bool bIsHorizontal = true;
@@ -439,13 +444,11 @@ void TwoForOneRealFFTImage512x512(uint GroupID : SV_GroupID, uint GroupThreadID 
 		uint4 SrcRect;
 		SrcRect.xy = SrcRectMin.xy;
 		SrcRect.zw = SrcRectMax.xy;
-		// Read from an image buffer
 		CopyDataSrcWindowToLocal(LocalComplexBuffer, LineIdx, Head, Stride, SrcRect);
 	}
 	else
 	{
-		// Read a frequency space buffer with two-for-one data layout
-		ReadTwoForOneFrequencyData(LocalComplexBuffer, LineIdx, Head, Stride, ARRAY_LENGTH);
+		ReadHalfCompressedFrequencyData(LocalComplexBuffer, LineIdx, Head, Stride, ARRAY_LENGTH);
 	}
 
 	// FFTあるいはIFFT。複数スレッドで共有メモリを使って協調して行う
@@ -455,7 +458,7 @@ void TwoForOneRealFFTImage512x512(uint GroupID : SV_GroupID, uint GroupThreadID 
 	{
 		// Write a frequency space buffer with two-for-one data layout
 		// GroupMemoryBarrierWithGroupSync();
-		WriteTwoForOneFrequencyData(LocalComplexBuffer, LineIdx, Head, Stride, ARRAY_LENGTH);
+		WriteHalfCompressedFrequencyData(LocalComplexBuffer, LineIdx, Head, Stride, ARRAY_LENGTH);
 	}
 	else
 	{
@@ -473,6 +476,8 @@ void TwoForOneRealFFTImage512x512(uint GroupID : SV_GroupID, uint GroupThreadID 
 [numthreads(NUMTHREADSX, 1, 1)]
 void ComplexFFTImage512x512(uint GroupID : SV_GroupID, uint GroupThreadID : SV_GroupThreadID)
 {
+	// RGBAが2複素数に対応していると解釈して行うFFT/IFFT
+
 	const bool bIsForward = (Forward > 0);
 	// 今回は用途として列処理固定
 	const bool bIsHorizontal = false;
@@ -483,7 +488,7 @@ void ComplexFFTImage512x512(uint GroupID : SV_GroupID, uint GroupThreadID : SV_G
 	const uint LineIdx = GroupID;
 
 	// ワークバッファとして使う配列。各スレッドのローカル変数
-	// RGとBAを2つの複素数に格納する
+	// RGとBAに2つの複素数が格納されている
 	Complex LocalComplexBuffer[2][RADIX];
 
 	// メモリアクセスパターン変数
