@@ -40,10 +40,16 @@ public:
 	float WindSpeed = 600.0f;
 
 	UPROPERTY(EditAnywhere, Category="Components|OceanQuadtree", BlueprintReadOnly, Meta = (UIMin = "0.0", UIMax = "1.0", ClampMin = "0.0", ClampMax = "1.0"))
-	float WindDependency = 0.07f;
+	float WindDependency = 0.85f;
 
 	UPROPERTY(EditAnywhere, Category="Components|OceanQuadtree", BlueprintReadOnly, Meta = (UIMin = "0.0", UIMax = "10.0", ClampMin = "0.0", ClampMax = "10.0"))
 	float ChoppyScale = 1.3f;
+
+	UPROPERTY(EditAnywhere, Category="Components|OceanQuadtree", BlueprintReadOnly, Meta = (UIMin = "0.0", UIMax = "500000.0", ClampMin = "0.0", ClampMax = "500000.0"))
+	float PerlinLerpBeginDistance = 800.0f;
+
+	UPROPERTY(EditAnywhere, Category="Components|OceanQuadtree", BlueprintReadOnly, Meta = (UIMin = "0.0", UIMax = "500000.0", ClampMin = "0.0", ClampMax = "500000.0"))
+	float PerlinLerpEndDistance = 20000.0f;
 
 	UPROPERTY(EditAnywhere, Category="Components|OceanQuadtree", BlueprintReadOnly, Meta = (UIMin = "0.0", UIMax = "1.0", ClampMin = "0.0", ClampMax = "1.0"))
 	float PerlinUVSpeed = 0.06f;
@@ -55,7 +61,7 @@ public:
 	FVector PerlinGradient = FVector(1.4f, 1.6f, 2.2f);
 
 	UPROPERTY(EditAnywhere, Category="Components|OceanQuadtree", BlueprintReadOnly)
-	FIntVector PerlinUVInvScale = FIntVector(1, 2, 4);
+	FVector PerlinUVScale = FVector(1.12f, 0.59f, 0.23f);
 
 	UPROPERTY(EditAnywhere, Category = "Components|OceanQuadtree", BlueprintReadOnly)
 	class UMaterialParameterCollection* OceanMPC = nullptr;

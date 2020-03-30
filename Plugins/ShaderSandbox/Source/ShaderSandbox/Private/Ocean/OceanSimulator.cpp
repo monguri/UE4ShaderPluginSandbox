@@ -30,29 +30,29 @@ float GaussianRand()
  */
 float CalculatePhillipsCoefficient(const FVector2D& K, float Gravity, const FOceanSpectrumParameters& Params)
 {
-	float Amplitude = Params.AmplitudeScale * 1.0e-7f; //TODO：根拠不明の値
+	float Amplitude = Params.AmplitudeScale * 1.0e-7f; // いい感じの見栄えにするための調整値
 
 	// この風速において最大の波長の波。
 	float MaxLength = Params.WindSpeed * Params.WindSpeed / Gravity;
 
 	float KSqr = K.X * K.X + K.Y * K.Y;
 	float KCos = K.X * Params.WindDirection.X + K.Y * Params.WindDirection.Y;
-	float Phillips = Amplitude * FMath::Exp(-1.0f / (MaxLength * MaxLength * KSqr)) / (KSqr * KSqr * KSqr) * (KCos * KCos); // TODO:KSqrは2乗すればK^4になるから十分では？
+	float Phillips = Amplitude * FMath::Exp(-1.0f / (MaxLength * MaxLength * KSqr)) / (KSqr * KSqr * KSqr) * (KCos * KCos);
 
 	// 逆方向の波は弱くする
 	if (KCos < 0)
 	{
-		Phillips *= Params.WindDependency;
+		Phillips *= (1.0f - Params.WindDependency);
 	}
 
-	// 最大波長よりもずっと小さい波は削減する。Tessendorfの計算にはなかった要素。TODO:いるのか？
+	// 最大波長よりもずっと小さい波は削減する。とりあえずパラメータ化せずに1/1000をカットオフ値に
 	float CutLength = MaxLength / 1000;
 	return Phillips * FMath::Exp(-KSqr * CutLength * CutLength);
 }
 
 void CreateInitialHeightMap(const FOceanSpectrumParameters& Params, float GravityZ, TResourceArray<FComplex>& OutH0, TResourceArray<float>& OutOmega0)
 {
-	// TODO:ここらへんはCSで実装するのもありだろう
+	// CSで実装してもいいが、初期化時にしか走らない処理なのでデバッグしやすさのためにCPU実装にしておく
 	FVector2D K;
 	float GravityConstant = FMath::Abs(GravityZ);
 

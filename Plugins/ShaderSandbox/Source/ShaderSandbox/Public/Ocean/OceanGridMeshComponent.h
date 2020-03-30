@@ -91,7 +91,7 @@ private:
 	float _AmplitudeScale = 0.35f;
 	FVector2D _WindDirection = FVector2D(0.8f, 0.6f);
 	float _WindSpeed = 600.0f;
-	float _WindDependency = 0.07f;
+	float _WindDependency = 0.85f;
 	float _ChoppyScale = 1.3f;
 
 	FShaderResourceViewRHIRef _DisplacementMapSRV;

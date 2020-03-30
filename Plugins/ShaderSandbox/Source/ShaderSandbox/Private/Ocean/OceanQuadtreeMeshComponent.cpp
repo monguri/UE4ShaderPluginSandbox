@@ -550,11 +550,15 @@ void UOceanQuadtreeMeshComponent::OnRegister()
 	if (OceanMPC != nullptr)
 	{
 		_MPCInstance = GetWorld()->GetParameterCollectionInstance(OceanMPC);
-		_MPCInstance->SetVectorParameterValue(FName("PerlinDisplacement"), PerlinDisplacement);
+		_MPCInstance->SetScalarParameterValue(FName("PerlinLerpBeginDistance"), PerlinLerpBeginDistance);
+		_MPCInstance->SetScalarParameterValue(FName("PerlinLerpEndDistance"), PerlinLerpEndDistance);
 		_MPCInstance->SetVectorParameterValue(FName("PerlinGradient"), PerlinGradient);
-		// UVスケールが整数の逆数にならないと、ループ構造でperinノイズを使っている以上、境界部分でずれが起きる。よってUPROPERTYでは逆数をFIntVectorで扱っている。
+		// UVスケールが整数の逆数にならないと、ループ構造でperinノイズを使っている以上、境界部分でずれが起きるが、
+		// 現状ではPerlinノイズがブレンドで支配的な領域はPerlinLerpEndDistanceで決められた遠景なので見栄えにそこまで問題を生じてない。
+		// だが、カメラが上空にあるような、遠景のメッシュが画面内に大きく見えるよな環境では、LODの切り替わり時にぱかつきが出る。
+		// UVスケールが整数の逆数だと、今度は遠景にタイリング感が出る。ここではタイリング感の回避を重視して、整数の逆数以外も設定できるようにしている。
 		// PerlinUVScaleはLODのUVスケールで決められたパッチの中でさらにスケールさせるものである。
-		_MPCInstance->SetVectorParameterValue(FName("PerlinUVScale"), FVector(1.0f / PerlinUVInvScale.X, 1.0f / PerlinUVInvScale.Y, 1.0f / PerlinUVInvScale.Z));
+		_MPCInstance->SetVectorParameterValue(FName("PerlinUVScale"), PerlinUVScale);
 	}
 
 	UMaterialInterface* Material = GetMaterial(0);

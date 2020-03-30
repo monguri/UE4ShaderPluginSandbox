@@ -23,7 +23,7 @@ struct FOceanSpectrumParameters
 	/** The bigger the wind speed, the larger scale of wave crest. But the wave scale  can be no larger than PatchLength. Around 100 ~ 1000 */
 	float WindSpeed = 600.0f;
 	/** This value damps out the waves against the wind direction. Smaller value means  higher wind dependency. */
-	float WindDependency = 0.07f;
+	float WindDependency = 0.85f;
 	/** The amplitude for longitudinal wave. Higher value creates pointy crests. Must  be positive. */
 	float ChoppyScale = 1.3f;
 
