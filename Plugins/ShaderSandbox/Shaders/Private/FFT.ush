@@ -6,70 +6,56 @@
 
 #define Complex float2
 
+// 今回は用途が512x512の画像に固定されているのでFFTに用いる定数値を固定
 #define SCAN_LINE_LENGTH 512
 #define RADIX 8
+
 #define NUMTHREADSX (512 / RADIX)
 #define STRIDE (512 / RADIX)
 
-#define FFTMemoryBarrier() GroupMemoryBarrierWithGroupSync()
-
-// Utility to replace any NaNs with zeros.
+// LocalBuffer内にNaNがあったら0にする
 void ScrubNANs(inout Complex LocalBuffer[2][RADIX])
 {
 	UNROLL
 	for (uint r = 0; r < RADIX; ++r)
 	{	
-		LocalBuffer[0][r] = -min(-LocalBuffer[0][r], Complex(0,0) ); 
-		LocalBuffer[1][r] = -min(-LocalBuffer[1][r], Complex(0,0) ); 
+		LocalBuffer[0][r] = -min(-LocalBuffer[0][r], Complex(0,0)); 
+		LocalBuffer[1][r] = -min(-LocalBuffer[1][r], Complex(0,0)); 
 	}
 }
 
-// Complex Multiplication using Complex as a complex number
-// The full complex arithmetic is defined as:
-// Real(A) = A.x,                          Image(A) = A.y
-// Real(A + B) = A.x + B.x;                Imag(A + B) = A.y + B.y
-// Real(A * B)  = A.x * B.x - A.y * B.y;   Imag(A * B) = A.x * B.y + B.x * A.y
 Complex ComplexMult(in Complex A, in Complex B)
 {
 	return Complex(A.x * B.x - A.y * B.y, A.x * B.y + B.x * A.y);
 }
 
-float ForwardScale(uint ArrayLength)
-{	
-	return float(1); 
-}
-
-float InverseScale(uint ArrayLength)
-{
-	return (float(1) / float(ArrayLength));
-}
-
+// 複素数配列2要素のFFT
 void Radix2FFT(in bool bIsForward, inout Complex V0, inout Complex V1)
 {
 	V0 = V0 + V1;
 	V1 = V0 - V1 - V1; // V0 - V1
 }
 
+// 複素数配列4要素のFFT
 void Radix4FFT(in bool bIsForward, inout Complex V0, inout Complex V1, inout Complex V2, inout Complex V3)
 {
-	// The even and odd transforms
+	// 遇要素の2要素FFTと奇要素の2要素FFT
 	Radix2FFT(bIsForward, V0, V2); 
 	Radix2FFT(bIsForward, V1, V3); 
 
-	// The butterfly merge of the even and odd transforms
-	// Complex(0, 1) * V3
+	// バタフライ演算
 	Complex Tmp;
 	Complex TmpV1 = V1;
 
 	if (bIsForward)
 	{
 		// Complex(0, 1) * V3
-		 Tmp = Complex(-V3.y, V3.x);
+		Tmp = Complex(-V3.y, V3.x);
 	}
 	else
 	{
 		// Complex(0, -1) * V3
-		 Tmp = Complex(V3.y, -V3.x);
+		Tmp = Complex(V3.y, -V3.x);
 	}
 
 	V0 = V0 + TmpV1;
@@ -78,13 +64,14 @@ void Radix4FFT(in bool bIsForward, inout Complex V0, inout Complex V1, inout Com
 	V2 = V0 - TmpV1 - TmpV1; // V0 - TmpV1
 }
 
+// 複素数配列8要素のFFT
 void Radix8FFT(in bool bIsForward, inout Complex V0, inout Complex V1, inout Complex V2, inout Complex V3, inout Complex V4, inout Complex V5, inout Complex V6, inout Complex V7)
 {
-	// The even and odd transforms
+	// 遇要素の4要素FFTと奇要素の4要素FFT
 	Radix4FFT(bIsForward, V0, V2, V4, V6);
 	Radix4FFT(bIsForward, V1, V3, V5, V7);
 
-	// 0.7071067811865475 = 1/sqrt(2)
+	// バタフライ演算
 	float InvSqrtTwo = float(1.f) / sqrt(2.f);
 	Complex Twiddle;
 	if (bIsForward)
@@ -96,46 +83,47 @@ void Radix8FFT(in bool bIsForward, inout Complex V0, inout Complex V1, inout Com
 		 Twiddle = Complex(InvSqrtTwo, -InvSqrtTwo);
 	}
 
-	Complex Rslt[8];
+	Complex Result[8];
 	Complex Tmp = ComplexMult(Twiddle, V3);
 
-	Rslt[0] = V0 + V1;
-	Rslt[4] = V0 - V1;
+	Result[0] = V0 + V1;
+	Result[4] = V0 - V1;
 
-	Rslt[1] = V2 + Tmp;
-	Rslt[5] = V2 - Tmp;
+	Result[1] = V2 + Tmp;
+	Result[5] = V2 - Tmp;
 
 	if (bIsForward)
 	{
 		// V4 + i V5
-		Rslt[2] = Complex(V4.x - V5.y, V4.y + V5.x);
+		Result[2] = Complex(V4.x - V5.y, V4.y + V5.x);
 		// V4 - i V5
-		Rslt[6] = Complex(V4.x + V5.y, V4.y - V5.x);
+		Result[6] = Complex(V4.x + V5.y, V4.y - V5.x);
 	}
 	else
 	{
 		// V4 - i V5
-		Rslt[2] = Complex(V4.x + V5.y, V4.y - V5.x);
+		Result[2] = Complex(V4.x + V5.y, V4.y - V5.x);
 		// V4 + i V5
-		Rslt[6] = Complex(V4.x - V5.y, V4.y + V5.x);
+		Result[6] = Complex(V4.x - V5.y, V4.y + V5.x);
 	}
 
 	Twiddle.x = -Twiddle.x;
 	Tmp = ComplexMult(Twiddle, V7);
 
-	Rslt[3] = V6 + Tmp;
-	Rslt[7] = V6 - Tmp;
+	Result[3] = V6 + Tmp;
+	Result[7] = V6 - Tmp;
 
-	V0 = Rslt[0];
-	V1 = Rslt[1];
-	V2 = Rslt[2];
-	V3 = Rslt[3];
-	V4 = Rslt[4];
-	V5 = Rslt[5];
-	V6 = Rslt[6];
-	V7 = Rslt[7];
+	V0 = Result[0];
+	V1 = Result[1];
+	V2 = Result[2];
+	V3 = Result[3];
+	V4 = Result[4];
+	V5 = Result[5];
+	V6 = Result[6];
+	V7 = Result[7];
 }
 
+// 複素数配列8要素のFFT
 void RadixFFT(in bool bIsForward, inout Complex v[RADIX])
 {
 	Radix8FFT(bIsForward, v[0], v[1], v[2], v[3], v[4], v[5], v[6], v[7]);
@@ -200,11 +188,11 @@ void TransposeData(inout Complex Local[RADIX], uint AHead, uint AStride, uint BH
 	uint BankSkip = (AStride < NUM_BANKS) ? AStride : 0;
 
 	CopyLocalXToGroupShared(Local, AHead, AStride, BankSkip);
-	FFTMemoryBarrier();
+	GroupMemoryBarrierWithGroupSync();
 	CopyGroupSharedToLocalX(Local, BHead, BStride, BankSkip);
-	FFTMemoryBarrier();
+	GroupMemoryBarrierWithGroupSync();
 	CopyLocalYToGroupShared(Local, AHead, AStride, BankSkip);
-	FFTMemoryBarrier();
+	GroupMemoryBarrierWithGroupSync();
 	CopyGroupSharedToLocalY(Local, BHead, BStride, BankSkip);
 }
 
@@ -235,7 +223,7 @@ uint Expand(in uint j, in uint Ns, in uint R) {
 	return (j / Ns) * Ns * R + (j % Ns);
 }
 
-// Performs a single pass Stockham FFT using group shared memory.
+// Stockham FFT。CSのグループ内の各スレッドで実行される。共有メモリを使ってスレッド同士でデータを交換し合う。
 void GroupSharedFFT(in const bool bIsForward, inout Complex Local[RADIX], in const uint ArrayLength, in const uint ThreadIdx)
 {
 	// Parallelism from writting the 1d array as a 2d row-major array: n = J *m + j.  0 <= j < m,  0 <= J < M
@@ -279,7 +267,7 @@ void GroupSharedFFT(in const bool bIsForward, inout Complex Local[RADIX], in con
 		RadixFFT(bIsForward, Local);
 
 		// Wait for the rest of the thread group to finish working on this ArrayLength of data. 
-		FFTMemoryBarrier();
+		GroupMemoryBarrierWithGroupSync();
 
 		TransposeData(Local, IdxD, Ns, IdxS, NumCols);
 	}
@@ -290,7 +278,7 @@ void GroupSharedFFT(in const bool bIsForward, inout Complex Local[RADIX], in con
 	RadixFFT(bIsForward, Local);
 
 	// not needed for the simple case
-	FFTMemoryBarrier();
+	GroupMemoryBarrierWithGroupSync();
 }
 
 // Scale two complex signals.
@@ -306,23 +294,15 @@ void Scale(inout Complex LocalBuffer[2][RADIX], in float ScaleValue)
 	}
 }
 
-// Transforming two Complex signals.
+// CSの1スレッドから実行するFFT。共有メモリを使ってグループ内のスレッド同士でデータを交換し合う。
 void GroupSharedFFT(in bool bIsForward, inout Complex LocalBuffer[2][RADIX], in uint ArrayLength, in uint ThreadIdx)
 {
-	// Note: The forward and inverse FFT require a 'normalization' scale, such that the normalization scale
-	// of the forward times normalization scale of the inverse = 1 / ArrayLenght.
-	// ForwardScale(ArrayLength) * InverseScale(ArrayLength) = 1 / ArrayLength;
-	
-	if (bIsForward)
+	if (!bIsForward)
 	{
-		Scale(LocalBuffer, ForwardScale(ArrayLength));
-	}
-	else
-	{
-		Scale(LocalBuffer, InverseScale(ArrayLength));
+		// ここでは1/Nのスケールは逆変換側につける方法を採用する
+		Scale(LocalBuffer, 1.0f / float(ArrayLength));
 	}
 
-	// Transform each buffer.
 	GroupSharedFFT(bIsForward, LocalBuffer[0], ArrayLength, ThreadIdx);
 	GroupSharedFFT(bIsForward, LocalBuffer[1], ArrayLength, ThreadIdx);
 }

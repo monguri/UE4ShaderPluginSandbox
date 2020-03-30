@@ -46,7 +46,7 @@ void SplitTwoForOne(inout Complex LocalBuffer[RADIX], in uint Head, in uint Stri
 	// Write the complex FFT into group shared memory.
 	
 	CopyLocalXToGroupShared(LocalBuffer, Head, Stride);
-	FFTMemoryBarrier();
+	GroupMemoryBarrierWithGroupSync();
 
 	// Construct the transform for the two real signals in the LocalBuffer
 	UNROLL
@@ -76,9 +76,9 @@ void SplitTwoForOne(inout Complex LocalBuffer[RADIX], in uint Head, in uint Stri
 		LocalBuffer[0].x = 2.0f * SharedReal[0];
 	}
 
-	FFTMemoryBarrier();
+	GroupMemoryBarrierWithGroupSync();
 	CopyLocalYToGroupShared(LocalBuffer, Head, Stride);
-	FFTMemoryBarrier();
+	GroupMemoryBarrierWithGroupSync();
 
 	UNROLL
 	for (uint i = 0, K = Head; i < RADIX; ++i, K += Stride)
@@ -155,7 +155,7 @@ void MergeTwoForOne(inout Complex LocalBuffer[RADIX], in uint Head, in uint Stri
 
 	CopyLocalYToGroupShared(LocalBuffer, Head, Stride);
 
-	FFTMemoryBarrier();
+	GroupMemoryBarrierWithGroupSync();
 
 	// Compose the transform of a single f+ig signal from the two real signals in the LocalBuffer
 	UNROLL
@@ -185,7 +185,7 @@ void MergeTwoForOne(inout Complex LocalBuffer[RADIX], in uint Head, in uint Stri
 	float2 FirstElement = float2(0, SharedReal[0]);
 	float2 MiddleElement = float2(0, SharedReal[Non2]);
 
-	FFTMemoryBarrier();
+	GroupMemoryBarrierWithGroupSync();
 
 	// Copy TmpX to GroupShared
 	UNROLL
@@ -194,7 +194,7 @@ void MergeTwoForOne(inout Complex LocalBuffer[RADIX], in uint Head, in uint Stri
 		SharedReal[i] = TmpX[r];
 	}
 
-	FFTMemoryBarrier();
+	GroupMemoryBarrierWithGroupSync();
 	FirstElement.x = SharedReal[0];
 	MiddleElement.x = SharedReal[Non2];
 
@@ -281,21 +281,21 @@ void ReadTwoForOneFrequencyData(inout Complex LocalBuffer[2][RADIX], in uint Sca
 
 	// Combine the transforms of the two real signals (F,G) as Z = F + I G
 	MergeTwoForOne(LocalBuffer[ 0 ], Loc, Stride, N);
-	FFTMemoryBarrier();
+	GroupMemoryBarrierWithGroupSync();
 	MergeTwoForOne(LocalBuffer[ 1 ], Loc, Stride, N);
 	
 	// Done with the group shared memory that was used in the merge
-	FFTMemoryBarrier();
+	GroupMemoryBarrierWithGroupSync();
 }
 
 //const bool bIsHorizontal = true;
 void WriteTwoForOneFrequencyData(inout Complex LocalBuffer[2][RADIX], uint ScanIdx, uint Loc, uint Stride, uint N)
 {
-	FFTMemoryBarrier();
+	GroupMemoryBarrierWithGroupSync();
 
 	// Decompose the transforms.  Note '0' and 'N/2' offsets will still be mixed, and have to be explicitly dealt with below. 
 	SplitTwoForOne(LocalBuffer[0], Loc, Stride, N);
-	FFTMemoryBarrier();
+	GroupMemoryBarrierWithGroupSync();
 	SplitTwoForOne(LocalBuffer[1], Loc, Stride, N);
 
 	const bool bIsFirstElement = (Loc == 0);
@@ -467,13 +467,13 @@ void TwoForOneRealFFTImage512x512(uint GroupID : SV_GroupID, uint GroupThreadID 
 	if (bIsForward)
 	{
 		// Write a frequency space buffer with two-for-one data layout
-		// FFTMemoryBarrier();
+		// GroupMemoryBarrierWithGroupSync();
 		WriteTwoForOneFrequencyData(LocalBuffer, ScanIdx, Head, Stride, SignalLength);
 	}
 	else
 	{
 		// Write image space data.
-		// FFTMemoryBarrier();
+		// GroupMemoryBarrierWithGroupSync();
 
 		// This is specialized for images, where floating point errors may have
 		// resulted in (very very small) negative color values.
@@ -511,7 +511,7 @@ void ComplexFFTImage512x512(uint GroupID : SV_GroupID, uint GroupThreadID : SV_G
 
 	// Read from an image buffer
 	CopyDataSrcWindowToLocal(LocalBuffer, ScanIdx, Head, Stride, SrcRectMin, SrcRectMax);
-	//FFTMemoryBarrier();
+	//GroupMemoryBarrierWithGroupSync();
 
 	// Fourier Transform  the data
 	// This uses the group shared memory and has appropriate syncs
@@ -519,7 +519,7 @@ void ComplexFFTImage512x512(uint GroupID : SV_GroupID, uint GroupThreadID : SV_G
 
 	// Copy data to target buffer
 	// Write image space data.
-	//FFTMemoryBarrier();
+	//GroupMemoryBarrierWithGroupSync();
 	CopyDataLocalToDstWindow(LocalBuffer, bIsHorizontal, ScanIdx, Head, Stride, DstRect); // DstRect.Min‚ªFIntPoint(0,0)‚Å‚ ‚é‘O’ñ
 }
 

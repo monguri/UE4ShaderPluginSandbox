@@ -6,8 +6,6 @@
 #include "RHIStaticStates.h"
 #include "RenderTargetPool.h"
 
-// PostProcessFFTBloom.cpp‚ğQl‚É‚µ‚Ä‚¢‚é
-
 namespace FFTTexture2D
 {
 class FTwoForOneRealFFTImage512x512 : public FGlobalShader
@@ -61,7 +59,7 @@ IMPLEMENT_GLOBAL_SHADER(FComplexFFTImage512x512, "/Plugin/ShaderSandbox/Private/
 void DoFFTTexture2D512x512(FRHICommandListImmediate& RHICmdList, EFFTMode Mode, const FTextureRHIRef& SrcTexture, FRHIUnorderedAccessView* DstUAV)
 {
 	const FIntRect& SrcRect = FIntRect(FIntPoint(0, 0), FIntPoint(512, 512));
-	const uint32 FREQUENCY_PADDING = 2; //TODO:—‹ü‚ğ—‰ğ‚Å‚«‚Ä‚È‚¢
+	const uint32 FREQUENCY_PADDING = 2;
 	const FIntPoint& TmpBufferSize = FIntPoint(512 + FREQUENCY_PADDING, 512);
 	const FIntRect& TmpRect = FIntRect(FIntPoint(0, 0), TmpBufferSize);
 	const FIntRect& DstRect = SrcRect;

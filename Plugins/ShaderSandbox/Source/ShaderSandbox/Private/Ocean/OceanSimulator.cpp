@@ -25,7 +25,7 @@ float GaussianRand()
 }
 
 /**
- * Phillips Spectrum
+ * Phillipsスペクトラム分布から波数に対する値を取得する。
  * K: 正規化された波数ベクトル
  */
 float CalculatePhillipsCoefficient(const FVector2D& K, float Gravity, const FOceanSpectrumParameters& Params)
