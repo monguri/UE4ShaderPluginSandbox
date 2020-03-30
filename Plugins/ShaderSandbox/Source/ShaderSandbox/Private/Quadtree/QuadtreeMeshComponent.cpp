@@ -301,8 +301,9 @@ void UQuadtreeMeshComponent::CreateQuadMesh()
 	_GridHeight = GridLength;
 	_Vertices.Reset((NumGridDivision + 1) * (NumGridDivision + 1));
 	_TexCoords.Reset((NumGridDivision + 1) * (NumGridDivision + 1));
-	// TODO:数は計算式から求まる？
-	//_Indices.Reset(NumRow * NumColumn * 2 * 3); // ひとつのグリッドには3つのTriangle、6つの頂点インデックス指定がある
+	// グリッドをすべて2個のトライアングルで分割した場合のメッシュを81パターン分で確保しておく。正確には境界部分をより大きなトライアングルで
+	// 分割するパターンを含むのでもっと少ないが、式が複雑になるので大きめに確保しておく
+	_Indices.Reset(81 * 2 * 3 * NumGridDivision * NumGridDivision);
 
 	// ここでは正方形の中心を原点にする平行移動やLODに応じたスケールはしない。実際にメッシュを描画に渡すときに平行移動とスケールを行う。
 
@@ -443,8 +444,8 @@ uint32 UQuadtreeMeshComponent::CreateBoundaryMesh(EAdjacentQuadNodeLODDifference
 			{
 				// 接する部分の辺の長いトライアングル
 				_Indices.Emplace(GetMeshIndex(Row, 0));
-				_Indices.Emplace(GetMeshIndex(Row + (Step >> 1), 1));
 				_Indices.Emplace(GetMeshIndex(Row + Step, 0));
+				_Indices.Emplace(GetMeshIndex(Row + (Step >> 1), 1));
 				NumIndices += 3;
 
 				// 辺の長いトライアングルの山の下側を埋めるトライアングル
@@ -465,7 +466,7 @@ uint32 UQuadtreeMeshComponent::CreateBoundaryMesh(EAdjacentQuadNodeLODDifference
 				// 辺の長いトライアングルの山の上側を埋めるトライアングル
 				for (int32 i = (Step >> 1); i < Step; i++)
 				{
-					if (Row == (NumGridDivision - 1) && i == (Step - 1))
+					if (Row == (NumGridDivision - Step) && i == (Step - 1))
 					{
 						// Topと重複しないように4隅のトライアングルの分は作らない
 						continue;
@@ -540,15 +541,15 @@ uint32 UQuadtreeMeshComponent::CreateBoundaryMesh(EAdjacentQuadNodeLODDifference
 					}
 
 					_Indices.Emplace(GetMeshIndex(Row, NumGridDivision));
-					_Indices.Emplace(GetMeshIndex(Row, NumGridDivision - 1));
 					_Indices.Emplace(GetMeshIndex(Row + i, NumGridDivision - 1));
+					_Indices.Emplace(GetMeshIndex(Row + i + 1, NumGridDivision - 1));
 					NumIndices += 3;
 				}
 
 				// 辺の長いトライアングルの山の上側を埋めるトライアングル
 				for (int32 i = (Step >> 1); i < Step; i++)
 				{
-					if (Row == (NumGridDivision - 1) && i == (Step - 1))
+					if (Row == (NumGridDivision - Step) && i == (Step - 1))
 					{
 						// Topと重複しないように4隅のトライアングルの分は作らない
 						continue;
@@ -556,7 +557,7 @@ uint32 UQuadtreeMeshComponent::CreateBoundaryMesh(EAdjacentQuadNodeLODDifference
 
 					_Indices.Emplace(GetMeshIndex(Row + Step, NumGridDivision));
 					_Indices.Emplace(GetMeshIndex(Row + i, NumGridDivision - 1));
-					_Indices.Emplace(GetMeshIndex(Row + Step, NumGridDivision - 1));
+					_Indices.Emplace(GetMeshIndex(Row + i + 1, NumGridDivision - 1));
 					NumIndices += 3;
 				}
 			}
@@ -631,7 +632,7 @@ uint32 UQuadtreeMeshComponent::CreateBoundaryMesh(EAdjacentQuadNodeLODDifference
 				// 辺の長いトライアングルの山の左側を埋めるトライアングル
 				for (int32 i = (Step >> 1); i < Step; i++)
 				{
-					if (Column == (NumGridDivision - 1) && i == (Step - 1))
+					if (Column == (NumGridDivision - Step) && i == (Step - 1))
 					{
 						// Topと重複しないように4隅のトライアングルの分は作らない
 						continue;
@@ -720,7 +721,7 @@ uint32 UQuadtreeMeshComponent::CreateBoundaryMesh(EAdjacentQuadNodeLODDifference
 				// 辺の長いトライアングルの山の左側を埋めるトライアングル
 				for (int32 i = (Step >> 1); i < Step; i++)
 				{
-					if (Column == (NumGridDivision - 1) && i == (Step - 1))
+					if (Column == (NumGridDivision - Step) && i == (Step - 1))
 					{
 						// Topと重複しないように4隅のトライアングルの分は作らない
 						continue;
