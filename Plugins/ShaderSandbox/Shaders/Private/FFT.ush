@@ -7,20 +7,20 @@
 #define Complex float2
 
 // 今回は用途が512x512の画像に固定されているのでFFTに用いる定数値を固定
-#define SCAN_LINE_LENGTH 512
+#define ARRAY_LENGTH 512
 #define RADIX 8
 
 #define NUMTHREADSX (512 / RADIX)
 #define STRIDE (512 / RADIX)
 
-// LocalBuffer内にNaNがあったら0にする
-void ScrubNANs(inout Complex LocalBuffer[2][RADIX])
+// ローカルバッファ内にNaNがあったら0にする
+void ScrubNANs(inout Complex Local[2][RADIX])
 {
 	UNROLL
 	for (uint r = 0; r < RADIX; ++r)
 	{	
-		LocalBuffer[0][r] = -min(-LocalBuffer[0][r], Complex(0,0)); 
-		LocalBuffer[1][r] = -min(-LocalBuffer[1][r], Complex(0,0)); 
+		Local[0][r] = -min(-Local[0][r], Complex(0,0)); 
+		Local[1][r] = -min(-Local[1][r], Complex(0,0)); 
 	}
 }
 
@@ -129,7 +129,7 @@ void RadixFFT(in bool bIsForward, inout Complex v[RADIX])
 	Radix8FFT(bIsForward, v[0], v[1], v[2], v[3], v[4], v[5], v[6], v[7]);
 }
 
-groupshared float SharedReal[2 * SCAN_LINE_LENGTH];
+groupshared float SharedRealBuffer[2 * ARRAY_LENGTH];
 #define NUM_BANKS 32
 
 void CopyLocalXToGroupShared(in Complex Local[RADIX], in uint Head, in uint Stride, in uint BankSkip)
@@ -138,7 +138,7 @@ void CopyLocalXToGroupShared(in Complex Local[RADIX], in uint Head, in uint Stri
 	for (uint i = Head, r = 0; r < RADIX; ++r, i += Stride)
 	{
 		uint j = i + (i / NUM_BANKS) * BankSkip;
-		SharedReal[j] = Local[r].x;
+		SharedRealBuffer[j] = Local[r].x;
 	}
 }
 
@@ -148,7 +148,7 @@ void CopyLocalYToGroupShared(in Complex Local[RADIX], in uint Head, in uint Stri
 	for (uint i = Head, r = 0; r < RADIX; ++r, i += Stride)
 	{
 		uint j = i + (i / NUM_BANKS) * BankSkip;
-		SharedReal[j] = Local[r].y;
+		SharedRealBuffer[j] = Local[r].y;
 	}
 }
 
@@ -158,7 +158,7 @@ void CopyGroupSharedToLocalX(inout Complex Local[RADIX], in uint Head, in uint S
 	for (uint i = Head, r = 0; r < RADIX; ++r, i += Stride)
 	{
 		uint j = i + (i / NUM_BANKS) * BankSkip;
-		Local[r].x = SharedReal[j];
+		Local[r].x = SharedRealBuffer[j];
 	}
 }
 
@@ -168,7 +168,7 @@ void CopyGroupSharedToLocalY(inout Complex Local[RADIX], in uint Head, in uint S
 	for (uint i = Head, r = 0; r < RADIX; ++r, i += Stride)
 	{
 		uint j = i + (i / NUM_BANKS) * BankSkip;
-		Local[r].y = SharedReal[j];
+		Local[r].y = SharedRealBuffer[j];
 	}
 }
 
@@ -282,28 +282,28 @@ void GroupSharedFFT(in const bool bIsForward, inout Complex Local[RADIX], in con
 }
 
 // Scale two complex signals.
-void Scale(inout Complex LocalBuffer[2][RADIX], in float ScaleValue)
+void Scale(inout Complex LocalComplexBuffer[2][RADIX], in float ScaleValue)
 {
 	for (uint r = 0; r < RADIX; ++r)
 	{
-		LocalBuffer[0][r] *= ScaleValue;
+		LocalComplexBuffer[0][r] *= ScaleValue;
 	}
 	for (uint r = 0; r < RADIX; ++r)
 	{
-		LocalBuffer[1][r] *= ScaleValue;
+		LocalComplexBuffer[1][r] *= ScaleValue;
 	}
 }
 
 // CSの1スレッドから実行するFFT。共有メモリを使ってグループ内のスレッド同士でデータを交換し合う。
-void GroupSharedFFT(in bool bIsForward, inout Complex LocalBuffer[2][RADIX], in uint ArrayLength, in uint ThreadIdx)
+void GroupSharedFFT(in bool bIsForward, inout Complex LocalComplexBuffer[2][RADIX], in uint ArrayLength, in uint ThreadIdx)
 {
 	if (!bIsForward)
 	{
 		// ここでは1/Nのスケールは逆変換側につける方法を採用する
-		Scale(LocalBuffer, 1.0f / float(ArrayLength));
+		Scale(LocalComplexBuffer, 1.0f / float(ArrayLength));
 	}
 
-	GroupSharedFFT(bIsForward, LocalBuffer[0], ArrayLength, ThreadIdx);
-	GroupSharedFFT(bIsForward, LocalBuffer[1], ArrayLength, ThreadIdx);
+	GroupSharedFFT(bIsForward, LocalComplexBuffer[0], ArrayLength, ThreadIdx);
+	GroupSharedFFT(bIsForward, LocalComplexBuffer[1], ArrayLength, ThreadIdx);
 }
 

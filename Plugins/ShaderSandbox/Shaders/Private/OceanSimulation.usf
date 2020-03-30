@@ -109,11 +109,11 @@ RWStructuredBuffer<float> OutDyBuffer;
 RWStructuredBuffer<float> OutDzBuffer;
 
 // bIsHorizontal = true
-void CopyComplexDataSrcToLocal(inout Complex LocalBuffer[RADIX], in uint ScanIdx, uint Loc, uint Stride, uint Size, StructuredBuffer<Complex> SrcBuffer)
+void CopyComplexDataSrcToLocal(inout Complex LocalComplexBuffer[RADIX], in uint ScanIdx, uint Loc, uint Stride, uint Size, StructuredBuffer<Complex> SrcBuffer)
 {
 	for (uint i = 0; i < RADIX; ++i)
 	{
-		LocalBuffer[i] = Complex(0.f, 0.f);
+		LocalComplexBuffer[i] = Complex(0.f, 0.f);
 	}
 	
 	uint2 Pixel = uint2(Loc, ScanIdx);
@@ -122,16 +122,16 @@ void CopyComplexDataSrcToLocal(inout Complex LocalBuffer[RADIX], in uint ScanIdx
 	for (uint i = 0; i < RADIX; ++i, Pixel.x += Stride)
 	{
 		uint Index = Pixel.y * Size + Pixel.x;
-		LocalBuffer[i] = SrcBuffer[Index];
+		LocalComplexBuffer[i] = SrcBuffer[Index];
 	}
 }
 
 // bIsHorizontal = false
-void CopyWorkBufferToLocal(inout Complex LocalBuffer[RADIX], in uint ScanIdx, uint Loc, uint Stride, uint Size)
+void CopyWorkBufferToLocal(inout Complex LocalComplexBuffer[RADIX], in uint ScanIdx, uint Loc, uint Stride, uint Size)
 {
 	for (uint i = 0; i < RADIX; ++i)
 	{
-		LocalBuffer[i] = Complex(0.f, 0.f);
+		LocalComplexBuffer[i] = Complex(0.f, 0.f);
 	}
 	
 	uint2 Pixel = uint2(ScanIdx, Loc);
@@ -140,12 +140,12 @@ void CopyWorkBufferToLocal(inout Complex LocalBuffer[RADIX], in uint ScanIdx, ui
 	for (uint i = 0; i < RADIX; ++i, Pixel.y += Stride)
 	{
 		uint Index = Pixel.y * Size + Pixel.x;
-		LocalBuffer[i] = FFTWorkBufferUAV[Index];
+		LocalComplexBuffer[i] = FFTWorkBufferUAV[Index];
 	}
 }
 
 // bIsHorizontal = true
-void CopyComplexDataLocalToWorkBuffer(in Complex LocalBuffer[RADIX], uint ScanIdx, uint Loc, uint Stride, uint Size)
+void CopyComplexDataLocalToWorkBuffer(in Complex LocalComplexBuffer[RADIX], uint ScanIdx, uint Loc, uint Stride, uint Size)
 {
 	uint2 Pixel = uint2(Loc, ScanIdx);
 
@@ -153,12 +153,12 @@ void CopyComplexDataLocalToWorkBuffer(in Complex LocalBuffer[RADIX], uint ScanId
 	for (uint r = 0; r < RADIX && Pixel.x < Size; ++r, Pixel.x += Stride)
 	{
 		uint Index = Pixel.y * Size + Pixel.x;
-		FFTWorkBufferUAV[Index] = LocalBuffer[r];
+		FFTWorkBufferUAV[Index] = LocalComplexBuffer[r];
 	}
 }
 
 // bIsHorizontal = false
-void CopyRealDataLocalToDxBuffer(in Complex LocalBuffer[RADIX], uint ScanIdx, uint Loc, uint Stride, uint Size)
+void CopyRealDataLocalToDxBuffer(in Complex LocalComplexBuffer[RADIX], uint ScanIdx, uint Loc, uint Stride, uint Size)
 {
 	uint2 Pixel = uint2(ScanIdx, Loc);
 	// cos(pi * (m1 + m2))
@@ -168,12 +168,12 @@ void CopyRealDataLocalToDxBuffer(in Complex LocalBuffer[RADIX], uint ScanIdx, ui
 	for (uint r = 0; r < RADIX && Pixel.y < Size; ++r, Pixel.y += Stride)
 	{
 		uint Index = Pixel.y * Size + Pixel.x;
-		OutDxBuffer[Index] = LocalBuffer[r].x * SignCorrection * ChoppyScale; // 実数部のみコピー
+		OutDxBuffer[Index] = LocalComplexBuffer[r].x * SignCorrection * ChoppyScale; // 実数部のみコピー
 		//OutDxBuffer[Index] = 1.0;
 	}
 }
 // bIsHorizontal = false
-void CopyRealDataLocalToDyBuffer(in Complex LocalBuffer[RADIX], uint ScanIdx, uint Loc, uint Stride, uint Size)
+void CopyRealDataLocalToDyBuffer(in Complex LocalComplexBuffer[RADIX], uint ScanIdx, uint Loc, uint Stride, uint Size)
 {
 	uint2 Pixel = uint2(ScanIdx, Loc);
 	// cos(pi * (m1 + m2))
@@ -183,13 +183,13 @@ void CopyRealDataLocalToDyBuffer(in Complex LocalBuffer[RADIX], uint ScanIdx, ui
 	for (uint r = 0; r < RADIX && Pixel.y < Size; ++r, Pixel.y += Stride)
 	{
 		uint Index = Pixel.y * Size + Pixel.x;
-		OutDyBuffer[Index] = LocalBuffer[r].x * SignCorrection * ChoppyScale; // 実数部のみコピー
+		OutDyBuffer[Index] = LocalComplexBuffer[r].x * SignCorrection * ChoppyScale; // 実数部のみコピー
 		//OutDyBuffer[Index] = 1.0;
 	}
 }
 
 // bIsHorizontal = false
-void CopyRealDataLocalToDzBuffer(in Complex LocalBuffer[RADIX], uint ScanIdx, uint Loc, uint Stride, uint Size)
+void CopyRealDataLocalToDzBuffer(in Complex LocalComplexBuffer[RADIX], uint ScanIdx, uint Loc, uint Stride, uint Size)
 {
 	uint2 Pixel = uint2(ScanIdx, Loc);
 	// cos(pi * (m1 + m2))
@@ -199,7 +199,7 @@ void CopyRealDataLocalToDzBuffer(in Complex LocalBuffer[RADIX], uint ScanIdx, ui
 	for (uint r = 0; r < RADIX && Pixel.y < Size; ++r, Pixel.y += Stride)
 	{
 		uint Index = Pixel.y * Size + Pixel.x;
-		OutDzBuffer[Index] = LocalBuffer[r].x * SignCorrection; // 実数部のみコピー
+		OutDzBuffer[Index] = LocalComplexBuffer[r].x * SignCorrection; // 実数部のみコピー
 		//OutDzBuffer[Index] = 1.0;
 	}
 }
@@ -211,16 +211,14 @@ void HorizontalIFFT512x512CS(uint GroupID : SV_GroupID, uint GroupThreadID : SV_
 
 	const uint ThreadIdx = GroupThreadID;
 	const uint ScanIdx  = GroupID;
-	const uint SignalLength = SCAN_LINE_LENGTH;
-
 	uint Head = ThreadIdx;
 	const uint Stride = STRIDE;   
 
-	Complex LocalBuffer[RADIX];
+	Complex LocalComplexBuffer[RADIX];
 
-	CopyComplexDataSrcToLocal(LocalBuffer, ScanIdx, Head, Stride, SignalLength, InDkBuffer);
-	GroupSharedFFT(false, LocalBuffer, SignalLength, ThreadIdx);
-	CopyComplexDataLocalToWorkBuffer(LocalBuffer, ScanIdx, Head, Stride, SignalLength);
+	CopyComplexDataSrcToLocal(LocalComplexBuffer, ScanIdx, Head, Stride, ARRAY_LENGTH, InDkBuffer);
+	GroupSharedFFT(false, LocalComplexBuffer, ARRAY_LENGTH, ThreadIdx);
+	CopyComplexDataLocalToWorkBuffer(LocalComplexBuffer, ScanIdx, Head, Stride, ARRAY_LENGTH);
 }
 
 [numthreads(NUMTHREADSX, 1, 1)]
@@ -230,16 +228,15 @@ void DkxVerticalIFFT512x512CS(uint GroupID : SV_GroupID, uint GroupThreadID : SV
 
 	const uint ThreadIdx = GroupThreadID;
 	const uint ScanIdx  = GroupID;
-	const uint SignalLength = SCAN_LINE_LENGTH;
 
 	uint Head = ThreadIdx;
 	const uint Stride = STRIDE;   
 
-	Complex LocalBuffer[RADIX];
+	Complex LocalComplexBuffer[RADIX];
 
-	CopyWorkBufferToLocal(LocalBuffer, ScanIdx, Head, Stride, SignalLength);
-	GroupSharedFFT(false, LocalBuffer, SignalLength, ThreadIdx);
-	CopyRealDataLocalToDxBuffer(LocalBuffer, ScanIdx, Head, Stride, SignalLength);
+	CopyWorkBufferToLocal(LocalComplexBuffer, ScanIdx, Head, Stride, ARRAY_LENGTH);
+	GroupSharedFFT(false, LocalComplexBuffer, ARRAY_LENGTH, ThreadIdx);
+	CopyRealDataLocalToDxBuffer(LocalComplexBuffer, ScanIdx, Head, Stride, ARRAY_LENGTH);
 }
 
 [numthreads(NUMTHREADSX, 1, 1)]
@@ -249,16 +246,15 @@ void DkyVerticalIFFT512x512CS(uint GroupID : SV_GroupID, uint GroupThreadID : SV
 
 	const uint ThreadIdx = GroupThreadID;
 	const uint ScanIdx  = GroupID;
-	const uint SignalLength = SCAN_LINE_LENGTH;
 
 	uint Head = ThreadIdx;
 	const uint Stride = STRIDE;   
 
-	Complex LocalBuffer[RADIX];
+	Complex LocalComplexBuffer[RADIX];
 
-	CopyWorkBufferToLocal(LocalBuffer, ScanIdx, Head, Stride, SignalLength);
-	GroupSharedFFT(false, LocalBuffer, SignalLength, ThreadIdx);
-	CopyRealDataLocalToDyBuffer(LocalBuffer, ScanIdx, Head, Stride, SignalLength);
+	CopyWorkBufferToLocal(LocalComplexBuffer, ScanIdx, Head, Stride, ARRAY_LENGTH);
+	GroupSharedFFT(false, LocalComplexBuffer, ARRAY_LENGTH, ThreadIdx);
+	CopyRealDataLocalToDyBuffer(LocalComplexBuffer, ScanIdx, Head, Stride, ARRAY_LENGTH);
 }
 
 [numthreads(NUMTHREADSX, 1, 1)]
@@ -268,16 +264,15 @@ void DkzVerticalIFFT512x512CS(uint GroupID : SV_GroupID, uint GroupThreadID : SV
 
 	const uint ThreadIdx = GroupThreadID;
 	const uint ScanIdx  = GroupID;
-	const uint SignalLength = SCAN_LINE_LENGTH;
 
 	uint Head = ThreadIdx;
 	const uint Stride = STRIDE;   
 
-	Complex LocalBuffer[RADIX];
+	Complex LocalComplexBuffer[RADIX];
 
-	CopyWorkBufferToLocal(LocalBuffer, ScanIdx, Head, Stride, SignalLength);
-	GroupSharedFFT(false, LocalBuffer, SignalLength, ThreadIdx);
-	CopyRealDataLocalToDzBuffer(LocalBuffer, ScanIdx, Head, Stride, SignalLength);
+	CopyWorkBufferToLocal(LocalComplexBuffer, ScanIdx, Head, Stride, ARRAY_LENGTH);
+	GroupSharedFFT(false, LocalComplexBuffer, ARRAY_LENGTH, ThreadIdx);
+	CopyRealDataLocalToDzBuffer(LocalComplexBuffer, ScanIdx, Head, Stride, ARRAY_LENGTH);
 }
 
 StructuredBuffer<float> InDxBuffer;
