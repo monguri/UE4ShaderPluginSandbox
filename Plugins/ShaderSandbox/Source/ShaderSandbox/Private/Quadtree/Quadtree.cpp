@@ -145,6 +145,402 @@ int32 SearchLeafContainsPosition2D(const TArray<FQuadNode>& RenderQuadNodeList, 
 
 	return INDEX_NONE;
 }
+
+
+int32 GetGridMeshIndex(int32 Row, int32 Column, int32 NumColumn)
+{
+	return Row * (NumColumn + 1) + Column;
+}
+
+uint32 CreateInnerMesh(int32 NumRowColumn, TArray<uint32>& OutIndices)
+{
+	check(NumRowColumn % 2 == 0);
+
+	// 内側の部分はどのメッシュパターンでも同じだが、すべて同じものを作成する。ドローコールでインデックスバッファの不連続アクセスはできないので
+	for (int32 Row = 1; Row < NumRowColumn - 1; Row++)
+	{
+		for (int32 Column = 1; Column < NumRowColumn - 1; Column++)
+		{
+			// 4隅のグリッドをトライアングル2つに分割する対角線は、メッシュ全体の対角線の方向になっている方が、
+			// もし4隅の部分で一方の辺がLOD差がなく一方の辺がLOD差がある場合に、境界のジオメトリを作るのが扱いやすい。
+			// よってインデックスが偶数のグリッドと奇数のグリッドで対角線を逆にする。
+			// TRIANGLE_STRIPと同じ。
+			// NumRowColumnが偶数であることを前提にしている
+
+			if ((Row + Column) % 2 == 0)
+			{
+				OutIndices.Emplace(GetGridMeshIndex(Row, Column, NumRowColumn));
+				OutIndices.Emplace(GetGridMeshIndex(Row + 1, Column + 1, NumRowColumn));
+				OutIndices.Emplace(GetGridMeshIndex(Row, Column + 1, NumRowColumn));
+
+				OutIndices.Emplace(GetGridMeshIndex(Row, Column, NumRowColumn));
+				OutIndices.Emplace(GetGridMeshIndex(Row + 1, Column, NumRowColumn));
+				OutIndices.Emplace(GetGridMeshIndex(Row + 1, Column + 1, NumRowColumn));
+			}
+			else
+			{
+				OutIndices.Emplace(GetGridMeshIndex(Row, Column, NumRowColumn));
+				OutIndices.Emplace(GetGridMeshIndex(Row + 1, Column, NumRowColumn));
+				OutIndices.Emplace(GetGridMeshIndex(Row, Column + 1, NumRowColumn));
+
+				OutIndices.Emplace(GetGridMeshIndex(Row + 1, Column, NumRowColumn));
+				OutIndices.Emplace(GetGridMeshIndex(Row + 1, Column + 1, NumRowColumn));
+				OutIndices.Emplace(GetGridMeshIndex(Row, Column + 1, NumRowColumn));
+			}
+		}
+	}
+
+	return 6 * (NumRowColumn - 2) * (NumRowColumn - 2);
+}
+
+uint32 CreateBoundaryMesh(EAdjacentQuadNodeLODDifference RightAdjLODDiff, EAdjacentQuadNodeLODDifference LeftAdjLODDiff, EAdjacentQuadNodeLODDifference BottomAdjLODDiff, EAdjacentQuadNodeLODDifference TopAdjLODDiff, int32 NumRowColumn, TArray<uint32>& OutIndices, TArray<Quadtree::FQuadMeshParameter>& OutQuadMeshParams)
+{
+	check(NumRowColumn % 2 == 0);
+	uint32 NumIndices = 0;
+
+	// 境界部分は、LODの差に合わせて隣と接する部分のトライアングルの辺を2倍あるいは4倍にする
+	// 隣と接する辺の長いトライアングル単位でインデックスを追加していくため、LODの差が1ならグリッドをたどるループのステップを2、2以上なら4単位で行う
+
+	// Right
+	{
+		if (RightAdjLODDiff == EAdjacentQuadNodeLODDifference::LESS_OR_EQUAL_OR_NOT_EXIST)
+		{
+			for (int32 Row = 0; Row < NumRowColumn; Row++)
+			{
+				if (Row % 2 == 0)
+				{
+					if (Row > 0) // Bottomと重複しないように
+					{
+						OutIndices.Emplace(GetGridMeshIndex(Row, 0, NumRowColumn));
+						OutIndices.Emplace(GetGridMeshIndex(Row + 1, 1, NumRowColumn));
+						OutIndices.Emplace(GetGridMeshIndex(Row, 1, NumRowColumn));
+						NumIndices += 3;
+					}
+
+					OutIndices.Emplace(GetGridMeshIndex(Row, 0, NumRowColumn));
+					OutIndices.Emplace(GetGridMeshIndex(Row + 1, 0, NumRowColumn));
+					OutIndices.Emplace(GetGridMeshIndex(Row + 1, 1, NumRowColumn));
+					NumIndices += 3;
+				}
+				else
+				{
+					OutIndices.Emplace(GetGridMeshIndex(Row, 0, NumRowColumn));
+					OutIndices.Emplace(GetGridMeshIndex(Row + 1, 0, NumRowColumn));
+					OutIndices.Emplace(GetGridMeshIndex(Row, 1, NumRowColumn));
+					NumIndices += 3;
+
+					if (Row < NumRowColumn) // Topと重複しないように
+					{
+						OutIndices.Emplace(GetGridMeshIndex(Row + 1, 0, NumRowColumn));
+						OutIndices.Emplace(GetGridMeshIndex(Row + 1, 1, NumRowColumn));
+						OutIndices.Emplace(GetGridMeshIndex(Row, 1, NumRowColumn));
+						NumIndices += 3;
+					}
+				}
+			}
+		}
+		else
+		{
+			int32 Step = 1 << (int32)RightAdjLODDiff;
+
+			for (int32 Row = 0; Row < NumRowColumn; Row += Step)
+			{
+				// 接する部分の辺の長いトライアングル
+				OutIndices.Emplace(GetGridMeshIndex(Row, 0, NumRowColumn));
+				OutIndices.Emplace(GetGridMeshIndex(Row + Step, 0, NumRowColumn));
+				OutIndices.Emplace(GetGridMeshIndex(Row + (Step >> 1), 1, NumRowColumn));
+				NumIndices += 3;
+
+				// 辺の長いトライアングルの山の下側を埋めるトライアングル
+				for (int32 i = 0; i < (Step >> 1); i++)
+				{
+					if (Row == 0 && i == 0)
+					{
+						// Bottomと重複しないように4隅のトライアングルの分は作らない
+						continue;
+					}
+
+					OutIndices.Emplace(GetGridMeshIndex(Row, 0, NumRowColumn));
+					OutIndices.Emplace(GetGridMeshIndex(Row + i + 1, 1, NumRowColumn));
+					OutIndices.Emplace(GetGridMeshIndex(Row + i, 1, NumRowColumn));
+					NumIndices += 3;
+				}
+
+				// 辺の長いトライアングルの山の上側を埋めるトライアングル
+				for (int32 i = (Step >> 1); i < Step; i++)
+				{
+					if (Row == (NumRowColumn - Step) && i == (Step - 1))
+					{
+						// Topと重複しないように4隅のトライアングルの分は作らない
+						continue;
+					}
+
+					OutIndices.Emplace(GetGridMeshIndex(Row + Step, 0, NumRowColumn));
+					OutIndices.Emplace(GetGridMeshIndex(Row + i + 1, 1, NumRowColumn));
+					OutIndices.Emplace(GetGridMeshIndex(Row + i, 1, NumRowColumn));
+					NumIndices += 3;
+				}
+			}
+		}
+	}
+
+	// Left
+	{
+		if (LeftAdjLODDiff == EAdjacentQuadNodeLODDifference::LESS_OR_EQUAL_OR_NOT_EXIST)
+		{
+			for (int32 Row = 0; Row < NumRowColumn; Row++)
+			{
+				if ((Row + NumRowColumn - 1) % 2 == 0)
+				{
+					OutIndices.Emplace(GetGridMeshIndex(Row, NumRowColumn - 1, NumRowColumn));
+					OutIndices.Emplace(GetGridMeshIndex(Row + 1, NumRowColumn, NumRowColumn));
+					OutIndices.Emplace(GetGridMeshIndex(Row, NumRowColumn, NumRowColumn));
+					NumIndices += 3;
+
+					if (Row < (NumRowColumn - 1)) // Topと重複しないように
+					{
+						OutIndices.Emplace(GetGridMeshIndex(Row, NumRowColumn - 1, NumRowColumn));
+						OutIndices.Emplace(GetGridMeshIndex(Row + 1, NumRowColumn - 1, NumRowColumn));
+						OutIndices.Emplace(GetGridMeshIndex(Row + 1, NumRowColumn, NumRowColumn));
+						NumIndices += 3;
+					}
+				}
+				else
+				{
+					if (Row > 0) // Bottomと重複しないように
+					{
+						OutIndices.Emplace(GetGridMeshIndex(Row, NumRowColumn - 1, NumRowColumn));
+						OutIndices.Emplace(GetGridMeshIndex(Row + 1, NumRowColumn - 1, NumRowColumn));
+						OutIndices.Emplace(GetGridMeshIndex(Row, NumRowColumn, NumRowColumn));
+						NumIndices += 3;
+					}
+
+					OutIndices.Emplace(GetGridMeshIndex(Row + 1, NumRowColumn - 1, NumRowColumn));
+					OutIndices.Emplace(GetGridMeshIndex(Row + 1, NumRowColumn, NumRowColumn));
+					OutIndices.Emplace(GetGridMeshIndex(Row, NumRowColumn, NumRowColumn));
+					NumIndices += 3;
+				}
+			}
+		}
+		else
+		{
+			int32 Step = 1 << (int32)LeftAdjLODDiff;
+
+			for (int32 Row = 0; Row < NumRowColumn; Row += Step)
+			{
+				// 接する部分の辺の長いトライアングル
+				OutIndices.Emplace(GetGridMeshIndex(Row, NumRowColumn, NumRowColumn));
+				OutIndices.Emplace(GetGridMeshIndex(Row + (Step >> 1), NumRowColumn - 1, NumRowColumn));
+				OutIndices.Emplace(GetGridMeshIndex(Row + Step, NumRowColumn, NumRowColumn));
+				NumIndices += 3;
+
+				// 辺の長いトライアングルの山の下側を埋めるトライアングル
+				for (int32 i = 0; i < (Step >> 1); i++)
+				{
+					if (Row == 0 && i == 0)
+					{
+						// Bottomと重複しないように4隅のトライアングルの分は作らない
+						continue;
+					}
+
+					OutIndices.Emplace(GetGridMeshIndex(Row, NumRowColumn, NumRowColumn));
+					OutIndices.Emplace(GetGridMeshIndex(Row + i, NumRowColumn - 1, NumRowColumn));
+					OutIndices.Emplace(GetGridMeshIndex(Row + i + 1, NumRowColumn - 1, NumRowColumn));
+					NumIndices += 3;
+				}
+
+				// 辺の長いトライアングルの山の上側を埋めるトライアングル
+				for (int32 i = (Step >> 1); i < Step; i++)
+				{
+					if (Row == (NumRowColumn - Step) && i == (Step - 1))
+					{
+						// Topと重複しないように4隅のトライアングルの分は作らない
+						continue;
+					}
+
+					OutIndices.Emplace(GetGridMeshIndex(Row + Step, NumRowColumn, NumRowColumn));
+					OutIndices.Emplace(GetGridMeshIndex(Row + i, NumRowColumn - 1, NumRowColumn));
+					OutIndices.Emplace(GetGridMeshIndex(Row + i + 1, NumRowColumn - 1, NumRowColumn));
+					NumIndices += 3;
+				}
+			}
+		}
+	}
+
+	// Bottom
+	{
+		if (BottomAdjLODDiff == EAdjacentQuadNodeLODDifference::LESS_OR_EQUAL_OR_NOT_EXIST)
+		{
+			for (int32 Column = 0; Column < NumRowColumn; Column++)
+			{
+				if (Column % 2 == 0)
+				{
+					OutIndices.Emplace(GetGridMeshIndex(0, Column, NumRowColumn));
+					OutIndices.Emplace(GetGridMeshIndex(1, Column + 1, NumRowColumn));
+					OutIndices.Emplace(GetGridMeshIndex(0, Column + 1, NumRowColumn));
+					NumIndices += 3;
+
+					if (Column > 0) // Rightと重複しないように
+					{
+						OutIndices.Emplace(GetGridMeshIndex(0, Column, NumRowColumn));
+						OutIndices.Emplace(GetGridMeshIndex(1, Column, NumRowColumn));
+						OutIndices.Emplace(GetGridMeshIndex(1, Column + 1, NumRowColumn));
+						NumIndices += 3;
+					}
+				}
+				else
+				{
+					OutIndices.Emplace(GetGridMeshIndex(0, Column, NumRowColumn));
+					OutIndices.Emplace(GetGridMeshIndex(1, Column, NumRowColumn));
+					OutIndices.Emplace(GetGridMeshIndex(0, Column + 1, NumRowColumn));
+					NumIndices += 3;
+
+					if (Column < NumRowColumn - 1) // Leftと重複しないように
+					{
+						OutIndices.Emplace(GetGridMeshIndex(1, Column, NumRowColumn));
+						OutIndices.Emplace(GetGridMeshIndex(1, Column + 1, NumRowColumn));
+						OutIndices.Emplace(GetGridMeshIndex(0, Column + 1, NumRowColumn));
+						NumIndices += 3;
+					}
+				}
+			}
+		}
+		else
+		{
+			int32 Step = 1 << (int32)BottomAdjLODDiff;
+
+			for (int32 Column = 0; Column < NumRowColumn; Column += Step)
+			{
+				// 接する部分の辺の長いトライアングル
+				OutIndices.Emplace(GetGridMeshIndex(0, Column, NumRowColumn));
+				OutIndices.Emplace(GetGridMeshIndex(1, Column + (Step >> 1), NumRowColumn));
+				OutIndices.Emplace(GetGridMeshIndex(0, Column + Step, NumRowColumn));
+				NumIndices += 3;
+
+				// 辺の長いトライアングルの山の右側を埋めるトライアングル
+				for (int32 i = 0; i < (Step >> 1); i++)
+				{
+					if (Column == 0 && i == 0)
+					{
+						// Bottomと重複しないように4隅のトライアングルの分は作らない
+						continue;
+					}
+
+					OutIndices.Emplace(GetGridMeshIndex(0, Column, NumRowColumn));
+					OutIndices.Emplace(GetGridMeshIndex(1, Column + i, NumRowColumn));
+					OutIndices.Emplace(GetGridMeshIndex(1, Column + i + 1, NumRowColumn));
+					NumIndices += 3;
+				}
+
+				// 辺の長いトライアングルの山の左側を埋めるトライアングル
+				for (int32 i = (Step >> 1); i < Step; i++)
+				{
+					if (Column == (NumRowColumn - Step) && i == (Step - 1))
+					{
+						// Topと重複しないように4隅のトライアングルの分は作らない
+						continue;
+					}
+
+					OutIndices.Emplace(GetGridMeshIndex(0, Column + Step, NumRowColumn));
+					OutIndices.Emplace(GetGridMeshIndex(1, Column + i, NumRowColumn));
+					OutIndices.Emplace(GetGridMeshIndex(1, Column + i + 1, NumRowColumn));
+					NumIndices += 3;
+				}
+			}
+		}
+	}
+
+	// Top
+	{
+		if (TopAdjLODDiff == EAdjacentQuadNodeLODDifference::LESS_OR_EQUAL_OR_NOT_EXIST)
+		{
+			for (int32 Column = 0; Column < NumRowColumn; Column++)
+			{
+				// 4隅のグリッドをトライアングル2つに分割する対角線は、メッシュ全体の対角線の方向になっている方が、
+				// もし4隅の部分で一方の辺がLOD差がなく一方の辺がLOD差がある場合に、境界のジオメトリを作るのが扱いやすい。
+				// よってインデックスが偶数のグリッドと奇数のグリッドで対角線を逆にする。
+				// TRIANGLE_STRIPと同じ。
+				// NumRowColumnが偶数であることを前提にしている
+
+				if ((NumRowColumn - 1 + Column) % 2 == 0)
+				{
+					if (Column < NumRowColumn - 1) // Leftと重複しないように
+					{
+						OutIndices.Emplace(GetGridMeshIndex(NumRowColumn - 1, Column, NumRowColumn));
+						OutIndices.Emplace(GetGridMeshIndex(NumRowColumn, Column + 1, NumRowColumn));
+						OutIndices.Emplace(GetGridMeshIndex(NumRowColumn - 1, Column + 1, NumRowColumn));
+						NumIndices += 3;
+					}
+
+					OutIndices.Emplace(GetGridMeshIndex(NumRowColumn - 1, Column, NumRowColumn));
+					OutIndices.Emplace(GetGridMeshIndex(NumRowColumn, Column, NumRowColumn));
+					OutIndices.Emplace(GetGridMeshIndex(NumRowColumn, Column + 1, NumRowColumn));
+					NumIndices += 3;
+				}
+				else
+				{
+					if (Column > 0) // Rightと重複しないように
+					{
+						OutIndices.Emplace(GetGridMeshIndex(NumRowColumn - 1, Column, NumRowColumn));
+						OutIndices.Emplace(GetGridMeshIndex(NumRowColumn, Column, NumRowColumn));
+						OutIndices.Emplace(GetGridMeshIndex(NumRowColumn - 1, Column + 1, NumRowColumn));
+						NumIndices += 3;
+					}
+
+					OutIndices.Emplace(GetGridMeshIndex(NumRowColumn, Column, NumRowColumn));
+					OutIndices.Emplace(GetGridMeshIndex(NumRowColumn, Column + 1, NumRowColumn));
+					OutIndices.Emplace(GetGridMeshIndex(NumRowColumn - 1, Column + 1, NumRowColumn));
+					NumIndices += 3;
+				}
+			}
+		}
+		else
+		{
+			int32 Step = 1 << (int32)TopAdjLODDiff;
+
+			for (int32 Column = 0; Column < NumRowColumn; Column += Step)
+			{
+				// 接する部分の辺の長いトライアングル
+				OutIndices.Emplace(GetGridMeshIndex(NumRowColumn, Column, NumRowColumn));
+				OutIndices.Emplace(GetGridMeshIndex(NumRowColumn, Column + Step, NumRowColumn));
+				OutIndices.Emplace(GetGridMeshIndex(NumRowColumn - 1, Column + (Step >> 1), NumRowColumn));
+				NumIndices += 3;
+
+				// 辺の長いトライアングルの山の右側を埋めるトライアングル
+				for (int32 i = 0; i < (Step >> 1); i++)
+				{
+					if (Column == 0 && i == 0)
+					{
+						// Bottomと重複しないように4隅のトライアングルの分は作らない
+						continue;
+					}
+
+					OutIndices.Emplace(GetGridMeshIndex(NumRowColumn, Column, NumRowColumn));
+					OutIndices.Emplace(GetGridMeshIndex(NumRowColumn - 1, Column + i + 1, NumRowColumn));
+					OutIndices.Emplace(GetGridMeshIndex(NumRowColumn - 1, Column + i, NumRowColumn));
+					NumIndices += 3;
+				}
+
+				// 辺の長いトライアングルの山の左側を埋めるトライアングル
+				for (int32 i = (Step >> 1); i < Step; i++)
+				{
+					if (Column == (NumRowColumn - Step) && i == (Step - 1))
+					{
+						// Topと重複しないように4隅のトライアングルの分は作らない
+						continue;
+					}
+
+					OutIndices.Emplace(GetGridMeshIndex(NumRowColumn, Column + Step, NumRowColumn));
+					OutIndices.Emplace(GetGridMeshIndex(NumRowColumn - 1, Column + i + 1, NumRowColumn));
+					OutIndices.Emplace(GetGridMeshIndex(NumRowColumn - 1, Column + i, NumRowColumn));
+					NumIndices += 3;
+				}
+			}
+		}
+	}
+
+	return NumIndices;
+}
 } // namespace
 
 namespace Quadtree
@@ -191,6 +587,38 @@ EAdjacentQuadNodeLODDifference QueryAdjacentNodeType(const FQuadNode& Node, cons
 	}
 
 	return Ret;
+}
+
+void CreateQuadMeshes(int32 NumRowColumn, TArray<uint32>& OutIndices, TArray<Quadtree::FQuadMeshParameter>& OutQuadMeshParams)
+{
+	check((uint32)EAdjacentQuadNodeLODDifference::LESS_OR_EQUAL_OR_NOT_EXIST == 0);
+	check((uint32)EAdjacentQuadNodeLODDifference::MAX == 3);
+
+	// グリッドをすべて2個のトライアングルで分割した場合のメッシュを81パターン分で確保しておく。正確には境界部分をより大きなトライアングルで
+	// 分割するパターンを含むのでもっと少ないが、式が複雑になるので大きめに確保しておく
+	OutIndices.Reset(81 * 2 * 3 * NumRowColumn * NumRowColumn);
+
+	// 右隣がLODが自分以下なのと、一段階上なのと、二段階以上なのの3パターン。左隣、下隣、上隣でも3パターンでそれらの組み合わせで3*3*3*3パターン。
+	OutQuadMeshParams.Reset(81);
+
+	uint32 IndexOffset = 0;
+	for (uint32 RightType = (uint32)EAdjacentQuadNodeLODDifference::LESS_OR_EQUAL_OR_NOT_EXIST; RightType < (uint32)EAdjacentQuadNodeLODDifference::MAX; RightType++)
+	{
+		for (uint32 LeftType = (uint32)EAdjacentQuadNodeLODDifference::LESS_OR_EQUAL_OR_NOT_EXIST; LeftType < (uint32)EAdjacentQuadNodeLODDifference::MAX; LeftType++)
+		{
+			for (uint32 BottomType = (uint32)EAdjacentQuadNodeLODDifference::LESS_OR_EQUAL_OR_NOT_EXIST; BottomType < (uint32)EAdjacentQuadNodeLODDifference::MAX; BottomType++)
+			{
+				for (uint32 TopType = (uint32)EAdjacentQuadNodeLODDifference::LESS_OR_EQUAL_OR_NOT_EXIST; TopType < (uint32)EAdjacentQuadNodeLODDifference::MAX; TopType++)
+				{
+					uint32 NumInnerMeshIndices = CreateInnerMesh(NumRowColumn, OutIndices);
+					uint32 NumBoundaryMeshIndices = CreateBoundaryMesh((EAdjacentQuadNodeLODDifference)RightType, (EAdjacentQuadNodeLODDifference)LeftType, (EAdjacentQuadNodeLODDifference)BottomType, (EAdjacentQuadNodeLODDifference)TopType, NumRowColumn, OutIndices, OutQuadMeshParams);
+					// TArrayのインデックスは、RightType * 3^3 + LeftType * 3^2 + BottomType * 3^1 + TopType * 3^0となる
+					OutQuadMeshParams.Emplace(IndexOffset, NumInnerMeshIndices + NumBoundaryMeshIndices);
+					IndexOffset += NumInnerMeshIndices + NumBoundaryMeshIndices;
+				}
+			}
+		}
+	}
 }
 } // namespace Quadtree
 

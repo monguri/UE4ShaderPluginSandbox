@@ -42,16 +42,11 @@ public:
 
 protected:
 	virtual void OnRegister() override;
-	virtual int32 GetMeshIndex(int32 Row, int32 Column) override;
 
 private:
 	UPROPERTY(Transient)
 	TArray<class UMaterialInstanceDynamic*> LODMIDList;
 
 	TArray<Quadtree::FQuadMeshParameter> QuadMeshParams;
-
-	void CreateQuadMeshes();
-	uint32 CreateInnerMesh();
-	uint32 CreateBoundaryMesh(Quadtree::EAdjacentQuadNodeLODDifference RightAdjLODDiff, Quadtree::EAdjacentQuadNodeLODDifference LeftAdjLODDiff, Quadtree::EAdjacentQuadNodeLODDifference BottomAdjLODDiff, Quadtree::EAdjacentQuadNodeLODDifference TopAdjLODDiff);
 };
 

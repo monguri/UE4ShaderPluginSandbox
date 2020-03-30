@@ -57,5 +57,7 @@ enum class EAdjacentQuadNodeLODDifference : uint8
 void BuildQuadtree(int32 MaxLOD, int32 NumRowColumn, float MaxScreenCoverage, float PatchLength, const FVector& CameraPosition, const FVector2D& ProjectionScale, const FMatrix& ViewProjectionMatrix, FQuadNode& RootNode, TArray<FQuadNode>& OutAllQuadNodeList, TArray<FQuadNode>& OutRenderQuadNodeList);
 
 EAdjacentQuadNodeLODDifference QueryAdjacentNodeType(const FQuadNode& Node, const FVector2D& AdjacentPosition, const TArray<FQuadNode>& RenderQuadNodeList);
+
+void CreateQuadMeshes(int32 NumRowColumn, TArray<uint32>& OutIndices, TArray<Quadtree::FQuadMeshParameter>& OutQuadMeshParams);
 } // namespace Quadtree
 
