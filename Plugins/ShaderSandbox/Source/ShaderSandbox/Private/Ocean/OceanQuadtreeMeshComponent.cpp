@@ -179,9 +179,9 @@ public:
 				float MaxScreenCoverage = (float)GridMaxPixelCoverage * GridMaxPixelCoverage / View->UnscaledViewRect.Width() / View->UnscaledViewRect.Height();
 
 				TArray<FQuadNode> QuadNodeList;
-				QuadNodeList.Reserve(512); //TODO:とりあえず512。ここで毎回確保は処理不可が無駄だが、この関数がconstなのでとりあえず
+				QuadNodeList.Reserve(128); //TODO:とりあえず現状の傾向から128。ここで毎回確保は処理不可が無駄だが、この関数がconstなのでとりあえず
 				TArray<FQuadNode> RenderList;
-				RenderList.Reserve(512); //TODO:とりあえず512。ここで毎回確保は処理不可が無駄だが、この関数がconstなのでとりあえず
+				RenderList.Reserve(64); //TODO:とりあえず現状の傾向から64。ここで毎回確保は処理不可が無駄だが、この関数がconstなのでとりあえず
 
 				Quadtree::BuildQuadtree(MaxLOD, NumGridDivision, MaxScreenCoverage, PatchLength, View->ViewMatrices.GetViewOrigin(), View->ViewMatrices.GetProjectionScale(), View->ViewMatrices.GetViewProjectionMatrix(), RootNode, QuadNodeList, RenderList);
 
