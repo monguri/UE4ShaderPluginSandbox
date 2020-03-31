@@ -9,6 +9,7 @@
 // 今回は用途が512x512の画像に固定されているのでFFTに用いる定数値を固定
 // 現状ではシェーダ内のロジックが512と8を前提に書かれているので、この値は変えても動作しないのに注意
 #define ARRAY_LENGTH 512
+// 基数
 #define RADIX 8
 
 #define NUMTHREADSX (ARRAY_LENGTH / RADIX)
@@ -24,37 +25,38 @@ void ScrubNANs(inout Complex Local[2][RADIX])
 	}
 }
 
+// 複素数の乗算
 Complex ComplexMult(in Complex A, in Complex B)
 {
 	return Complex(A.x * B.x - A.y * B.y, A.x * B.y + B.x * A.y);
 }
 
-// 複素数配列2要素のFFT
+// 基数2での複素数配列2要素のFFT
 void Radix2FFT(in bool bIsForward, inout Complex V0, inout Complex V1)
 {
 	V0 = V0 + V1;
 	V1 = V0 - V1 - V1; // V0 - V1
 }
 
-// 複素数配列4要素のFFT
+// 基数4での複素数配列4要素のFFT
 void Radix4FFT(in bool bIsForward, inout Complex V0, inout Complex V1, inout Complex V2, inout Complex V3)
 {
 	// 遇要素の2要素FFTと奇要素の2要素FFT
 	Radix2FFT(bIsForward, V0, V2); 
 	Radix2FFT(bIsForward, V1, V3); 
 
-	// バタフライ演算
+	// バタフライ演算。ひねり係数は虚数i。
 	Complex Tmp;
 	Complex TmpV1 = V1;
 
 	if (bIsForward)
 	{
-		// Complex(0, 1) * V3
+		// i * V3
 		Tmp = Complex(-V3.y, V3.x);
 	}
 	else
 	{
-		// Complex(0, -1) * V3
+		// -i * V3
 		Tmp = Complex(V3.y, -V3.x);
 	}
 
@@ -64,14 +66,14 @@ void Radix4FFT(in bool bIsForward, inout Complex V0, inout Complex V1, inout Com
 	V2 = V0 - TmpV1 - TmpV1; // V0 - TmpV1
 }
 
-// 複素数配列8要素のFFT
+// 基数8での複素数配列8要素のFFT
 void Radix8FFT(in bool bIsForward, inout Complex V0, inout Complex V1, inout Complex V2, inout Complex V3, inout Complex V4, inout Complex V5, inout Complex V6, inout Complex V7)
 {
 	// 遇要素の4要素FFTと奇要素の4要素FFT
 	Radix4FFT(bIsForward, V0, V2, V4, V6);
 	Radix4FFT(bIsForward, V1, V3, V5, V7);
 
-	// バタフライ演算
+	// ひねり係数
 	float InvSqrtTwo = float(1.f) / sqrt(2.f);
 	Complex Twiddle;
 	if (bIsForward)
@@ -83,6 +85,7 @@ void Radix8FFT(in bool bIsForward, inout Complex V0, inout Complex V1, inout Com
 		 Twiddle = Complex(InvSqrtTwo, -InvSqrtTwo);
 	}
 
+	// バタフライ演算
 	Complex Result[8];
 	Complex Tmp = ComplexMult(Twiddle, V3);
 
@@ -123,17 +126,18 @@ void Radix8FFT(in bool bIsForward, inout Complex V0, inout Complex V1, inout Com
 	V7 = Result[7];
 }
 
-// 複素数配列8要素のFFT
-void RadixFFT(in bool bIsForward, inout Complex v[RADIX])
+// 基数8での複素数配列8要素のFFT
+void RadixFFT(in bool bIsForward, inout Complex V[RADIX])
 {
-	Radix8FFT(bIsForward, v[0], v[1], v[2], v[3], v[4], v[5], v[6], v[7]);
+	Radix8FFT(bIsForward, V[0], V[1], V[2], V[3], V[4], V[5], V[6], V[7]);
 }
 
+// スレッド間でのStockhamアルゴリズムのためのデータ交換のためのグループ共有メモリ上のワークバッファ
 groupshared float SharedRealBuffer[2 * ARRAY_LENGTH];
 #define NUM_BANKS 32
 
 //
-// グループ内スレッド共有メモリとスレッドのローカルなバッファとのデータ交換のための関数群
+// グループ共有メモリ上のワークバッファとスレッドのローカルなバッファとの間でのデータコピーのための関数群
 //
 
 void CopyLocalXToGroupShared(in Complex Local[RADIX], in uint Head, in uint Stride, in uint BankSkip)
@@ -186,9 +190,9 @@ void CopyLocalYToGroupShared(in Complex Local[RADIX], in uint Head, in uint Stri
 	CopyLocalYToGroupShared(Local, Head, Stride, 0);
 }
 
-// グループ内スレッド間でのデータ交換。
+// Stockhamアルゴリズムのためのグループ内スレッド間でのデータ交換を行う。
 // 各スレッドでローカルメモリのバッファをHead1、Stride1で共有メモリに配置し、また、各スレッドでHead2、Stride2で取り出してローカルメモリに格納する。
-void TransposeData(inout Complex Local[RADIX], uint Head1, uint Stride1, uint Head2, uint Stride2)
+void TransposeLocalBuffers(inout Complex Local[RADIX], uint Head1, uint Stride1, uint Head2, uint Stride2)
 {
 	uint BankSkip = (Stride1 < NUM_BANKS) ? Stride1 : 0;
 
@@ -204,14 +208,17 @@ void TransposeData(inout Complex Local[RADIX], uint Head1, uint Stride1, uint He
 // 8要素FFTのバタフライ演算
 void Butterfly(in const bool bIsForward, inout Complex Local[RADIX], uint ThreadIdx, uint Length)
 {
-	float angle = TWO_PI * (ThreadIdx % Length) / float(Length * RADIX);
+	// ひねり係数の角度部分
+	float Angle = TWO_PI * (ThreadIdx % Length) / float(Length * RADIX);
 	if (!bIsForward)
 	{
-		angle *= -1;
+		Angle *= -1;
 	}
 
+	// ひねり係数
 	Complex TwiddleInc;
-	sincos(angle, TwiddleInc.y, TwiddleInc.x);
+	sincos(Angle, TwiddleInc.y, TwiddleInc.x);
+
 	Complex Twiddle = TwiddleInc;
 	for (uint r = 1; r < RADIX; r++)
 	{
@@ -220,41 +227,38 @@ void Butterfly(in const bool bIsForward, inout Complex Local[RADIX], uint Thread
 	}
 }
 
-// 次に共有メモリに配置するHead位置を計算する関数。
-// Utility: As a function of j, 
-// returns Ns contiguous values, then skips R*Ns values, then the next Ns values, etc
-// (e.g. R = 3, Ns = 2: 0, 1, 6, 7, 12, 13..)
-// (e.g. R = 2, Ns = 4: 0, 1, 2, 3, 8, 9, 10, 11,..)
-uint Expand(in uint j, in uint Ns, in uint R) {
-	return (j / Ns) * Ns * R + (j % Ns);
+// 交換元のHeadインデックスを取得する。
+// Headのスキップ幅は、現在のStride * Radixになる。
+uint GetTransposeHead(in uint ThreadIdx, in uint Stride, in uint Radix) {
+	return (ThreadIdx / Stride) * Stride * Radix + (ThreadIdx % Stride);
 }
 
-// Stockham FFT。CSのグループ内の各スレッドで実行される。共有メモリを使ってスレッド同士でデータを交換し合う。
+// 基数8のStockham FFT。CSのグループ内の各スレッドで実行される。共有メモリを使ってスレッド同士でデータを交換し合う。
 void GroupSharedFFT(in const bool bIsForward, inout Complex Local[RADIX], in const uint ArrayLength, in const uint ThreadIdx)
 {
-	uint NumThreads = ArrayLength / RADIX;
+	uint DstStride = ArrayLength / RADIX;
 
 	RadixFFT(bIsForward, Local);
 
-	uint IdxSrc = ThreadIdx;
-	uint IdxDist = ThreadIdx * RADIX;
-	TransposeData(Local, IdxDist, 1, IdxSrc, NumThreads);		
+	uint IdxSrc = ThreadIdx * RADIX;
+	uint IdxDst = ThreadIdx;
+	TransposeLocalBuffers(Local, IdxSrc, 1, IdxDst, DstStride);		
 
-	uint Stride = RADIX;
+	uint SrcStride = RADIX;
 
-	for (; Stride < NumThreads; Stride *= RADIX)
+	for (; SrcStride < DstStride; SrcStride *= RADIX)
 	{
-		Butterfly(bIsForward, Local, ThreadIdx, Stride);
+		Butterfly(bIsForward, Local, ThreadIdx, SrcStride);
 
 		RadixFFT(bIsForward, Local);
 
 		GroupMemoryBarrierWithGroupSync();
 
-		IdxDist = Expand(ThreadIdx, Stride, RADIX);
-		TransposeData(Local, IdxDist, Stride, IdxSrc, NumThreads);
+		IdxSrc = GetTransposeHead(ThreadIdx, SrcStride, RADIX);
+		TransposeLocalBuffers(Local, IdxSrc, SrcStride, IdxDst, DstStride);
 	}
 
-	Butterfly(bIsForward, Local, ThreadIdx, Stride);
+	Butterfly(bIsForward, Local, ThreadIdx, SrcStride);
 
 	RadixFFT(bIsForward, Local);
 
