@@ -8,66 +8,21 @@ uint2 SrcRectMin;
 uint2 SrcRectMax;
 uint4 DstRect;
 
-// The Two-For-One trick:  FFT two real signals (f,g) of length N 
-// are transformed simultaneously by treating them as a single complex signal z.
-// z_n = f_n + I * g_n.
-// 
-// Giving the complex amplitudes (i.e. the transform)  Z_k = F_k + I * G_k.
-//
-// The transforms of the real signals can be recovered as
-//
-//  F_k = (1/2) (Z_k + ComplexConjugate(Z_{N-k}))
-//  G_k = (-i/2)(Z_k - ComplexConjugate(Z_{N-k}))
-//
-// Furthermore, the transform of any real signal x_n has the symmetry
-//  X_k = ComplexConjugate(X_{N-k})   
-
-
-// Separate the FFT of two real signals that were processed togehter
-// using the two-for-one trick.
-//
-// On input the data in LocalComplexBuffer across the threads in this group
-// holds the transform  of the complex signal z = f + I * g of lenght N.
-//
-// On return the transform of f and g have been separated and stored
-// in the LocalComplexBuffer in a form consistent with the packing the x-signal transform forward, 
-// followed by the y-signal transform in reverse.
-// 
-// {F_o, G_o}, {F_1}, {F_2},..,{F_{N/2-1}}, {F_N/2, G_N/2}, {G_{N/2 +1}},  {G_{N/2 +2}}, .., {G_{N-2}},    {G_{N-1}} 
-//     0       , 1    , 2    ,..., N/2-1,       N/2,           N/2 +1,      N/2 +2,  ..,  N/2- (2-N/2),   N/2 - (1-N/2)
-// here {} := Complex
 void PackLocalBuffer(inout Complex LocalComplexBuffer[RADIX], in uint Head, in uint Stride, in uint N)
 {
-	const uint Non2 = N / 2;
-	
-	// On input, Each thread has, in LocalComplexBuffer, the frequencies
-	// K = Head + j * Stride;  where j = 0, .., RADIX-1.. Head = ThreadIDx, Stride = NumberOfThreads
-
-	// Write the complex FFT into group shared memory.
+	const uint HalfN = N / 2;
 	
 	CopyLocalXToGroupShared(LocalComplexBuffer, Head, Stride);
 	GroupMemoryBarrierWithGroupSync();
 
-	// Construct the transform for the two real signals in the LocalComplexBuffer
 	UNROLL
 	for (uint i = 0, K = Head; i < RADIX; ++i, K += Stride)
 	{
-		//
-		// K = N/2 - abs(SrcIdx - N/2)
-
-		// DstK = SrcIdx % Non2;
-		// N - k
-		
 		FLATTEN
-		uint NmK = (K > 0) ? (N - K) : 0;
+		uint NminusK = (K > 0) ? (N - K) : 0;
 
-		// Z_k = LocalComplexBuffer[i]
-		// If k < N/2  : Store  F_k = 1/2 (Z_k + Z*_{N-k})
-		// If k > N/2  : Compute I*G_k = 1/2 (Z_k - Z*_{N-k})
-		
-		// Tmp =  {+,-}ComplexConjugate( Z_{N-k})
-		float Tmp = SharedRealBuffer[NmK];
-		Tmp *= (K > Non2) ? -1 : 1;
+		float Tmp = SharedRealBuffer[NminusK];
+		Tmp *= (K > HalfN) ? -1 : 1;
 		LocalComplexBuffer[i].x += Tmp;
 	}
 
@@ -83,23 +38,12 @@ void PackLocalBuffer(inout Complex LocalComplexBuffer[RADIX], in uint Head, in u
 	UNROLL
 	for (uint i = 0, K = Head; i < RADIX; ++i, K += Stride)
 	{
-		//
-		// K = N/2 - abs(SrcIdx - N/2)
-
-		// DstK = SrcIdx % Non2;
-		// N - k
-		
 		FLATTEN
-		uint NmK = (K > 0) ? (N - K) : 0;
-
-		// Z_k = LocalComplexBuffer[i]
-		// If k < N/2  : Store  F_k = 1/2 (Z_k + Z*_{N-k})
-		// If k > N/2  : Compute I*G_k = 1/2 (Z_k - Z*_{N-k})
+		uint NminusK = (K > 0) ? (N - K) : 0;
 		
-		// Tmp =  {+,-}ComplexConjugate( Z_{N-k})
-		float Tmp = -SharedRealBuffer[NmK];
+		float Tmp = -SharedRealBuffer[NminusK];
 		
-		Tmp *= (K < Non2) ? 1 : -1;
+		Tmp *= (K < HalfN) ? 1 : -1;
 
 		LocalComplexBuffer[i].y += Tmp;
 	}
@@ -118,35 +62,17 @@ void PackLocalBuffer(inout Complex LocalComplexBuffer[RADIX], in uint Head, in u
 	UNROLL
 	for (uint i = 0, K = Head; i < RADIX; ++i, K += Stride)
 	{
-		// If k > N/2 get G_k from I*G_k:  G_k = -I * (I G_k)
-		if (K > Non2)
+		if (K > HalfN)
 		{
 			LocalComplexBuffer[i] = ComplexMult(Complex(0, -1), LocalComplexBuffer[i]);
 		}
 	}
 }
 
-// Inverse of PackLocalBuffer()
-// Combine the FFT of two real signals (f,g) into a single complex signal
-// for use in inverting a "two-for-one" FFT .
-//
-//
-// On return the transform of f and g have been separated and stored
-// in the LocalComplexBuffer in a form consistent with the packing the x-signal transform forward, 
-// followed by the y-signal transform in reverse.
-// 
-// {F_o, G_o}, {F_1}, {F_2},..,{F_{N/2-1}}, {F_N/2, G_N/2}, {G_{N/2 +1}},  {G_{N/2 +2}}, .., { G_{N-2}},    {G_{N-1}} 
-//     0       , 1    , 2    ,..., N/2-1,       N/2,           N/2 +1,      N/2 +2,      ..,  N/2- (2-N/2),  N/2 - (1-N/2)
-// here {} := Complex
-//
-// On return the data in LocalComplexBuffer across the threads in this group
-// hold the transform  of the complex signal z = f + ig of lenght N.
-//
 void UnpackLocalBuffer(inout Complex LocalComplexBuffer[RADIX], in uint Head, in uint Stride, in uint N)
 {
-	uint Non2 = N / 2;
+	uint HalfN = N / 2;
 
-	// Write the two FFTs into shared memory.
 	float TmpX[RADIX];
 	for (uint i = 0; i < RADIX; ++i)
 	{
@@ -157,37 +83,23 @@ void UnpackLocalBuffer(inout Complex LocalComplexBuffer[RADIX], in uint Head, in
 
 	GroupMemoryBarrierWithGroupSync();
 
-	// Compose the transform of a single f+ig signal from the two real signals in the LocalComplexBuffer
 	UNROLL
 	for (uint i = 0, K = Head; i < RADIX; ++i, K += Stride)
 	{
-		// N - k 
-		FLATTEN uint NmK = (K > 0) ? (N - K) : 0;
+		FLATTEN uint NminusK = (K > 0) ? (N - K) : 0;
 
-		// If k < N/2  : LocalComplexBuffer[i] = F_k,  
-		//               Shared[N-K] =  G[N-K] = Conjugate(G[k]) =  (G[k]_r, -G[k]_i) = Complex(G_r, -G_i)
-		//                          want   I G[k] =  float(-G[k]_i, G[k]_r)
-		//                 Tmp = I * G_k   
-		// If k > N/2  : LocalComplexBuffer[i] = G_k 
-		//               Shared[N-K] = F[N-k] = Conjugate(F[k]) = Complex(F[k]_r, -F[k]_i)
-		//                           want -I F[k] = Complex(F[k]_i, -F[k]_r)
-		//                 Tmp = -I * F   
-		//  ComplexConjugate( Z_{N-k})
+		float Tmp = SharedRealBuffer[NminusK];
 
-		// Tmp = (K < Non2) ? I *  G_k : -I * F
-		float Tmp = SharedRealBuffer[NmK];
-
-		Tmp *= (K > Non2) ? -1 : 1;
+		Tmp *= (K > HalfN) ? -1 : 1;
 
 		LocalComplexBuffer[i].x += Tmp;
 	}
 
 	float2 FirstElement = float2(0, SharedRealBuffer[0]);
-	float2 MiddleElement = float2(0, SharedRealBuffer[Non2]);
+	float2 MiddleElement = float2(0, SharedRealBuffer[HalfN]);
 
 	GroupMemoryBarrierWithGroupSync();
 
-	// Copy TmpX to GroupShared
 	UNROLL
 	for (uint r = 0, i = Head; r < RADIX; ++r, i += Stride)
 	{
@@ -196,27 +108,15 @@ void UnpackLocalBuffer(inout Complex LocalComplexBuffer[RADIX], in uint Head, in
 
 	GroupMemoryBarrierWithGroupSync();
 	FirstElement.x = SharedRealBuffer[0];
-	MiddleElement.x = SharedRealBuffer[Non2];
+	MiddleElement.x = SharedRealBuffer[HalfN];
 
 	UNROLL
 	for (uint i = 0, K = Head; i < RADIX; ++i, K += Stride)
 	{
-		// N - k 
-		FLATTEN uint NmK = (K > 0) ? (N - K) : 0;
+		FLATTEN uint NminusK = (K > 0) ? (N - K) : 0;
 
-		// If k < N/2  : LocalComplexBuffer[i] = F_k,  
-		//               Shared[N-K] =  G[N-K] = Conjugate(G[k]) =  (G[k]_r, -G[k]_i) = Complex(G_r, -G_i)
-		//                          want   I G[k] =  float(-G[k]_i, G[k]_r)
-		//                 Tmp = I * G_k   
-		// If k > N/2  : LocalComplexBuffer[i] = G_k 
-		//               Shared[N-K] = F[N-k] = Conjugate(F[k]) = Complex(F[k]_r, -F[k]_i)
-		//                           want -I F[k] = Complex(F[k]_i, -F[k]_r)
-		//                 Tmp = -I * F   
-		//  ComplexConjugate( Z_{N-k})
-
-		// Tmp = (K < Non2) ? I *  G_k : -I * F
-		float Tmp = SharedRealBuffer[ NmK ]; 
-		Tmp *= (K > Non2) ? -1 : 1;
+		float Tmp = SharedRealBuffer[ NminusK ]; 
+		Tmp *= (K > HalfN) ? -1 : 1;
 		
 		LocalComplexBuffer[i].y += Tmp;
 	}
@@ -224,15 +124,13 @@ void UnpackLocalBuffer(inout Complex LocalComplexBuffer[RADIX], in uint Head, in
 	UNROLL
 	for (uint i = 0, K = Head; i < RADIX; ++i, K += Stride)
 	{
-		// if k > N/2 we have G - I *  F.  Multiply by I to get F + I * G
-		if (K > Non2)
+		if (K > HalfN)
 		{
 			LocalComplexBuffer[i] = ComplexMult(Complex(0, 1), LocalComplexBuffer[i]);
 		}
 
-		if (K == Non2)
+		if (K == HalfN)
 		{
-			// F_N/2 + I * G_N/2
 			LocalComplexBuffer[i] = MiddleElement;
 		}
 	}
@@ -243,17 +141,14 @@ void UnpackLocalBuffer(inout Complex LocalComplexBuffer[RADIX], in uint Head, in
 	}
 }
 
-// The inverse of PackLocalBufferAndCopyToDstTexture()
-// Reads into local registers, data written in the HalfCompressedFrequency layout back into the form consistent with the transform of a single complex signal.
-//const bool bIsHorizontal = true;
 void CopySrcTextureToLocalBufferAndUnpack(inout Complex LocalComplexBuffer[2][RADIX], in uint ScanIdx, in uint Loc, in uint Stride, in uint N)
 {
+	// 0番目とN/2番目の要素はパッキングの組み合わせで余るのでパディングピクセルを使って格納しているので以下の処理で読み出す。
 	const bool bIsFirstElement = (Loc == 0);
-	const uint Non2 =  N / 2;
+	const uint HalfN =  N / 2;
 
-	// last two values
 	float4 NValue = SrcTexture[uint2(N, ScanIdx)];
-	float4 NppValue = SrcTexture[uint2(N + 1, ScanIdx)];
+	float4 Nplus1Value = SrcTexture[uint2(N + 1, ScanIdx)];
 
 	uint2 Pixel = uint2(Loc, ScanIdx);
 	UNROLL
@@ -263,13 +158,10 @@ void CopySrcTextureToLocalBufferAndUnpack(inout Complex LocalComplexBuffer[2][RA
 		LocalComplexBuffer[0][i] = SrcValue.xy;
 		LocalComplexBuffer[1][i] = SrcValue.zw;
 
-		// 以下の2ブロックの処理でパディング分の2ピクセルを埋めている
-
-		if (Pixel.x == Non2)
+		if (Pixel.x == HalfN)
 		{
-			// local buffer will be pure real with F_N/2,  need to add I * G_N/2 (G_N/2 is real ie float2(G_r, 0))
-			LocalComplexBuffer[0][i] += NppValue.yx;
-			LocalComplexBuffer[1][i] += NppValue.wz;
+			LocalComplexBuffer[0][i] += Nplus1Value.yx;
+			LocalComplexBuffer[1][i] += Nplus1Value.wz;
 		}
 	}
 
@@ -279,12 +171,10 @@ void CopySrcTextureToLocalBufferAndUnpack(inout Complex LocalComplexBuffer[2][RA
 		LocalComplexBuffer[1][0] += NValue.wz;
 	}
 
-	// Combine the transforms of the two real signals (F,G) as Z = F + I G
+	// その他のピクセルのアンパック
 	UnpackLocalBuffer(LocalComplexBuffer[ 0 ], Loc, Stride, N);
 	GroupMemoryBarrierWithGroupSync();
 	UnpackLocalBuffer(LocalComplexBuffer[ 1 ], Loc, Stride, N);
-	
-	// Done with the group shared memory that was used in the merge
 	GroupMemoryBarrierWithGroupSync();
 }
 
@@ -292,15 +182,14 @@ void PackLocalBufferAndCopyToDstTexture(inout Complex LocalComplexBuffer[2][RADI
 {
 	GroupMemoryBarrierWithGroupSync();
 
-	// Decompose the transforms.  Note '0' and 'N/2' offsets will still be mixed, and have to be explicitly dealt with below. 
 	PackLocalBuffer(LocalComplexBuffer[0], Loc, Stride, N);
 	GroupMemoryBarrierWithGroupSync();
 	PackLocalBuffer(LocalComplexBuffer[1], Loc, Stride, N);
 
+	// 0番目とN/2番目の要素はパッキングの組み合わせで余るので以下でパディングピクセルに格納する。
 	const bool bIsFirstElement = (Loc == 0);
-	const uint Non2 =  N / 2;
+	const uint HalfN =  N / 2;
 
-	// 行処理にしか使わない前提
 	uint2 Pixel = uint2(Loc, ScanIdx);
 	float4 DstValue;
 	UNROLL
@@ -310,19 +199,13 @@ void PackLocalBufferAndCopyToDstTexture(inout Complex LocalComplexBuffer[2][RADI
 		DstValue.zw = LocalComplexBuffer[1][r];
 		DstTexture[Pixel] = DstValue;
 
-		// 以下の2ブロックの処理でパディング分の2ピクセルを埋めている
-
-		// The N/2 element holds F_N/2 + I G_N/2
-		// Write F_N/2 into this column, and G_N/2 into the the last column 
-		if (Pixel.x == Non2)
+		if (Pixel.x == HalfN)
 		{
 			DstTexture[Pixel] = float4(DstValue.x, 0.0f, DstValue.z, 0.0f);
 			DstTexture[uint2(N + 1, Pixel.y)] = float4(DstValue.y, 0.0f, DstValue.w, 0.0f);
 		}
 	}
 
-	// First element holds F_o + iG_o.  
-	// Write Go into the second to last column. (this is the same as G_N)
 	if (bIsFirstElement)
 	{
 		DstValue.xy = LocalComplexBuffer[0][0];
@@ -456,18 +339,12 @@ void HalfPackFFTTexture2DHorizontal(uint GroupID : SV_GroupID, uint GroupThreadI
 
 	if (bIsForward)
 	{
-		// Write a frequency space buffer with two-for-one data layout
-		// GroupMemoryBarrierWithGroupSync();
 		PackLocalBufferAndCopyToDstTexture(LocalComplexBuffer, LineIdx, Head, Stride, ARRAY_LENGTH);
 	}
 	else
 	{
-		// Write image space data.
-		// GroupMemoryBarrierWithGroupSync();
-
-		// This is specialized for images, where floating point errors may have
-		// resulted in (very very small) negative color values.
-		ScrubNANs(LocalComplexBuffer);
+		// エラーが起きた時にNaNが画像では負の小さな数として扱われてしまうので負の数を0にする
+		NegativeToZero(LocalComplexBuffer);
 
 		CopyLocalBufferToDstTexture(LocalComplexBuffer, bIsHorizontal, LineIdx, Head, Stride, DstRect);
 	}

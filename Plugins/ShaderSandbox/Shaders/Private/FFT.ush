@@ -14,14 +14,14 @@
 
 #define NUMTHREADSX (ARRAY_LENGTH / RADIX)
 
-// ローカルバッファ内にNaNがあったら0にする
-void ScrubNANs(inout Complex Local[2][RADIX])
+// ローカルバッファ内に負の数があったら0にする
+void NegativeToZero(inout Complex Local[2][RADIX])
 {
 	UNROLL
 	for (uint r = 0; r < RADIX; ++r)
 	{	
-		Local[0][r] = -min(-Local[0][r], Complex(0,0)); 
-		Local[1][r] = -min(-Local[1][r], Complex(0,0)); 
+		Local[0][r] = -min(-Local[0][r], Complex(0, 0)); 
+		Local[1][r] = -min(-Local[1][r], Complex(0, 0)); 
 	}
 }
 
