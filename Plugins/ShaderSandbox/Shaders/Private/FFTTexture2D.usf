@@ -36,7 +36,7 @@ uint4 DstRect;
 // {F_o, G_o}, {F_1}, {F_2},..,{F_{N/2-1}}, {F_N/2, G_N/2}, {G_{N/2 +1}},  {G_{N/2 +2}}, .., {G_{N-2}},    {G_{N-1}} 
 //     0       , 1    , 2    ,..., N/2-1,       N/2,           N/2 +1,      N/2 +2,  ..,  N/2- (2-N/2),   N/2 - (1-N/2)
 // here {} := Complex
-void SplitHalfCompressed(inout Complex LocalComplexBuffer[RADIX], in uint Head, in uint Stride, in uint N)
+void PackLocalBuffer(inout Complex LocalComplexBuffer[RADIX], in uint Head, in uint Stride, in uint N)
 {
 	const uint Non2 = N / 2;
 	
@@ -126,7 +126,7 @@ void SplitHalfCompressed(inout Complex LocalComplexBuffer[RADIX], in uint Head, 
 	}
 }
 
-// Inverse of SplitHalfCompressed()
+// Inverse of PackLocalBuffer()
 // Combine the FFT of two real signals (f,g) into a single complex signal
 // for use in inverting a "two-for-one" FFT .
 //
@@ -142,7 +142,7 @@ void SplitHalfCompressed(inout Complex LocalComplexBuffer[RADIX], in uint Head, 
 // On return the data in LocalComplexBuffer across the threads in this group
 // hold the transform  of the complex signal z = f + ig of lenght N.
 //
-void MergeHalfCompressed(inout Complex LocalComplexBuffer[RADIX], in uint Head, in uint Stride, in uint N)
+void UnpackLocalBuffer(inout Complex LocalComplexBuffer[RADIX], in uint Head, in uint Stride, in uint N)
 {
 	uint Non2 = N / 2;
 
@@ -243,10 +243,10 @@ void MergeHalfCompressed(inout Complex LocalComplexBuffer[RADIX], in uint Head, 
 	}
 }
 
-// The inverse of WriteHalfCompressedFrequencyData()
+// The inverse of PackLocalBufferAndCopyToDstTexture()
 // Reads into local registers, data written in the HalfCompressedFrequency layout back into the form consistent with the transform of a single complex signal.
 //const bool bIsHorizontal = true;
-void ReadHalfCompressedFrequencyData(inout Complex LocalComplexBuffer[2][RADIX], in uint ScanIdx, in uint Loc, in uint Stride, in uint N)
+void CopySrcTextureToLocalBufferAndUnpack(inout Complex LocalComplexBuffer[2][RADIX], in uint ScanIdx, in uint Loc, in uint Stride, in uint N)
 {
 	const bool bIsFirstElement = (Loc == 0);
 	const uint Non2 =  N / 2;
@@ -280,22 +280,22 @@ void ReadHalfCompressedFrequencyData(inout Complex LocalComplexBuffer[2][RADIX],
 	}
 
 	// Combine the transforms of the two real signals (F,G) as Z = F + I G
-	MergeHalfCompressed(LocalComplexBuffer[ 0 ], Loc, Stride, N);
+	UnpackLocalBuffer(LocalComplexBuffer[ 0 ], Loc, Stride, N);
 	GroupMemoryBarrierWithGroupSync();
-	MergeHalfCompressed(LocalComplexBuffer[ 1 ], Loc, Stride, N);
+	UnpackLocalBuffer(LocalComplexBuffer[ 1 ], Loc, Stride, N);
 	
 	// Done with the group shared memory that was used in the merge
 	GroupMemoryBarrierWithGroupSync();
 }
 
-void WriteHalfCompressedFrequencyData(inout Complex LocalComplexBuffer[2][RADIX], uint ScanIdx, uint Loc, uint Stride, uint N)
+void PackLocalBufferAndCopyToDstTexture(inout Complex LocalComplexBuffer[2][RADIX], uint ScanIdx, uint Loc, uint Stride, uint N)
 {
 	GroupMemoryBarrierWithGroupSync();
 
 	// Decompose the transforms.  Note '0' and 'N/2' offsets will still be mixed, and have to be explicitly dealt with below. 
-	SplitHalfCompressed(LocalComplexBuffer[0], Loc, Stride, N);
+	PackLocalBuffer(LocalComplexBuffer[0], Loc, Stride, N);
 	GroupMemoryBarrierWithGroupSync();
-	SplitHalfCompressed(LocalComplexBuffer[1], Loc, Stride, N);
+	PackLocalBuffer(LocalComplexBuffer[1], Loc, Stride, N);
 
 	const bool bIsFirstElement = (Loc == 0);
 	const uint Non2 =  N / 2;
@@ -333,7 +333,7 @@ void WriteHalfCompressedFrequencyData(inout Complex LocalComplexBuffer[2][RADIX]
 	}
 }
 
-void CopyDataSrcWindowToLocal(inout Complex LocalComplexBuffer[2][RADIX], in uint ScanIdx, uint Loc, uint Stride, uint4 Window)
+void CopySrcTextureToLocalBuffer(inout Complex LocalComplexBuffer[2][RADIX], in uint ScanIdx, uint Loc, uint Stride, uint4 Window)
 {
 	for (uint i = 0; i < RADIX; i++)
 	{
@@ -358,7 +358,7 @@ void CopyDataSrcWindowToLocal(inout Complex LocalComplexBuffer[2][RADIX], in uin
 }
 
 //const bool bIsHorizontal = false;
-void CopyDataSrcWindowToLocal(inout Complex LocalComplexBuffer[2][RADIX], uint ScanIdx, uint Loc, uint Stride, uint2 WindowMin, uint2 WindowMax)
+void CopySrcTextureToLocalBuffer(inout Complex LocalComplexBuffer[2][RADIX], uint ScanIdx, uint Loc, uint Stride, uint2 WindowMin, uint2 WindowMax)
 {
 	for (uint i = 0; i < RADIX; i++)
 	{
@@ -382,7 +382,7 @@ void CopyDataSrcWindowToLocal(inout Complex LocalComplexBuffer[2][RADIX], uint S
 	}
 }
 
-void CopyDataLocalToDstWindow(in Complex LocalComplexBuffer[2][RADIX], bool bIsHorizontal, in uint ScanIdx, uint Loc, uint Stride, uint4 ROIRect)
+void CopyLocalBufferToDstTexture(in Complex LocalComplexBuffer[2][RADIX], bool bIsHorizontal, in uint ScanIdx, uint Loc, uint Stride, uint4 ROIRect)
 {
 	if(bIsHorizontal)
 	{
@@ -414,14 +414,14 @@ void CopyDataLocalToDstWindow(in Complex LocalComplexBuffer[2][RADIX], bool bIsH
 	}
 }
 
+// テクスチャの横方向のラインをFFT/IFFTする。
+// 実数配列限定で、FFT後のデータを半分の容量にパッキングする。
+// RGBAの4実数がある場合、フーリエ変換では4複素数が出力されるのでデータの容量が倍になる。
+// しかし、実数配列をフーリエ変換した場合、KとN-Kの周波数のフーリエ変換結果が複素共役になるという対称性がある。
+// それを用いて、保存データを半分で済ませることで、入力テクスチャと出力テクスチャを同じ容量で済ませる。
 [numthreads(NUMTHREADSX, 1, 1)]
-void HalfCompressedComplexFFTImage512x512(uint GroupID : SV_GroupID, uint GroupThreadID : SV_GroupThreadID)
+void HalfPackFFTTexture2DHorizontal(uint GroupID : SV_GroupID, uint GroupThreadID : SV_GroupThreadID)
 {
-	// RGBAの4実数がある場合、フーリエ変換では4複素数が出力されるのでデータの容量が倍になる。
-	// しかし、実数配列をフーリエ変換した場合、KとN-Kの周波数のフーリエ変換結果が複素共役になるという対称性がある。
-	// それを用いて、保存データを半分で済ませることで、入力テクスチャと出力テクスチャを同じ容量で済ませるテクニックを用いる。
-	// 行、列、の順番にFFTあるいはIFFTするので、行処理の方にこのテクニックを用いたFFT/IFFTをやれば列処理の方は通常のFFT/IFFTでよい。
-
 	const bool bIsForward = (Forward > 0);
 	// 今回は用途として行処理固定
 	const bool bIsHorizontal = true;
@@ -444,11 +444,11 @@ void HalfCompressedComplexFFTImage512x512(uint GroupID : SV_GroupID, uint GroupT
 		uint4 SrcRect;
 		SrcRect.xy = SrcRectMin.xy;
 		SrcRect.zw = SrcRectMax.xy;
-		CopyDataSrcWindowToLocal(LocalComplexBuffer, LineIdx, Head, Stride, SrcRect);
+		CopySrcTextureToLocalBuffer(LocalComplexBuffer, LineIdx, Head, Stride, SrcRect);
 	}
 	else
 	{
-		ReadHalfCompressedFrequencyData(LocalComplexBuffer, LineIdx, Head, Stride, ARRAY_LENGTH);
+		CopySrcTextureToLocalBufferAndUnpack(LocalComplexBuffer, LineIdx, Head, Stride, ARRAY_LENGTH);
 	}
 
 	// FFTあるいはIFFT。複数スレッドで共有メモリを使って協調して行う
@@ -458,7 +458,7 @@ void HalfCompressedComplexFFTImage512x512(uint GroupID : SV_GroupID, uint GroupT
 	{
 		// Write a frequency space buffer with two-for-one data layout
 		// GroupMemoryBarrierWithGroupSync();
-		WriteHalfCompressedFrequencyData(LocalComplexBuffer, LineIdx, Head, Stride, ARRAY_LENGTH);
+		PackLocalBufferAndCopyToDstTexture(LocalComplexBuffer, LineIdx, Head, Stride, ARRAY_LENGTH);
 	}
 	else
 	{
@@ -469,12 +469,13 @@ void HalfCompressedComplexFFTImage512x512(uint GroupID : SV_GroupID, uint GroupT
 		// resulted in (very very small) negative color values.
 		ScrubNANs(LocalComplexBuffer);
 
-		CopyDataLocalToDstWindow(LocalComplexBuffer, bIsHorizontal, LineIdx, Head, Stride, DstRect);
+		CopyLocalBufferToDstTexture(LocalComplexBuffer, bIsHorizontal, LineIdx, Head, Stride, DstRect);
 	}
 }
 
+// テクスチャのRGBAに2つの複素数が格納されているものとし、縦方向のラインにFFT/IFFTを行う。
 [numthreads(NUMTHREADSX, 1, 1)]
-void ComplexFFTImage512x512(uint GroupID : SV_GroupID, uint GroupThreadID : SV_GroupThreadID)
+void FFTTexture2DVertical(uint GroupID : SV_GroupID, uint GroupThreadID : SV_GroupThreadID)
 {
 	// RGBAが2複素数に対応していると解釈して行うFFT/IFFT
 
@@ -496,12 +497,12 @@ void ComplexFFTImage512x512(uint GroupID : SV_GroupID, uint GroupThreadID : SV_G
 	const uint Stride = ARRAY_LENGTH / RADIX;
 
 	// ソーステクスチャの画像のピクセルを間隔をあけながら8個ローカルメモリに格納する
-	CopyDataSrcWindowToLocal(LocalComplexBuffer, LineIdx, Head, Stride, SrcRectMin, SrcRectMax);
+	CopySrcTextureToLocalBuffer(LocalComplexBuffer, LineIdx, Head, Stride, SrcRectMin, SrcRectMax);
 
 	// FFTあるいはIFFT。複数スレッドで共有メモリを使って協調して行う
 	GroupSharedFFT(bIsForward, LocalComplexBuffer, ARRAY_LENGTH, ThreadIdx);
 
 	// FFT結果を出力先テクスチャに格納する
-	CopyDataLocalToDstWindow(LocalComplexBuffer, bIsHorizontal, LineIdx, Head, Stride, DstRect); // DstRect.MinがFIntPoint(0,0)である前提がある
+	CopyLocalBufferToDstTexture(LocalComplexBuffer, bIsHorizontal, LineIdx, Head, Stride, DstRect); // DstRect.MinがFIntPoint(0,0)である前提がある
 }
 
