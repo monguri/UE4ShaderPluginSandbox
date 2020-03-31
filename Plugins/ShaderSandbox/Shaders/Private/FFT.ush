@@ -234,15 +234,15 @@ uint GetTransposeHead(in uint ThreadIdx, in uint Stride, in uint Radix) {
 }
 
 // 基数8のStockham FFT。CSのグループ内の各スレッドで実行される。共有メモリを使ってスレッド同士でデータを交換し合う。
-void GroupSharedFFT(in const bool bIsForward, inout Complex Local[RADIX], in const uint ArrayLength, in const uint ThreadIdx)
+void GroupSharedStockhamFFT(in const bool bIsForward, inout Complex Local[RADIX], in const uint ArrayLength, in const uint ThreadIdx)
 {
 	uint DstStride = ArrayLength / RADIX;
 
 	RadixFFT(bIsForward, Local);
 
-	uint IdxSrc = ThreadIdx * RADIX;
-	uint IdxDst = ThreadIdx;
-	TransposeLocalBuffers(Local, IdxSrc, 1, IdxDst, DstStride);		
+	uint SrcHead = ThreadIdx * RADIX;
+	uint DstHead = ThreadIdx;
+	TransposeLocalBuffers(Local, SrcHead, 1, DstHead, DstStride);		
 
 	uint SrcStride = RADIX;
 
@@ -254,8 +254,8 @@ void GroupSharedFFT(in const bool bIsForward, inout Complex Local[RADIX], in con
 
 		GroupMemoryBarrierWithGroupSync();
 
-		IdxSrc = GetTransposeHead(ThreadIdx, SrcStride, RADIX);
-		TransposeLocalBuffers(Local, IdxSrc, SrcStride, IdxDst, DstStride);
+		SrcHead = GetTransposeHead(ThreadIdx, SrcStride, RADIX);
+		TransposeLocalBuffers(Local, SrcHead, SrcStride, DstHead, DstStride);
 	}
 
 	Butterfly(bIsForward, Local, ThreadIdx, SrcStride);
@@ -265,20 +265,20 @@ void GroupSharedFFT(in const bool bIsForward, inout Complex Local[RADIX], in con
 	GroupMemoryBarrierWithGroupSync();
 }
 
-void Scale(inout Complex LocalComplexBuffer[2][RADIX], in float ScaleValue)
+void Scale(inout Complex Local[2][RADIX], in float ScaleValue)
 {
 	for (uint r = 0; r < RADIX; ++r)
 	{
-		LocalComplexBuffer[0][r] *= ScaleValue;
+		Local[0][r] *= ScaleValue;
 	}
 	for (uint r = 0; r < RADIX; ++r)
 	{
-		LocalComplexBuffer[1][r] *= ScaleValue;
+		Local[1][r] *= ScaleValue;
 	}
 }
 
 // CSの1スレッドから実行するFFT。共有メモリを使ってグループ内のスレッド同士でデータを交換し合う。
-void GroupSharedFFT(in bool bIsForward, inout Complex LocalComplexBuffer[2][RADIX], in uint ArrayLength, in uint ThreadIdx)
+void GroupSharedStockhamFFT(in bool bIsForward, inout Complex LocalComplexBuffer[2][RADIX], in uint ArrayLength, in uint ThreadIdx)
 {
 	if (!bIsForward)
 	{
@@ -286,7 +286,7 @@ void GroupSharedFFT(in bool bIsForward, inout Complex LocalComplexBuffer[2][RADI
 		Scale(LocalComplexBuffer, 1.0f / float(ArrayLength));
 	}
 
-	GroupSharedFFT(bIsForward, LocalComplexBuffer[0], ArrayLength, ThreadIdx);
-	GroupSharedFFT(bIsForward, LocalComplexBuffer[1], ArrayLength, ThreadIdx);
+	GroupSharedStockhamFFT(bIsForward, LocalComplexBuffer[0], ArrayLength, ThreadIdx);
+	GroupSharedStockhamFFT(bIsForward, LocalComplexBuffer[1], ArrayLength, ThreadIdx);
 }
 

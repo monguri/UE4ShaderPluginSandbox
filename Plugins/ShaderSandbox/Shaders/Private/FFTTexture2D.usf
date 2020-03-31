@@ -452,7 +452,7 @@ void HalfPackFFTTexture2DHorizontal(uint GroupID : SV_GroupID, uint GroupThreadI
 	}
 
 	// FFTあるいはIFFT。複数スレッドで共有メモリを使って協調して行う
-	GroupSharedFFT(bIsForward, LocalComplexBuffer, ARRAY_LENGTH, ThreadIdx);
+	GroupSharedStockhamFFT(bIsForward, LocalComplexBuffer, ARRAY_LENGTH, ThreadIdx);
 
 	if (bIsForward)
 	{
@@ -500,7 +500,7 @@ void FFTTexture2DVertical(uint GroupID : SV_GroupID, uint GroupThreadID : SV_Gro
 	CopySrcTextureToLocalBuffer(LocalComplexBuffer, LineIdx, Head, Stride, SrcRectMin, SrcRectMax);
 
 	// FFTあるいはIFFT。複数スレッドで共有メモリを使って協調して行う
-	GroupSharedFFT(bIsForward, LocalComplexBuffer, ARRAY_LENGTH, ThreadIdx);
+	GroupSharedStockhamFFT(bIsForward, LocalComplexBuffer, ARRAY_LENGTH, ThreadIdx);
 
 	// FFT結果を出力先テクスチャに格納する
 	CopyLocalBufferToDstTexture(LocalComplexBuffer, bIsHorizontal, LineIdx, Head, Stride, DstRect); // DstRect.MinがFIntPoint(0,0)である前提がある

@@ -211,7 +211,7 @@ void HorizontalIFFT512x512CS(uint GroupID : SV_GroupID, uint GroupThreadID : SV_
 	Complex LocalComplexBuffer[RADIX];
 
 	CopyComplexDataSrcToLocal(LocalComplexBuffer, ScanIdx, Head, Stride, ARRAY_LENGTH, InDkBuffer);
-	GroupSharedFFT(false, LocalComplexBuffer, ARRAY_LENGTH, ThreadIdx);
+	GroupSharedStockhamFFT(false, LocalComplexBuffer, ARRAY_LENGTH, ThreadIdx);
 	CopyComplexDataLocalToWorkBuffer(LocalComplexBuffer, ScanIdx, Head, Stride, ARRAY_LENGTH);
 }
 
@@ -229,7 +229,7 @@ void DkxVerticalIFFT512x512CS(uint GroupID : SV_GroupID, uint GroupThreadID : SV
 	Complex LocalComplexBuffer[RADIX];
 
 	CopyWorkBufferToLocal(LocalComplexBuffer, ScanIdx, Head, Stride, ARRAY_LENGTH);
-	GroupSharedFFT(false, LocalComplexBuffer, ARRAY_LENGTH, ThreadIdx);
+	GroupSharedStockhamFFT(false, LocalComplexBuffer, ARRAY_LENGTH, ThreadIdx);
 	CopyRealDataLocalToDxBuffer(LocalComplexBuffer, ScanIdx, Head, Stride, ARRAY_LENGTH);
 }
 
@@ -247,7 +247,7 @@ void DkyVerticalIFFT512x512CS(uint GroupID : SV_GroupID, uint GroupThreadID : SV
 	Complex LocalComplexBuffer[RADIX];
 
 	CopyWorkBufferToLocal(LocalComplexBuffer, ScanIdx, Head, Stride, ARRAY_LENGTH);
-	GroupSharedFFT(false, LocalComplexBuffer, ARRAY_LENGTH, ThreadIdx);
+	GroupSharedStockhamFFT(false, LocalComplexBuffer, ARRAY_LENGTH, ThreadIdx);
 	CopyRealDataLocalToDyBuffer(LocalComplexBuffer, ScanIdx, Head, Stride, ARRAY_LENGTH);
 }
 
@@ -265,7 +265,7 @@ void DkzVerticalIFFT512x512CS(uint GroupID : SV_GroupID, uint GroupThreadID : SV
 	Complex LocalComplexBuffer[RADIX];
 
 	CopyWorkBufferToLocal(LocalComplexBuffer, ScanIdx, Head, Stride, ARRAY_LENGTH);
-	GroupSharedFFT(false, LocalComplexBuffer, ARRAY_LENGTH, ThreadIdx);
+	GroupSharedStockhamFFT(false, LocalComplexBuffer, ARRAY_LENGTH, ThreadIdx);
 	CopyRealDataLocalToDzBuffer(LocalComplexBuffer, ScanIdx, Head, Stride, ARRAY_LENGTH);
 }
 
