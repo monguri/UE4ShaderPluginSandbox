@@ -58,3 +58,17 @@ Japanese
 
 テスト用マップをプレーすると、いくつかのClothGridActorが動きます。
 クロスシミュレーションはコンピュートシェーダで行っています。
+
+## OceanDemo
+It has been tested only on 4.24, Win64 DX11, not on ray tracing.
+DX12 will be tested soon.
+
+![OceanDemo](Plugins/ShaderSandbox/OceanIslandShort.gif "OceanDemo")
+
+English
+
+If you play on the test map, ocean surface simulation starts.
+
+Japanese
+
+テスト用マップをプレーすると、海面のシミュレーションがはじまります。
