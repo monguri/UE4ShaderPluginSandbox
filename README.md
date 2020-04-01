@@ -74,6 +74,9 @@ Japanese
 テスト用マップをプレーすると、海面のシミュレーションがはじまります。
 
 Thanks
+
 The 3d model of island is here.
+
 https://free3d.com/ja/3d-model/small-tropical-island-73753.html
+
 Thank you Herminio Nieves!
