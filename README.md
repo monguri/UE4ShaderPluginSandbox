@@ -4,14 +4,14 @@ English
 
 Various UE4 shader samples made for my private projects.
 Recently, there is three samples.
-RenderTextureDemo, SinWaveGridDemo and ClothGridDemo which are in Content directory of ShaderSandbox plugin.
+RenderTextureDemo, SinWaveGridDemo, ClothGridDemo and OceanDemo which are in Content directory of ShaderSandbox plugin.
 It has been confirmed that it can be build on Visual Studio 2017 Win64.
 
 Japanese
 
 個人的な活動用に作ったUE4シェーダのサンプルが入っています。
-現在はRenderTextureDemoとSinWaveGridDemoとClothGridDemoの3つのサンプルがあります。
-どちらもShaderSandboxプラグインのContentディレクトリの中に入っています。
+現在はRenderTextureDemoとSinWaveGridDemoとClothGridDemoとOceanDemoの4つのサンプルがあります。
+どれもShaderSandboxプラグインのContentディレクトリの中に入っています。
 VisualStudio2017、Win64でビルドできることを確認しています。
 
 ## RenderTextureDemo
