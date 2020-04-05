@@ -311,6 +311,7 @@ class FOceanGenerateGradientFoldingMapCS : public FGlobalShader
 	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
 		SHADER_PARAMETER(uint32, MapSize)
 		SHADER_PARAMETER(float, PatchLength)
+		SHADER_PARAMETER(float, ChoppyScale)
 		SHADER_PARAMETER_SRV(Texture2D<float4>, InDisplacementMap)
 		SHADER_PARAMETER_UAV(RWTexture2D<float4>, OutGradientFoldingMap)
 	END_SHADER_PARAMETER_STRUCT()
@@ -571,6 +572,7 @@ void SimulateOcean(FRHICommandListImmediate& RHICmdList, const FOceanSpectrumPar
 		FOceanGenerateGradientFoldingMapCS::FParameters* GenerateGradientFoldingMapParams = GraphBuilder.AllocParameters<FOceanGenerateGradientFoldingMapCS::FParameters>();
 		GenerateGradientFoldingMapParams->MapSize = Params.DispMapDimension;
 		GenerateGradientFoldingMapParams->PatchLength = Params.PatchLength;
+		GenerateGradientFoldingMapParams->ChoppyScale = Params.ChoppyScale;
 		GenerateGradientFoldingMapParams->InDisplacementMap = Views.DisplacementMapSRV;
 		GenerateGradientFoldingMapParams->OutGradientFoldingMap = Views.GradientFoldingMapUAV;
 

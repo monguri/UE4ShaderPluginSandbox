@@ -313,10 +313,20 @@ void GenerateGradientFoldingMapCS(uint2 DispatchThreadId : SV_DispatchThreadID)
 
 	//TODO: Zの変位しか考慮していないNormalの計算方法である
 	//マテリアル側でノイズによる変位をXYに含めた上で改めて正規化するのでここでは正規化しない
-	float3 Normal = float3(-(InDisplacementMap[RightPixelCoord].z - InDisplacementMap[LeftPixelCoord].z),
-					-(InDisplacementMap[DownPixelCoord].z - InDisplacementMap[UpPixelCoord].z),
-					PatchLength / (float)MapSize * 2.0);
-	OutGradientFoldingMap[PixelCoord] = float4(Normal.x, Normal.y, Normal.z, 1.0);
+	float3 DisplaceLeft = InDisplacementMap[LeftPixelCoord].xyz;
+	float3 DisplaceRight = InDisplacementMap[RightPixelCoord].xyz;
+	float3 DisplaceUp = InDisplacementMap[UpPixelCoord].xyz;
+	float3 DisplaceDown = InDisplacementMap[DownPixelCoord].xyz;
+
+	float3 Normal = float3(-(DisplaceRight.z - DisplaceLeft.z), -(DisplaceDown.z - DisplaceUp.z), PatchLength / (float)MapSize * 2.0);
+
+	// Jacobianを計算する
+	float2 Dx = (DisplaceRight.xy - DisplaceLeft.xy) * ChoppyScale * (float)MapSize / PatchLength;
+	float2 Dy = (DisplaceDown.xy - DisplaceUp.xy) * ChoppyScale * (float)MapSize / PatchLength;
+	float Jacobian = (1.0f + Dx.x) * (1.0f + Dy.y) - Dx.y * Dy.x;
+	float Folding = max(1.0f - Jacobian, 0.0f);
+
+	OutGradientFoldingMap[PixelCoord] = float4(Normal.x, Normal.y, Normal.z, Folding);
 }
 
 
