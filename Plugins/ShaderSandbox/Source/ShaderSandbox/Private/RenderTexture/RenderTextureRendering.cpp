@@ -73,6 +73,7 @@ class FRenderTextureCS : public FGlobalShader
 		OutTexture.Bind(Initializer.ParameterMap, TEXT("OutTexture"));
 		OutTextureSampler.Bind(Initializer.ParameterMap, TEXT("OutTextureSampler"));
 	}
+	virtual ~FRenderTextureCS() {}
 
 #if 0
 	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment)
@@ -131,7 +132,11 @@ void DrawRenderTextureVSPS_RenderThread(FRHICommandListImmediate& RHICmdList, ER
 	{
 		RHICmdList.SetViewport(0, 0, 0.0f, OutTextureRenderTargetResource.GetSizeX(), OutTextureRenderTargetResource.GetSizeY(), 1.0f);
 
+#if ENGINE_MINOR_VERSION >= 25
+		FGlobalShaderMap* GlobalShaderMap = GetGlobalShaderMap(FeatureLevel);
+#else
 		TShaderMap<FGlobalShaderType>* GlobalShaderMap = GetGlobalShaderMap(FeatureLevel);
+#endif
 		TShaderMapRef<FRenderTextureVS> VertexShader(GlobalShaderMap);
 		TShaderMapRef<FRenderTexturePS> PixelShader(GlobalShaderMap);
 
@@ -162,7 +167,11 @@ void DrawRenderTextureCS_RenderThread(FRHICommandListImmediate& RHICmdList, ERHI
 
 	//RHICmdList.BeginRenderPass(RenderPathInfo, TEXT("DrawRenderTexture"));
 	{
+#if ENGINE_MINOR_VERSION >= 25
+		FGlobalShaderMap* GlobalShaderMap = GetGlobalShaderMap(FeatureLevel);
+#else
 		TShaderMap<FGlobalShaderType>* GlobalShaderMap = GetGlobalShaderMap(FeatureLevel);
+#endif
 		TShaderMapRef<FRenderTextureCS> RenderTextureCS(GlobalShaderMap);
 
 		RHICmdList.SetComputeShader(RenderTextureCS->GetComputeShader());

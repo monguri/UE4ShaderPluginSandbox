@@ -1,6 +1,6 @@
 #pragma once
 
-#include "DeformableGridMeshComponent.h"
+#include "DeformMesh/DeformableGridMeshComponent.h"
 #include "ClothGridMeshComponent.generated.h"
 
 

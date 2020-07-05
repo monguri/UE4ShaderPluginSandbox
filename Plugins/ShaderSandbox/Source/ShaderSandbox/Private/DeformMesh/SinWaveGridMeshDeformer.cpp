@@ -64,7 +64,11 @@ void SinWaveDeformGridMesh(FRHICommandListImmediate& RHICmdList, const FGridSinW
 {
 	FRDGBuilder GraphBuilder(RHICmdList);
 
+#if ENGINE_MINOR_VERSION >= 25
+	FGlobalShaderMap* ShaderMap = GetGlobalShaderMap(ERHIFeatureLevel::SM5);
+#else
 	TShaderMap<FGlobalShaderType>* ShaderMap = GetGlobalShaderMap(ERHIFeatureLevel::SM5);
+#endif
 
 	const uint32 DispatchCount = FMath::DivideAndRoundUp(GridSinWaveParams.NumVertex, (uint32)32);
 	check(DispatchCount <= 65535);
@@ -87,7 +91,11 @@ void SinWaveDeformGridMesh(FRHICommandListImmediate& RHICmdList, const FGridSinW
 	FComputeShaderUtils::AddPass(
 		GraphBuilder,
 		RDG_EVENT_NAME("SinWaveDeformMesh"),
+#if ENGINE_MINOR_VERSION >= 25
+		SinWaveDeformCS,
+#else
 		*SinWaveDeformCS,
+#endif
 		SinWaveDeformParams,
 		FIntVector(DispatchCount, 1, 1)
 	);
@@ -104,7 +112,11 @@ void SinWaveDeformGridMesh(FRHICommandListImmediate& RHICmdList, const FGridSinW
 	FComputeShaderUtils::AddPass(
 		GraphBuilder,
 		RDG_EVENT_NAME("GridMeshTangent"),
+#if ENGINE_MINOR_VERSION >= 25
+		GridMeshTangentCS,
+#else
 		*GridMeshTangentCS,
+#endif
 		GridMeshTangent,
 		FIntVector(DispatchCount, 1, 1)
 	);

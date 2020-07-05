@@ -1,4 +1,4 @@
-#include "FFTTexture2DTestActor.h"
+#include "FFT/FFTTexture2DTestActor.h"
 #include "Engine/Texture2D.h"
 #include "Engine/CanvasRenderTarget2D.h"
 #include "RHICommandList.h"

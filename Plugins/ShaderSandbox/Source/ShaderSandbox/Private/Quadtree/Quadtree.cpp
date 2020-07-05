@@ -1,4 +1,4 @@
-#include "Quadtree.h"
+#include "Quadtree/Quadtree.h"
 
 namespace
 {

@@ -113,7 +113,11 @@ void FClothGridMeshDeformer::FlushDeformCommandQueue(FRHICommandListImmediate& R
 {
 	FRDGBuilder GraphBuilder(RHICmdList);
 
+#if ENGINE_MINOR_VERSION >= 25
+	FGlobalShaderMap* ShaderMap = GetGlobalShaderMap(ERHIFeatureLevel::SM5);
+#else
 	TShaderMap<FGlobalShaderType>* ShaderMap = GetGlobalShaderMap(ERHIFeatureLevel::SM5);
+#endif
 
 	uint32 NumClothMesh = DeformCommandQueue.Num();
 	// TODO:どこかでバリデーションしたい
@@ -142,7 +146,11 @@ void FClothGridMeshDeformer::FlushDeformCommandQueue(FRHICommandListImmediate& R
 			FComputeShaderUtils::AddPass(
 				GraphBuilder,
 				RDG_EVENT_NAME("ClothMeshCopyToWorkBuffer"),
+#if ENGINE_MINOR_VERSION >= 25
+				ClothMeshCopyToWorkBufferCS,
+#else
 				*ClothMeshCopyToWorkBufferCS,
+#endif
 				ClothCopyToWorkParams,
 				FIntVector(1, 1, 1)
 			);
@@ -184,7 +192,11 @@ void FClothGridMeshDeformer::FlushDeformCommandQueue(FRHICommandListImmediate& R
 		FComputeShaderUtils::AddPass(
 			GraphBuilder,
 			RDG_EVENT_NAME("ClothSimulation"),
+#if ENGINE_MINOR_VERSION >= 25
+			ClothSimulationCS,
+#else
 			*ClothSimulationCS,
+#endif
 			ClothSimParams,
 			FIntVector(NumClothMesh, 1, 1)
 		);
@@ -210,7 +222,11 @@ void FClothGridMeshDeformer::FlushDeformCommandQueue(FRHICommandListImmediate& R
 			FComputeShaderUtils::AddPass(
 				GraphBuilder,
 				RDG_EVENT_NAME("ClothMeshCopyFromWorkBuffer"),
+#if ENGINE_MINOR_VERSION >= 25
+				ClothMeshCopyFromWorkBufferCS,
+#else
 				*ClothMeshCopyFromWorkBufferCS,
+#endif
 				ClothCopyFromWorkParams,
 				FIntVector(1, 1, 1)
 			);
@@ -237,7 +253,11 @@ void FClothGridMeshDeformer::FlushDeformCommandQueue(FRHICommandListImmediate& R
 			FComputeShaderUtils::AddPass(
 				GraphBuilder,
 				RDG_EVENT_NAME("GridMeshTangent"),
+#if ENGINE_MINOR_VERSION >= 25
+				GridMeshTangentCS,
+#else
 				*GridMeshTangentCS,
+#endif
 				GridMeshTangentParams,
 				FIntVector(DispatchCount, 1, 1)
 			);

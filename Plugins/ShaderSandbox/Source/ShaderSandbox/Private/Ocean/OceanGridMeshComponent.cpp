@@ -15,7 +15,7 @@
 #include "DeformMesh/DeformableVertexBuffers.h"
 #include "Ocean/OceanSimulator.h"
 #include "Engine/CanvasRenderTarget2D.h"
-#include "ResourceArrayStructuredBuffer.h"
+#include "Ocean/ResourceArrayStructuredBuffer.h"
 
 using namespace OceanSimulator;
 
@@ -198,7 +198,11 @@ public:
 		Result.bRenderCustomDepth = ShouldRenderCustomDepth();
 		Result.bTranslucentSelfShadow = bCastVolumetricTranslucentShadow;
 		MaterialRelevance.SetPrimitiveViewRelevance(Result);
+#if ENGINE_MINOR_VERSION >= 25
+		Result.bVelocityRelevance = IsMovable() && Result.bOpaque && Result.bRenderInMainPass;
+#else
 		Result.bVelocityRelevance = IsMovable() && Result.bOpaqueRelevance && Result.bRenderInMainPass;
+#endif
 		return Result;
 	}
 

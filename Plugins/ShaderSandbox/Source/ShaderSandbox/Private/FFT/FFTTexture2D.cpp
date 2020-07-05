@@ -1,4 +1,4 @@
-#include "FFTTexture2D.h"
+#include "FFT/FFTTexture2D.h"
 #include "GlobalShader.h"
 #include "ShaderParameterStruct.h"
 #include "RenderGraphBuilder.h"
@@ -69,7 +69,11 @@ void DoFFTTexture2D512x512(FRHICommandListImmediate& RHICmdList, EFFTMode Mode, 
 
 	FRDGBuilder GraphBuilder(RHICmdList);
 
+#if ENGINE_MINOR_VERSION >= 25
+	FGlobalShaderMap* ShaderMap = GetGlobalShaderMap(ERHIFeatureLevel::SM5);
+#else
 	TShaderMap<FGlobalShaderType>* ShaderMap = GetGlobalShaderMap(ERHIFeatureLevel::SM5);
+#endif
 
 	{
 		FPooledRenderTargetDesc Desc = FPooledRenderTargetDesc::Create2DDesc(
@@ -103,7 +107,11 @@ void DoFFTTexture2D512x512(FRHICommandListImmediate& RHICmdList, EFFTMode Mode, 
 		FComputeShaderUtils::AddPass(
 			GraphBuilder,
 			RDG_EVENT_NAME("HalfPackForwardFFTTexture2DHorizontal"),
+#if ENGINE_MINOR_VERSION >= 25
+			HalfPackForwardFFTCS,
+#else
 			*HalfPackForwardFFTCS,
+#endif
 			HalfPackForwardFFTParams,
 			FIntVector(512, 1, 1)
 		);
@@ -122,7 +130,11 @@ void DoFFTTexture2D512x512(FRHICommandListImmediate& RHICmdList, EFFTMode Mode, 
 		FComputeShaderUtils::AddPass(
 			GraphBuilder,
 			RDG_EVENT_NAME("ForwardFFTTexture2DVertical"),
+#if ENGINE_MINOR_VERSION >= 25
+			ForwardFFTCS,
+#else
 			*ForwardFFTCS,
+#endif
 			ForwardFFTParams,
 			FIntVector(512 + FREQUENCY_PADDING, 1, 1)
 		);
@@ -142,7 +154,11 @@ void DoFFTTexture2D512x512(FRHICommandListImmediate& RHICmdList, EFFTMode Mode, 
 		FComputeShaderUtils::AddPass(
 			GraphBuilder,
 			RDG_EVENT_NAME("InverseFFTTexture2DVertical"),
+#if ENGINE_MINOR_VERSION >= 25
+			InverseFFTCS,
+#else
 			*InverseFFTCS,
+#endif
 			InverseFFTParams,
 			FIntVector(512 + FREQUENCY_PADDING, 1, 1)
 		);
@@ -161,7 +177,11 @@ void DoFFTTexture2D512x512(FRHICommandListImmediate& RHICmdList, EFFTMode Mode, 
 		FComputeShaderUtils::AddPass(
 			GraphBuilder,
 			RDG_EVENT_NAME("HalfPackInverseFFTTexture2DHorizontal"),
+#if ENGINE_MINOR_VERSION >= 25
+			HalfPackInverseFFTCS,
+#else
 			*HalfPackInverseFFTCS,
+#endif
 			HalfPackInverseFFTParams,
 			FIntVector(512 + FREQUENCY_PADDING, 1, 1)
 		);

@@ -12,6 +12,8 @@ public class ShaderPluginDemo : ModuleRules
 
 		PrivateDependencyModuleNames.AddRange(new string[] {  });
 
+        bLegacyPublicIncludePaths = false;
+
 		// Uncomment if you are using Slate UI
 		// PrivateDependencyModuleNames.AddRange(new string[] { "Slate", "SlateCore" });
 		
