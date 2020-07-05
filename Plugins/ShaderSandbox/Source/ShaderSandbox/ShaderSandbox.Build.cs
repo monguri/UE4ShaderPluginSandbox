@@ -8,6 +8,7 @@ public class ShaderSandbox : ModuleRules
 	{
 		PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
         PrivateIncludePaths.Add(EngineDirectory + "/Shaders/Shared");
+        bLegacyPublicIncludePaths = true;
 		
 		PublicIncludePaths.AddRange(
 			new string[] {
