@@ -7,6 +7,10 @@
 #include "Engine/CanvasRenderTarget2D.h"
 #include "PipelineStateCache.h"
 #include "RHIStaticStates.h"
+#if ENGINE_MINOR_VERSION >= 25
+#include "Serialization/MemoryLayout.h"
+#endif
+
 
 class FRenderTextureVS : public FGlobalShader
 {
@@ -73,7 +77,6 @@ class FRenderTextureCS : public FGlobalShader
 		OutTexture.Bind(Initializer.ParameterMap, TEXT("OutTexture"));
 		OutTextureSampler.Bind(Initializer.ParameterMap, TEXT("OutTextureSampler"));
 	}
-	virtual ~FRenderTextureCS() {}
 
 #if 0
 	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment)
@@ -84,6 +87,8 @@ class FRenderTextureCS : public FGlobalShader
 	}
 #endif
 
+#if ENGINE_MINOR_VERSION < 25
+	// At 4.25, LAYOUT_FIELD macr saves variables.
 	virtual bool Serialize(FArchive& Ar)
 	{
 		bool bShaderHasOutdated = FGlobalShader::Serialize(Ar);
@@ -91,10 +96,15 @@ class FRenderTextureCS : public FGlobalShader
 		Ar << OutTextureSampler;
 		return bShaderHasOutdated;
 	}
+#endif
 
 	void BindOutputUAV(FRHICommandList& RHICmdList, FRHIUnorderedAccessView* OutputUAV)
 	{
+#if ENGINE_MINOR_VERSION >= 25
+		FRHIComputeShader* ComputeShaderRHI = RHICmdList.GetBoundComputeShader();
+#else
 		FRHIComputeShader* ComputeShaderRHI = GetComputeShader();
+#endif
 		if (OutTexture.IsBound())
 		{
 			RHICmdList.SetUAVParameter(ComputeShaderRHI, OutTexture.GetBaseIndex(), OutputUAV);
@@ -103,15 +113,24 @@ class FRenderTextureCS : public FGlobalShader
 
 	void UnbindOutputUAV(FRHICommandList& RHICmdList)
 	{
+#if ENGINE_MINOR_VERSION >= 25
+		FRHIComputeShader* ComputeShaderRHI = RHICmdList.GetBoundComputeShader();
+#else
 		FRHIComputeShader* ComputeShaderRHI = GetComputeShader();
+#endif
 		if (OutTexture.IsBound())
 		{
 			RHICmdList.SetUAVParameter(ComputeShaderRHI, OutTexture.GetBaseIndex(), nullptr);
 		}
 	}
 
+#if ENGINE_MINOR_VERSION >= 25
+	LAYOUT_FIELD(FShaderResourceParameter, OutTexture);
+	LAYOUT_FIELD(FShaderResourceParameter, OutTextureSampler);
+#else
 	FShaderResourceParameter OutTexture;
 	FShaderResourceParameter OutTextureSampler;
+#endif
 };
 
 IMPLEMENT_GLOBAL_SHADER(FRenderTextureCS, "/Plugin/ShaderSandbox/Private/RenderTexture.usf", "MainCS", SF_Compute);
@@ -147,8 +166,13 @@ void DrawRenderTextureVSPS_RenderThread(FRHICommandListImmediate& RHICmdList, ER
 		GraphicsPSOInit.RasterizerState = TStaticRasterizerState<>::GetRHI();
 		GraphicsPSOInit.PrimitiveType = EPrimitiveType::PT_TriangleList;
 		GraphicsPSOInit.BoundShaderState.VertexDeclarationRHI = GetVertexDeclarationFVector4();
+#if ENGINE_MINOR_VERSION >= 25
+		GraphicsPSOInit.BoundShaderState.VertexShaderRHI = VertexShader.GetVertexShader();
+		GraphicsPSOInit.BoundShaderState.PixelShaderRHI = PixelShader.GetPixelShader();
+#else
 		GraphicsPSOInit.BoundShaderState.VertexShaderRHI = GETSAFERHISHADER_VERTEX(*VertexShader);
 		GraphicsPSOInit.BoundShaderState.PixelShaderRHI = GETSAFERHISHADER_PIXEL(*PixelShader);
+#endif
 		SetGraphicsPipelineState(RHICmdList, GraphicsPSOInit);
 
 		int32 BaseVertexIndex = 0;
@@ -174,7 +198,11 @@ void DrawRenderTextureCS_RenderThread(FRHICommandListImmediate& RHICmdList, ERHI
 #endif
 		TShaderMapRef<FRenderTextureCS> RenderTextureCS(GlobalShaderMap);
 
+#if ENGINE_MINOR_VERSION >= 25
+		RHICmdList.SetComputeShader(RenderTextureCS.GetComputeShader());
+#else
 		RHICmdList.SetComputeShader(RenderTextureCS->GetComputeShader());
+#endif
 		RenderTextureCS->BindOutputUAV(RHICmdList, OutUAVRef);
 		RHICmdList.DispatchComputeShader(FMath::DivideAndRoundUp(SizeX, (uint32)8), FMath::DivideAndRoundUp(SizeY, (uint32)8), 1);
 		RenderTextureCS->UnbindOutputUAV(RHICmdList);
