@@ -29,7 +29,7 @@ Japanese
 また、キャンバスレンダーターゲットがComputeShaderによって描画され緑一色になります。
 
 ## SinWaveGridDemo
-It has been tested only on UE4.23 and 4.24, Win64 DX11 and DX12, not on ray tracing.
+It has been tested only on UE4.23, 4.24 and 4.25, Win64 DX11 and DX12, not on ray tracing.
 
 ![SinWaveGridDemo](Plugins/ShaderSandbox/SinWaveDeformGridMesh.gif "SinWaveGridDemo")
 
@@ -44,7 +44,7 @@ Japanese
 頂点バッファをコンピュートシェーダで動かしています。
 
 ## ClothGridDemo
-It has been tested only on UE4.23 and 4.24, Win64 DX11, not on ray tracing.
+It has been tested only on UE4.23, 4.24 and 4.25, Win64 DX11, not on ray tracing.
 DX12 will be tested soon.
 
 ![ClothGridDemo](Plugins/ShaderSandbox/ClothWind.gif "SinWaveGridDemo")
@@ -60,7 +60,7 @@ Japanese
 クロスシミュレーションはコンピュートシェーダで行っています。
 
 ## OceanDemo
-It has been tested only on 4.24, Win64 DX11, not on ray tracing.
+It has been tested only on 4.24 and 4.25, Win64 DX11, not on ray tracing.
 DX12 will be tested soon.
 
 ![OceanDemo](Plugins/ShaderSandbox/OceanIslandShort.gif "OceanDemo")
