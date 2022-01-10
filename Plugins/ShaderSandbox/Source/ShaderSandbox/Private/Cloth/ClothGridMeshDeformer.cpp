@@ -146,6 +146,7 @@ void FClothGridMeshDeformer::FlushDeformCommandQueue(FRHICommandListImmediate& R
 			FComputeShaderUtils::AddPass(
 				GraphBuilder,
 				RDG_EVENT_NAME("ClothMeshCopyToWorkBuffer"),
+				ERDGPassFlags::AsyncCompute,
 #if ENGINE_MINOR_VERSION >= 25
 				ClothMeshCopyToWorkBufferCS,
 #else
@@ -192,6 +193,7 @@ void FClothGridMeshDeformer::FlushDeformCommandQueue(FRHICommandListImmediate& R
 		FComputeShaderUtils::AddPass(
 			GraphBuilder,
 			RDG_EVENT_NAME("ClothSimulation"),
+			ERDGPassFlags::AsyncCompute,
 #if ENGINE_MINOR_VERSION >= 25
 			ClothSimulationCS,
 #else
@@ -222,6 +224,7 @@ void FClothGridMeshDeformer::FlushDeformCommandQueue(FRHICommandListImmediate& R
 			FComputeShaderUtils::AddPass(
 				GraphBuilder,
 				RDG_EVENT_NAME("ClothMeshCopyFromWorkBuffer"),
+				ERDGPassFlags::AsyncCompute,
 #if ENGINE_MINOR_VERSION >= 25
 				ClothMeshCopyFromWorkBufferCS,
 #else
@@ -253,6 +256,7 @@ void FClothGridMeshDeformer::FlushDeformCommandQueue(FRHICommandListImmediate& R
 			FComputeShaderUtils::AddPass(
 				GraphBuilder,
 				RDG_EVENT_NAME("GridMeshTangent"),
+				ERDGPassFlags::AsyncCompute,
 #if ENGINE_MINOR_VERSION >= 25
 				GridMeshTangentCS,
 #else

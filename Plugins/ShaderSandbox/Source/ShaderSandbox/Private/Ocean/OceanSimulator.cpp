@@ -353,6 +353,7 @@ void SimulateOcean(FRHICommandListImmediate& RHICmdList, const FOceanSpectrumPar
 		FComputeShaderUtils::AddPass(
 			GraphBuilder,
 			RDG_EVENT_NAME("OceanDebugH0CS"),
+			ERDGPassFlags::AsyncCompute,
 #if ENGINE_MINOR_VERSION >= 25
 			OceanDebugH0CS,
 #else
@@ -378,6 +379,7 @@ void SimulateOcean(FRHICommandListImmediate& RHICmdList, const FOceanSpectrumPar
 		FComputeShaderUtils::AddPass(
 			GraphBuilder,
 			RDG_EVENT_NAME("OceanUpdateSpectrumCS"),
+			ERDGPassFlags::AsyncCompute,
 #if ENGINE_MINOR_VERSION >= 25
 			OceanUpdateSpectrumCS,
 #else
@@ -400,6 +402,7 @@ void SimulateOcean(FRHICommandListImmediate& RHICmdList, const FOceanSpectrumPar
 		FComputeShaderUtils::AddPass(
 			GraphBuilder,
 			RDG_EVENT_NAME("OceanDebugHtCS"),
+			ERDGPassFlags::AsyncCompute,
 #if ENGINE_MINOR_VERSION >= 25
 			OceanDebugHtCS,
 #else
@@ -422,6 +425,7 @@ void SimulateOcean(FRHICommandListImmediate& RHICmdList, const FOceanSpectrumPar
 		FComputeShaderUtils::AddPass(
 			GraphBuilder,
 			RDG_EVENT_NAME("OceanDebugDkxCS"),
+			ERDGPassFlags::AsyncCompute,
 #if ENGINE_MINOR_VERSION >= 25
 			OceanDebugDkxCS,
 #else
@@ -444,6 +448,7 @@ void SimulateOcean(FRHICommandListImmediate& RHICmdList, const FOceanSpectrumPar
 		FComputeShaderUtils::AddPass(
 			GraphBuilder,
 			RDG_EVENT_NAME("OceanDebugDkyCS"),
+			ERDGPassFlags::AsyncCompute,
 #if ENGINE_MINOR_VERSION >= 25
 			OceanDebugDkyCS,
 #else
@@ -464,6 +469,7 @@ void SimulateOcean(FRHICommandListImmediate& RHICmdList, const FOceanSpectrumPar
 		FComputeShaderUtils::AddPass(
 			GraphBuilder,
 			RDG_EVENT_NAME("OceanDkxHorizontalIFFTCS"),
+			ERDGPassFlags::AsyncCompute,
 #if ENGINE_MINOR_VERSION >= 25
 			OceanHorizIFFTCS,
 #else
@@ -485,6 +491,7 @@ void SimulateOcean(FRHICommandListImmediate& RHICmdList, const FOceanSpectrumPar
 		FComputeShaderUtils::AddPass(
 			GraphBuilder,
 			RDG_EVENT_NAME("OceanDkxVerticalIFFTCS"),
+			ERDGPassFlags::AsyncCompute,
 #if ENGINE_MINOR_VERSION >= 25
 			OceanVertIFFTCS,
 #else
@@ -505,6 +512,7 @@ void SimulateOcean(FRHICommandListImmediate& RHICmdList, const FOceanSpectrumPar
 		FComputeShaderUtils::AddPass(
 			GraphBuilder,
 			RDG_EVENT_NAME("OceanDkyHorizontalIFFTCS"),
+			ERDGPassFlags::AsyncCompute,
 #if ENGINE_MINOR_VERSION >= 25
 			OceanHorizIFFTCS,
 #else
@@ -526,6 +534,7 @@ void SimulateOcean(FRHICommandListImmediate& RHICmdList, const FOceanSpectrumPar
 		FComputeShaderUtils::AddPass(
 			GraphBuilder,
 			RDG_EVENT_NAME("OceanDkyVerticalIFFTCS"),
+			ERDGPassFlags::AsyncCompute,
 #if ENGINE_MINOR_VERSION >= 25
 			OceanVertIFFTCS,
 #else
@@ -546,6 +555,7 @@ void SimulateOcean(FRHICommandListImmediate& RHICmdList, const FOceanSpectrumPar
 		FComputeShaderUtils::AddPass(
 			GraphBuilder,
 			RDG_EVENT_NAME("OceanDkzHorizontalIFFTCS"),
+			ERDGPassFlags::AsyncCompute,
 #if ENGINE_MINOR_VERSION >= 25
 			OceanHorizIFFTCS,
 #else
@@ -566,6 +576,7 @@ void SimulateOcean(FRHICommandListImmediate& RHICmdList, const FOceanSpectrumPar
 		FComputeShaderUtils::AddPass(
 			GraphBuilder,
 			RDG_EVENT_NAME("OceanDkzVerticalIFFTCS"),
+			ERDGPassFlags::AsyncCompute,
 #if ENGINE_MINOR_VERSION >= 25
 			OceanVertIFFTCS,
 #else
@@ -589,6 +600,7 @@ void SimulateOcean(FRHICommandListImmediate& RHICmdList, const FOceanSpectrumPar
 		FComputeShaderUtils::AddPass(
 			GraphBuilder,
 			RDG_EVENT_NAME("OceanUpdateDisplacementMapCS"),
+			ERDGPassFlags::AsyncCompute,
 #if ENGINE_MINOR_VERSION >= 25
 			OceanUpdateDisplacementMapCS,
 #else
@@ -612,6 +624,7 @@ void SimulateOcean(FRHICommandListImmediate& RHICmdList, const FOceanSpectrumPar
 		FComputeShaderUtils::AddPass(
 			GraphBuilder,
 			RDG_EVENT_NAME("OceanDebugDxyzCS"),
+			ERDGPassFlags::AsyncCompute,
 #if ENGINE_MINOR_VERSION >= 25
 			OceanDebugHtCS,
 #else
@@ -635,6 +648,7 @@ void SimulateOcean(FRHICommandListImmediate& RHICmdList, const FOceanSpectrumPar
 		FComputeShaderUtils::AddPass(
 			GraphBuilder,
 			RDG_EVENT_NAME("OceanGenerateGradientFoldingMapCS"),
+			ERDGPassFlags::AsyncCompute,
 #if ENGINE_MINOR_VERSION >= 25
 			OceanGenerateGradientFoldingMapCS,
 #else
@@ -708,6 +722,7 @@ void TestSinWave(FRHICommandListImmediate& RHICmdList, const FOceanSinWaveParame
 	FComputeShaderUtils::AddPass(
 		GraphBuilder,
 		RDG_EVENT_NAME("OceanSinWaveCS"),
+		ERDGPassFlags::AsyncCompute,
 #if ENGINE_MINOR_VERSION >= 25
 		OceanSinWaveCS,
 #else

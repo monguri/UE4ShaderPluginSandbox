@@ -91,6 +91,7 @@ void SinWaveDeformGridMesh(FRHICommandListImmediate& RHICmdList, const FGridSinW
 	FComputeShaderUtils::AddPass(
 		GraphBuilder,
 		RDG_EVENT_NAME("SinWaveDeformMesh"),
+		ERDGPassFlags::AsyncCompute,
 #if ENGINE_MINOR_VERSION >= 25
 		SinWaveDeformCS,
 #else
@@ -112,6 +113,7 @@ void SinWaveDeformGridMesh(FRHICommandListImmediate& RHICmdList, const FGridSinW
 	FComputeShaderUtils::AddPass(
 		GraphBuilder,
 		RDG_EVENT_NAME("GridMeshTangent"),
+		ERDGPassFlags::AsyncCompute,
 #if ENGINE_MINOR_VERSION >= 25
 		GridMeshTangentCS,
 #else
