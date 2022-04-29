@@ -32,6 +32,7 @@ void ARenderTextureActor::Tick(float DeltaTime)
 	}
 	if (CanvasTarget != nullptr)
 	{
-		Renderer.DrawRenderTextureCS();
+		Renderer.DrawRenderTextureCS(bAsyncCS);
 	}
 }
+

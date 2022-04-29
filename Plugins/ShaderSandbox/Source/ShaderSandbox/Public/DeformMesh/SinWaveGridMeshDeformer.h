@@ -17,6 +17,7 @@ struct FGridSinWaveParameters
 	float Period;
 	float Amplitude;
 	float AccumulatedTime;
+	bool bAsync;
 };
 
 void SinWaveDeformGridMesh(FRHICommandListImmediate& RHICmdList, const FGridSinWaveParameters& GridSinWaveParams, class FRHIUnorderedAccessView* PositionVertexBufferUAV, class FRHIUnorderedAccessView* TangentVertexBufferUAV

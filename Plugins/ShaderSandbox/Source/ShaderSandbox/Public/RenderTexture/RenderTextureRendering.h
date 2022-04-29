@@ -8,7 +8,7 @@ public:
 	void Initialize(ERHIFeatureLevel::Type FeatureLevel, class UTextureRenderTarget2D* OutputRenderTarget, class UCanvasRenderTarget2D* OutputCanvasTarget);
 	void Finalize();
 	void DrawRenderTextureVSPS();
-	void DrawRenderTextureCS();
+	void DrawRenderTextureCS(bool bAsync);
 
 private:
 	ERHIFeatureLevel::Type _FeatureLevel = ERHIFeatureLevel::Type::SM5;

@@ -183,7 +183,7 @@ void DrawRenderTextureVSPS_RenderThread(FRHICommandListImmediate& RHICmdList, ER
 	RHICmdList.EndRenderPass();
 }
 
-void DrawRenderTextureCS_RenderThread(FRHICommandListImmediate& RHICmdList, ERHIFeatureLevel::Type FeatureLevel, uint32 SizeX, uint32 SizeY, FUnorderedAccessViewRHIRef OutUAVRef)
+void DrawRenderTextureCS_RenderThread(FRHICommandListImmediate& RHICmdList, ERHIFeatureLevel::Type FeatureLevel, uint32 SizeX, uint32 SizeY, FUnorderedAccessViewRHIRef OutUAVRef, bool bAsync)
 {
 	check(IsInRenderingThread());
 
@@ -204,7 +204,13 @@ void DrawRenderTextureCS_RenderThread(FRHICommandListImmediate& RHICmdList, ERHI
 		RHICmdList.SetComputeShader(RenderTextureCS->GetComputeShader());
 #endif
 		RenderTextureCS->BindOutputUAV(RHICmdList, OutUAVRef);
-		RHICmdList.DispatchComputeShader(FMath::DivideAndRoundUp(SizeX, (uint32)8), FMath::DivideAndRoundUp(SizeY, (uint32)8), 1);
+		if (bAsync)
+		{
+		}
+		else
+		{
+			RHICmdList.DispatchComputeShader(FMath::DivideAndRoundUp(SizeX, (uint32)8), FMath::DivideAndRoundUp(SizeY, (uint32)8), 1);
+		}
 		RenderTextureCS->UnbindOutputUAV(RHICmdList);
 	}
 	//RHICmdList.EndRenderPass();
@@ -254,7 +260,7 @@ void FRenderTextureRendering::DrawRenderTextureVSPS()
 	);
 }
 
-void FRenderTextureRendering::DrawRenderTextureCS()
+void FRenderTextureRendering::DrawRenderTextureCS(bool bAsync)
 {
 	if (_OutputCanvasTarget == nullptr)
 	{
@@ -268,9 +274,9 @@ void FRenderTextureRendering::DrawRenderTextureCS()
 	}
 
 	ENQUEUE_RENDER_COMMAND(RenderCanvasCommand)(
-		[this, TextureRenderTargetResource](FRHICommandListImmediate& RHICmdList)
+		[this, bAsync, TextureRenderTargetResource](FRHICommandListImmediate& RHICmdList)
 		{
-			DrawRenderTextureCS_RenderThread(RHICmdList, _FeatureLevel, TextureRenderTargetResource->GetSizeX(), TextureRenderTargetResource->GetSizeY(), _OutputCanvasUAV);
+			DrawRenderTextureCS_RenderThread(RHICmdList, _FeatureLevel, TextureRenderTargetResource->GetSizeX(), TextureRenderTargetResource->GetSizeY(), _OutputCanvasUAV, bAsync);
 		}
 	);
 }

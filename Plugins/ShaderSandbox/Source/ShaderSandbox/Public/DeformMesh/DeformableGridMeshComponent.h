@@ -13,6 +13,9 @@ class SHADERSANDBOX_API UDeformableGridMeshComponent : public UMeshComponent
 	GENERATED_BODY()
 
 public:
+	UPROPERTY(EditAnywhere, Category=Rendering, BlueprintReadOnly)
+	bool bAsyncCS = false;
+
 	/** Set the geometry to use on this triangle mesh */
 	UFUNCTION(BlueprintCallable, Category="Components|DeformableGridMesh")
 	void InitGridMeshSetting(int32 NumRow, int32 NumColumn, float GridWidth, float GridHeight);

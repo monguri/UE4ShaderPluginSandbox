@@ -166,6 +166,7 @@ public:
 		Params.Period = Component->GetPeriod();
 		Params.Amplitude = Component->GetAmplitude();
 		Params.AccumulatedTime = Component->GetAccumulatedTime();
+		Params.bAsync = Component->bAsyncCS;
 
 		SinWaveDeformGridMesh(RHICmdList, Params, VertexBuffers.PositionVertexBuffer.GetUAV(), VertexBuffers.DeformableMeshVertexBuffer.GetTangentsUAV());
 	}

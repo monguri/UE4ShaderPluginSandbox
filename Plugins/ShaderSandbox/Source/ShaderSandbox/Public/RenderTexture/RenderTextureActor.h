@@ -16,6 +16,9 @@ public:
 	UPROPERTY(EditAnywhere, Category=Rendering, BlueprintReadOnly)
 	class UCanvasRenderTarget2D* CanvasTarget = nullptr;
 
+	UPROPERTY(EditAnywhere, Category=Rendering, BlueprintReadOnly)
+	bool bAsyncCS = false;
+
 public:
 	ARenderTextureActor();
 
