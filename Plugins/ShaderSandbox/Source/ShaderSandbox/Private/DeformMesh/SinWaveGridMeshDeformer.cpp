@@ -88,7 +88,7 @@ void SinWaveDeformGridMesh(FRHICommandListImmediate& RHICmdList, const FGridSinW
 	SinWaveDeformParams->Time = GridSinWaveParams.AccumulatedTime;
 	SinWaveDeformParams->OutPositionVertexBuffer = PositionVertexBufferUAV;
 
-	ERDGPassFlags PassFlags = SinWaveDeformParams->bAsync ? ERDGPassFlags::AsyncCompute : ERDGPassFlags::Compute;
+	ERDGPassFlags PassFlags = GridSinWaveParams.bAsync ? ERDGPassFlags::AsyncCompute : ERDGPassFlags::Compute;
 
 	FComputeShaderUtils::AddPass(
 		GraphBuilder,
