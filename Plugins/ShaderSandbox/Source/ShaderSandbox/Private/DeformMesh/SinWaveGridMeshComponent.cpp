@@ -168,6 +168,11 @@ public:
 		Params.AccumulatedTime = Component->GetAccumulatedTime();
 		Params.bAsync = Component->bAsyncCS;
 
+		if (VertexBuffers.PositionVertexBuffer.GetUAV() == nullptr || VertexBuffers.DeformableMeshVertexBuffer.GetTangentsUAV() == nullptr)
+		{
+			return;
+		}
+
 		SinWaveDeformGridMesh(RHICmdList, Params, VertexBuffers.PositionVertexBuffer.GetUAV(), VertexBuffers.DeformableMeshVertexBuffer.GetTangentsUAV());
 	}
 
